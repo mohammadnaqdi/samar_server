@@ -1,0 +1,5 @@
+{
+    "sms_wait": 60,
+    "sms_confirm_code_second": 360,
+    "sms_confirm_code_second2": 720
+}

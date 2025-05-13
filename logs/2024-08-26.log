@@ -1,0 +1,44 @@
+2024-08-26T11:52:31.433Z [ERROR]: uncaughtException: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+Error: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+2024-08-26T11:52:56.911Z [ERROR]: uncaughtException: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+Error: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+2024-08-26T11:54:04.934Z [ERROR]: uncaughtException: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+Error: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+2024-08-26T11:54:47.894Z [ERROR]: uncaughtException: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+Error: ENOENT: no such file or directory, open 'C:\Users\rad.program\Music\Projects\SamarRad\backups\backup-2024-08-26.zip'
+2024-08-26T12:36:59.059Z [ERROR]: unhandledRejection: Cannot read properties of undefined (reading 'status')
+TypeError: Cannot read properties of undefined (reading 'status')
+    at module.exports.response (C:\Users\rad.program\Music\Projects\SamarRad\src\routes\controller.js:115:9)
+    at module.exports.backup (C:\Users\rad.program\Music\Projects\SamarRad\src\routes\software\controller.js:159:25)
+    at Layer.handle [as handle_request] (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\route.js:144:13)
+    at Route.dispatch (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\route.js:114:3)
+    at Layer.handle [as handle_request] (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\layer.js:95:5)
+    at C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:175:3)
+2024-08-26T12:40:36.415Z [ERROR]: unhandledRejection: Cannot read properties of undefined (reading 'status')
+TypeError: Cannot read properties of undefined (reading 'status')
+    at module.exports.response (C:\Users\rad.program\Music\Projects\SamarRad\src\routes\controller.js:115:9)
+    at module.exports.backup (C:\Users\rad.program\Music\Projects\SamarRad\src\routes\software\controller.js:163:25)
+    at Layer.handle [as handle_request] (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\route.js:144:13)
+    at Route.dispatch (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\route.js:114:3)
+    at Layer.handle [as handle_request] (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\layer.js:95:5)
+    at C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:175:3)
+2024-08-26T12:41:01.455Z [ERROR]: unhandledRejection: Cannot read properties of undefined (reading 'status')
+TypeError: Cannot read properties of undefined (reading 'status')
+    at module.exports.response (C:\Users\rad.program\Music\Projects\SamarRad\src\routes\controller.js:115:9)
+    at module.exports.backup (C:\Users\rad.program\Music\Projects\SamarRad\src\routes\software\controller.js:164:25)
+    at Layer.handle [as handle_request] (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\route.js:144:13)
+    at Route.dispatch (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\route.js:114:3)
+    at Layer.handle [as handle_request] (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\layer.js:95:5)
+    at C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (C:\Users\rad.program\Music\Projects\SamarRad\node_modules\express\lib\router\index.js:175:3)

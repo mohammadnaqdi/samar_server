@@ -1,0 +1,16 @@
+
+DB_ADDRESS : mongodb://mahbobir_radAdmin:rad9891401@mahbobiranian.ir:27017/mahbobir_school
+
+URL : mahbobiranian.ir
+
+JWT_KEY : 8#xL!4t%T7f3U&b(1^p*5m9$k2Y@j6`0N)
+
+NESHAN : service.9f24b65388f1431b960e3e0821ac35ae	
+
+AMOOT_SMS : 92BD6EB4052A26F2358763B76CC54A62597731C1
+
+AMOOT_USER : 09151156929
+
+AMOOT_PASS : nazanin110
+
+

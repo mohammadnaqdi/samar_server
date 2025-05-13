@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پرداخت موفق</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        /* New Success Checkmark */
+        .success-animation {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+        }
+        
+        .checkmark {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 4;
+            stroke: #fff;
+            stroke-miterlimit: 10;
+            margin: 10% auto;
+            box-shadow: 0 0 0 rgba(76, 175, 80, 0.4);
+            animation: fill-checkmark .4s ease-in-out .4s forwards, scale-checkmark .3s ease-in-out .9s both;
+        }
+        
+        .checkmark__circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 4;
+            stroke-miterlimit: 10;
+            stroke: #4CAF50;
+            fill: none;
+            animation: stroke-checkmark-circle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke-checkmark-check 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+        
+        @keyframes stroke-checkmark-circle {
+            0% { stroke-dashoffset: 166; }
+            100% { stroke-dashoffset: 0; }
+        }
+        
+        @keyframes stroke-checkmark-check {
+            0% { stroke-dashoffset: 48; }
+            100% { stroke-dashoffset: 0; }
+        }
+        
+        @keyframes scale-checkmark {
+            0%, 100% { transform: none; }
+            50% { transform: scale3d(1.1, 1.1, 1); }
+        }
+        
+        @keyframes fill-checkmark {
+            0% { box-shadow: inset 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            100% { box-shadow: inset 0 0 0 40px rgba(76, 175, 80, 0.4); }
+        }
+        
+        .info-card {
+            transition: all 0.3s ease;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .copy-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .copy-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Card number LTR */
+        .card-number-ltr {
+            direction: ltr;
+            text-align: right;
+            unicode-bidi: plaintext;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        /* Print styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-receipt, #print-receipt * {
+                visibility: visible;
+            }
+            #print-receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 20px;
+                background: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle ml-2"></i>
+        <span>متن با موفقیت کپی شد</span>
+    </div>
+    
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
+        <!-- Header -->
+        <div class="bg-green-500 py-6 px-6 text-center">
+            <div class="success-animation">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <h1 class="text-white text-2xl font-bold mt-4">پرداخت موفق</h1>
+            <p class="text-white opacity-90 mt-2">تراکنش شما با موفقیت انجام شد</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6">
+            <!-- Amount -->
+            <div class="info-card bg-gray-50 rounded-xl p-4 mb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-green-100 p-3 rounded-lg text-green-600">
+                        <i class="fas fa-money-bill-wave text-xl"></i>
+                    </div>
+                    <div class="mr-3">
+                        <p class="text-gray-500 text-sm">مبلغ پرداختی</p>
+                        <p class="font-bold text-lg" id="amount-display">1,250,000 تومان</p>
+                    </div>
+                </div>
+                <div class="text-green-500">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
+            </div>
+            
+            <!-- Payment ID -->
+            <div class="info-card bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-gray-500">شناسه پرداخت</p>
+                    <button class="copy-btn bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded" onclick="copyToClipboard(event, 'payment-id', 'شناسه پرداخت')">
+                        <i class="fas fa-copy ml-1"></i> کپی
+                    </button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="font-medium" id="payment-id">؟؟؟؟؟</p>
+                    <i class="fas fa-receipt text-gray-400"></i>
+                </div>
+            </div>
+            
+            <!-- Card Number -->
+            <div class="info-card bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-gray-500">شماره کارت</p>
+                    <button class="copy-btn bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded" onclick="copyToClipboard(event, 'card-number', 'شماره کارت')">
+                        <i class="fas fa-copy ml-1"></i> کپی
+                    </button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="font-medium card-number-ltr" id="card-number">؟؟؟؟-****-؟؟؟؟</p>
+                    <i class="fas fa-credit-card text-gray-400"></i>
+                </div>
+            </div>
+            
+            <!-- Document Number -->
+            <div class="info-card bg-gray-50 rounded-xl p-4 mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-gray-500">بانک</p>
+                    <button class="copy-btn bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded" onclick="copyToClipboard(event, 'doc-number', 'بانک عامل')">
+                        <i class="fas fa-copy ml-1"></i> کپی
+                    </button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="font-medium" id="doc-number">بانک ؟</p>
+                    <i class="fas fa-file-invoice text-gray-400"></i>
+                </div>
+            </div>
+            
+            <!-- Buttons -->
+            <div class="flex flex-col space-y-3">
+                <button onclick="printReceipt()" class="bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center">
+                    <i class="fas fa-download ml-2"></i>
+                    دریافت رسید پرداخت
+                </button>
+                <button onclick="goToHomePage()" class="border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center justify-center">
+                    <i class="fas fa-home ml-2"></i>
+                    بازگشت به اپ
+                </button>
+            </div>
+            
+            <!-- Footer Note -->
+            <p class="text-center text-gray-500 text-xs mt-6">
+                در صورت بروز هرگونه مشکل با پشتیبانی تماس بگیرید
+                <br>
+                <span class="text-blue-500">hashemi@radrayaneh.com</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Hidden receipt for printing -->
+    <div id="print-receipt" class="hidden">
+        <div class="max-w-md mx-auto p-6">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-green-600">رسید پرداخت</h1>
+                <p class="text-gray-600">تراکنش موفق</p>
+                <div class="my-4">
+                    <svg width="80" height="80" viewBox="0 0 52 52" class="mx-auto">
+                        <circle cx="26" cy="26" r="25" fill="none" stroke="#4CAF50" stroke-width="4"/>
+                        <path fill="none" stroke="#4CAF50" stroke-width="4" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="border-b border-gray-200 pb-4 mb-4">
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">تاریخ:</span>
+                    <span class="font-medium" id="print-date">۱۴۰۲/۰۸/۲۵ - ۱۵:۳۰</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">شناسه پرداخت:</span>
+                    <span class="font-medium" id="print-transaction">TRX-65874219</span>
+                </div>
+            </div>
+            
+            <div class="border-b border-gray-200 pb-4 mb-4">
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">مبلغ:</span>
+                    <span class="font-bold text-lg" id="print-amount">1,250,000 تومان</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">شماره کارت:</span>
+                    <span class="font-medium card-number-ltr" id="print-card">6219-8610-3452-7894</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">بانک عامل:</span>
+                    <span class="font-medium" id="print-doc">DOC-2023-11-658</span>
+                </div>
+            </div>
+            
+            <div class="text-center mt-8 text-sm text-gray-500">
+                <p>با تشکر از پرداخت شما</p>
+                <p class="mt-2">این رسید معتبر می باشد</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                amount: params.get('amount'),
+                transaction: params.get('transaction'),
+                card: params.get('card'),
+                bank: params.get('bank')
+            };
+        }
+
+        // Format amount with commas
+        function formatAmount(amount) {
+            return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + ' تومان';
+        }
+
+        // Update page with URL parameters
+        function updatePaymentInfo() {
+            const params = getQueryParams();
+            
+            if (params.amount) {
+                document.getElementById('amount-display').textContent = formatAmount(params.amount);
+                document.getElementById('print-amount').textContent = formatAmount(params.amount);
+            }
+            
+            if (params.transaction) {
+                document.getElementById('payment-id').textContent = params.transaction;
+                document.getElementById('print-transaction').textContent = params.transaction;
+            }
+            
+            if (params.card) {
+                document.getElementById('card-number').textContent = params.card;
+                document.getElementById('print-card').textContent = params.card;
+            }
+            
+            if (params.bank) {
+                document.getElementById('doc-number').textContent = params.bank;
+                document.getElementById('print-doc').textContent = params.bank;
+            }
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.querySelector('span').textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Copy to clipboard with toast notification
+       function copyToClipboard(event, elementId, label) {
+    event.preventDefault();
+    const element = document.getElementById(elementId);
+    if (!element) {
+        showToast(`خطا: عنصر با شناسه ${elementId} یافت نشد`);
+        console.error(`Element with ID ${elementId} not found`);
+        return;
+    }
+    const text = element.innerText;
+
+    navigator.clipboard.writeText(text).then(() => {
+        showToast(`${label} با موفقیت کپی شد`);
+        // const button = event.currentTarget;
+        // const originalHTML = button.innerHTML;
+        // const originalClasses = button.className;
+
+        // button.innerHTML = '<i class="fas fa-check ml-1"></i> کپی شد';
+        // button.className = originalClasses.replace('bg-gray-200', 'bg-green-100 text-green-700');
+
+        // setTimeout(() => {
+        //     button.innerHTML = originalHTML;
+        //     button.className = originalClasses;
+        // }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        showToast('خطا در کپی کردن متن');
+    });
+}
+        
+        function printReceipt() {
+            // Set current date and time
+            const now = new Date();
+            const options = { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('print-date').textContent = now.toLocaleDateString('fa-IR', options);
+            
+            // Show the receipt and print
+            const receipt = document.getElementById('print-receipt');
+            receipt.classList.remove('hidden');
+            
+            window.print();
+            
+            // Hide it again after printing
+            setTimeout(() => {
+                receipt.classList.add('hidden');
+            }, 500);
+        }
+
+        function goToHomePage() {
+             const params = getUrlParams();
+            const id = params.id || "0";
+            const appScheme = `schoolparent://open/link?data=success&id=${encodeURIComponent(id)}`;
+            const fallbackUrl = `https://app.samar-rad.ir/travelPage?data=success&id=${encodeURIComponent(id)}`;
+            const timeout = 2000;
+
+            let iframe = document.createElement("iframe");
+            iframe.style.display = "none";
+            iframe.src = appScheme;
+            document.body.appendChild(iframe);
+
+            let isAppOpened = false;
+            const startTime = Date.now();
+
+            window.addEventListener('blur', () => {
+                isAppOpened = true;
+            }, { once: true });
+
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+                if (!isAppOpened && Date.now() - startTime < timeout + 500) {
+                    window.location = fallbackUrl;
+                }
+            }, timeout);
+
+            window.location = appScheme;
+        }
+
+        // Call the function when page loads
+        document.addEventListener('DOMContentLoaded', updatePaymentInfo);
+    </script>
+</body>
+</html>
