@@ -2,7 +2,7 @@ const expressValidator = require("express-validator");
 const check = expressValidator.check;
 
 module.exports = new (class {
-     accDocInsertValidator() {
+    setSanadStudentValidator() {
         return [
             check("agencyId")
                 .not()
@@ -33,6 +33,73 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("peigiri cant be empty"),
+            check("studentCodes")
+                .not()
+                .isEmpty()
+                .withMessage("studentCodes cant be empty"),
+            check("invoice")
+                .not()
+                .isEmpty()
+                .withMessage("invoice cant be empty"),
+        ];
+    }
+    setRcCheck4StudentValidator() {
+        return [
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+            check("bankName")
+                .not()
+                .isEmpty()
+                .withMessage("bankName cant be empty"),
+            check("branchName")
+                .not()
+                .isEmpty()
+                .withMessage("branchName cant be empty"),
+            check("docExp").not().isEmpty().withMessage("docExp cant be empty"),
+            check("centers")
+                .not()
+                .isEmpty()
+                .withMessage("centers cant be empty"),
+            check("checkType")
+                .not()
+                .isEmpty()
+                .withMessage("checkType cant be empty"),
+            check("date").not().isEmpty().withMessage("date cant be empty"),
+            check("price").not().isEmpty().withMessage("price cant be empty"),
+            check("desc").not().isEmpty().withMessage("desc cant be empty"),
+            check("ownerHesab")
+                .not()
+                .isEmpty()
+                .withMessage("ownerHesab cant be empty"),
+            check("serial").not().isEmpty().withMessage("serial cant be empty"),
+            check("type").not().isEmpty().withMessage("type cant be empty"),
+            check("checkHesab")
+                .not()
+                .isEmpty()
+                .withMessage("checkHesab cant be empty"),
+            check("listCode")
+                .not()
+                .isEmpty()
+                .withMessage("listCode cant be empty"),
+            check("listDesc")
+                .not()
+                .isEmpty()
+                .withMessage("listDesc cant be empty"),
+            check("listPrice")
+                .not()
+                .isEmpty()
+                .withMessage("listPrice cant be empty"),
+
+            check("studentCodes")
+                .not()
+                .isEmpty()
+                .withMessage("studentCodes cant be empty"),
+            check("invoice")
+                .not()
+                .isEmpty()
+                .withMessage("invoice cant be empty"),
         ];
     }
 })();

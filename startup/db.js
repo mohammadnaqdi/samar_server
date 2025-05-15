@@ -131,7 +131,7 @@ module.exports = async function (mongoose) {
     if (true) {
         const countkey = await Keys.countDocuments();
         console.log("countkey", countkey);
-        if (countkey === 1) {
+        if (countkey <4) {
             await new Keys({
                 title: "مهدکودک",
                 cityCode: 0,
@@ -514,240 +514,233 @@ module.exports = async function (mongoose) {
     if (false) {
         await Bank.deleteMany();
     }
-    if (false) {
-        Bank.count()
-            .then(async function (count) {
-                if (count < 29) {
-                    let bank = new Bank({
-                        name: "بانک ملی",
-                        logo: "api/file/files/banks/BMI.png",
-                        sign: "BMI",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک پاسارگاد",
-                        logo: "api/file/files/banks/pasargad.png",
-                        sign: "PAS",
-                    });
-                    await bank.save();
-
-                    bank = new Bank({
-                        name: "بانک سپه",
-                        logo: "api/file/files/banks/BSP.png",
-                        sign: "BSP",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک صادرات",
-                        logo: "api/file/files/banks/BSI.png",
-                        sign: "BSI",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک ملت",
-                        logo: "api/file/files/banks/MEL.png",
-                        sign: "MEL",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک سامان",
-                        logo: "api/file/files/banks/SAM.png",
-                        sign: "SAM",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک کشاورزی",
-                        logo: "api/file/files/banks/keshavarzi.png",
-                        sign: "BKV",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک تجارت",
-                        logo: "api/file/files/banks/TEJ.png",
-                        sign: "TEJ",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک رفاه",
-                        logo: "api/file/files/banks/REF.png",
-                        sign: "REF",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک مسکن",
-                        logo: "api/file/files/banks/BMK.png",
-                        sign: "BMK",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک آینده",
-                        logo: "api/file/files/banks/ayandeh.png",
-                        sign: "AYN",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک دی",
-                        logo: "api/file/files/banks/DEY.png",
-                        sign: "DEY",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک پارسیان",
-                        logo: "api/file/files/banks/PAR.png",
-                        sign: "PAR",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک کارآفرین",
-                        logo: "api/file/files/banks/BKA.png",
-                        sign: "BKA",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک رسالت",
-                        logo: "api/file/files/banks/RES.png",
-                        sign: "RES",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک انصار",
-                        logo: "api/file/files/banks/ansar.png",
-                        sign: "ANS",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک صنعت و معدن",
-                        logo: "api/file/files/banks/BSM.png",
-                        sign: "BSM",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک سرمایه",
-                        logo: "api/file/files/banks/SAR.png",
-                        sign: "SAR",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک شهر",
-                        logo: "api/file/files/banks/SHR.png",
-                        sign: "SHR",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک مهر ایران",
-                        logo: "api/file/files/banks/MEH.png",
-                        sign: "MHR",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک قوامین",
-                        logo: "api/file/files/banks/GHA.png",
-                        sign: "GHA",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک اقتصاد نوین",
-                        logo: "api/file/files/banks/ENB.png",
-                        sign: "ENB",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک سینا",
-                        logo: "api/file/files/banks/SIN.png",
-                        sign: "SIN",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک توسعه صادرات",
-                        logo: "api/file/files/banks/BTS.png",
-                        sign: "BTS",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "موسسه اعتباری کوثر",
-                        logo: "api/file/files/banks/KSAC.png",
-                        sign: "KSAC",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک حکمت ایرانیان",
-                        logo: "api/file/files/banks/HEK.png",
-                        sign: "HEK",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک توسعه تعاون",
-                        logo: "api/file/files/banks/BTT.png",
-                        sign: "BTT",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "پست بانک",
-                        logo: "api/file/files/banks/PST.png",
-                        sign: "PST",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک ایران زمین",
-                        logo: "api/file/files/banks/IRZ.png",
-                        sign: "IRZ",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک گردشگری",
-                        logo: "api/file/files/banks/GAR.png",
-                        sign: "GAR",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک خاورمیانه",
-                        logo: "api/file/files/banks/KHMI.png",
-                        sign: "KHMI",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک نور",
-                        logo: "api/file/files/banks/NOR.png",
-                        sign: "NOR",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "موسسه اعتباری توسعه",
-                        logo: "api/file/files/banks/MET.png",
-                        sign: "MET",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "موسسه اعتباری عسکریه",
-                        logo: "api/file/files/banks/ASKC.png",
-                        sign: "ASKC",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "بانک ایران ونزوئلا",
-                        logo: "api/file/files/banks/IRV.png",
-                        sign: "IRV",
-                    });
-                    await bank.save();
-                    bank = new Bank({
-                        name: "سایر بانک‌ها",
-                        logo: "api/file/files/banks/markazi.png",
-                        sign: "CBI",
-                    });
-                    await bank.save();
-
-                    console.log("Banks added succsefully");
-                }
-            })
-            .catch(function (err) {
-                console.error("Error while Banks Count:", err);
+    if (true) {
+        const count = await Bank.countDocuments();
+        if (count < 29) {
+            let bank = new Bank({
+                name: "بانک ملی",
+                logo: "api/file/files/banks/BMI.png",
+                sign: "BMI",
             });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک پاسارگاد",
+                logo: "api/file/files/banks/pasargad.png",
+                sign: "PAS",
+            });
+            await bank.save();
+
+            bank = new Bank({
+                name: "بانک سپه",
+                logo: "api/file/files/banks/BSP.png",
+                sign: "BSP",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک صادرات",
+                logo: "api/file/files/banks/BSI.png",
+                sign: "BSI",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک ملت",
+                logo: "api/file/files/banks/MEL.png",
+                sign: "MEL",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک سامان",
+                logo: "api/file/files/banks/SAM.png",
+                sign: "SAM",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک کشاورزی",
+                logo: "api/file/files/banks/keshavarzi.png",
+                sign: "BKV",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک تجارت",
+                logo: "api/file/files/banks/TEJ.png",
+                sign: "TEJ",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک رفاه",
+                logo: "api/file/files/banks/REF.png",
+                sign: "REF",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک مسکن",
+                logo: "api/file/files/banks/BMK.png",
+                sign: "BMK",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک آینده",
+                logo: "api/file/files/banks/ayandeh.png",
+                sign: "AYN",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک دی",
+                logo: "api/file/files/banks/DEY.png",
+                sign: "DEY",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک پارسیان",
+                logo: "api/file/files/banks/PAR.png",
+                sign: "PAR",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک کارآفرین",
+                logo: "api/file/files/banks/BKA.png",
+                sign: "BKA",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک رسالت",
+                logo: "api/file/files/banks/RES.png",
+                sign: "RES",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک انصار",
+                logo: "api/file/files/banks/ansar.png",
+                sign: "ANS",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک صنعت و معدن",
+                logo: "api/file/files/banks/BSM.png",
+                sign: "BSM",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک سرمایه",
+                logo: "api/file/files/banks/SAR.png",
+                sign: "SAR",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک شهر",
+                logo: "api/file/files/banks/SHR.png",
+                sign: "SHR",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک مهر ایران",
+                logo: "api/file/files/banks/MEH.png",
+                sign: "MHR",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک قوامین",
+                logo: "api/file/files/banks/GHA.png",
+                sign: "GHA",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک اقتصاد نوین",
+                logo: "api/file/files/banks/ENB.png",
+                sign: "ENB",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک سینا",
+                logo: "api/file/files/banks/SIN.png",
+                sign: "SIN",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک توسعه صادرات",
+                logo: "api/file/files/banks/BTS.png",
+                sign: "BTS",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "موسسه اعتباری کوثر",
+                logo: "api/file/files/banks/KSAC.png",
+                sign: "KSAC",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک حکمت ایرانیان",
+                logo: "api/file/files/banks/HEK.png",
+                sign: "HEK",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک توسعه تعاون",
+                logo: "api/file/files/banks/BTT.png",
+                sign: "BTT",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "پست بانک",
+                logo: "api/file/files/banks/PST.png",
+                sign: "PST",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک ایران زمین",
+                logo: "api/file/files/banks/IRZ.png",
+                sign: "IRZ",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک گردشگری",
+                logo: "api/file/files/banks/GAR.png",
+                sign: "GAR",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک خاورمیانه",
+                logo: "api/file/files/banks/KHMI.png",
+                sign: "KHMI",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک نور",
+                logo: "api/file/files/banks/NOR.png",
+                sign: "NOR",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "موسسه اعتباری توسعه",
+                logo: "api/file/files/banks/MET.png",
+                sign: "MET",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "موسسه اعتباری عسکریه",
+                logo: "api/file/files/banks/ASKC.png",
+                sign: "ASKC",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "بانک ایران ونزوئلا",
+                logo: "api/file/files/banks/IRV.png",
+                sign: "IRV",
+            });
+            await bank.save();
+            bank = new Bank({
+                name: "سایر بانک‌ها",
+                logo: "api/file/files/banks/markazi.png",
+                sign: "CBI",
+            });
+            await bank.save();
+
+            console.log("Banks added succsefully");
+        }
     }
-    if (false) {
-        LevelAcc.count()
-            .then(async function (count) {
-                console.log("LevelAcc count", count);
-                if (count < 3) {
+    if (true) {
+        const count=await LevelAcc.countDocuments();
+         if (count < 3) {
                     let level = new LevelAcc({
                         levelNo: 1,
                         name: "کل",
@@ -770,9 +763,5 @@ module.exports = async function (mongoose) {
                     await level.save();
                     console.log("level added succsefully");
                 }
-            })
-            .catch(function (err) {
-                console.error("Error while LevelAcc Count:", err);
-            });
     }
 };

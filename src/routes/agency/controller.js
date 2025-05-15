@@ -19,179 +19,179 @@ const textValues = [
     "با توجه به محدودیت ها و اختلالات پیش بینی نشده اینترنت، اتکا کامل به نرم افزار، امری اشتباه است لذا مراقبت و پیگیری وضعیت دانش آموز از طرف والدین در همه حال امری اجتناب ناپذیر است",
 ];
 module.exports = new (class extends controller {
-    async insertAgency(req, res) {
-        try {
-            const id = req.body.id;
-            const name = req.body.name;
-            let code = req.body.code;
-            const userSetForAdmin = req.body.userSetForAdmin;
-            let managerName = req.body.managerName;
-            const managerCode = req.body.managerCode;
-            const districtId = req.body.districtId;
-            const districtTitle = req.body.districtTitle;
-            const address = req.body.address;
-            const location = req.body.location;
-            const managerTel = req.body.managerTel;
-            const userName = req.body.userName;
-            const password = req.body.password;
-            const tel = req.body.tel;
-            if (code.toString() === "0") {
-                const lastAgency = await this.Agency.find(
-                    { code: { $regex: "300" + ".*" } },
-                    "code"
-                )
-                    .sort({
-                        code: -1,
-                    })
-                    .limit(1);
-                code = "30000";
-                if (lastAgency.length > 0) {
-                    code = (parseInt(lastAgency[0].code) + 1).toString();
-                }
-            } else if (id === 0) {
-                const drv = await this.Agency.findOne({ code });
-                if (drv) {
-                    return this.response({
-                        res,
-                        code: 204,
-                        message: "Code is exist before",
-                        data: { fa_m: "کد وارد شده برای شرکت تکراری است!" },
-                    });
-                }
-            }
-            if (id === 0) {
-                const userTest = await this.User.findOne({
-                    userName: userName,
-                    phone: { $ne: managerTel },
-                });
+    // async insertAgency(req, res) {
+    //     try {
+    //         const id = req.body.id;
+    //         const name = req.body.name;
+    //         let code = req.body.code;
+    //         const userSetForAdmin = req.body.userSetForAdmin;
+    //         let managerName = req.body.managerName;
+    //         const managerCode = req.body.managerCode;
+    //         const districtId = req.body.districtId;
+    //         const districtTitle = req.body.districtTitle;
+    //         const address = req.body.address;
+    //         const location = req.body.location;
+    //         const managerTel = req.body.managerTel;
+    //         const userName = req.body.userName;
+    //         const password = req.body.password;
+    //         const tel = req.body.tel;
+    //         if (code.toString() === "0") {
+    //             const lastAgency = await this.Agency.find(
+    //                 { code: { $regex: "300" + ".*" } },
+    //                 "code"
+    //             )
+    //                 .sort({
+    //                     code: -1,
+    //                 })
+    //                 .limit(1);
+    //             code = "30000";
+    //             if (lastAgency.length > 0) {
+    //                 code = (parseInt(lastAgency[0].code) + 1).toString();
+    //             }
+    //         } else if (id === 0) {
+    //             const drv = await this.Agency.findOne({ code });
+    //             if (drv) {
+    //                 return this.response({
+    //                     res,
+    //                     code: 204,
+    //                     message: "Code is exist before",
+    //                     data: { fa_m: "کد وارد شده برای شرکت تکراری است!" },
+    //                 });
+    //             }
+    //         }
+    //         if (id === 0) {
+    //             const userTest = await this.User.findOne({
+    //                 userName: userName,
+    //                 phone: { $ne: managerTel },
+    //             });
 
-                if (userTest && id === 0) {
-                    return this.response({
-                        res,
-                        code: 223,
-                        message: "this userName is exist",
-                        data: {
-                            fa_m: "این نام کاربری تکراری است",
-                            name: userTest.name,
-                            lastName: userTest.lastName,
-                        },
-                    });
-                }
-            }
+    //             if (userTest && id === 0) {
+    //                 return this.response({
+    //                     res,
+    //                     code: 223,
+    //                     message: "this userName is exist",
+    //                     data: {
+    //                         fa_m: "این نام کاربری تکراری است",
+    //                         name: userTest.name,
+    //                         lastName: userTest.lastName,
+    //                     },
+    //                 });
+    //             }
+    //         }
 
-            let rating = 3;
-            if (req.body.rating != undefined) rating = req.body.rating;
+    //         let rating = 3;
+    //         if (req.body.rating != undefined) rating = req.body.rating;
 
-            let user = await this.User.findOne({ phone: managerTel });
-            if (!user && id != 0) {
-                return this.response({
-                    res,
-                    code: 204,
-                    message: "user inot find by phone",
-                    data: {
-                        fa_m: "از این api فقط میتونید مقادیر را تغییر دهید",
-                    },
-                });
-            }
-            if (user && !userSetForAdmin && id === 0) {
-                return this.response({
-                    res,
-                    code: 221,
-                    message: "this user is exist",
-                    data: {
-                        fa_m: "این کاربر وجود دارد برای تنظیم برای این کاربر userSetForAdmin را بفرستید",
-                        name: user.name,
-                        lastName: user.lastName,
-                    },
-                });
-            }
-            if (!user && id === 0) {
-                managerName = managerName.trim();
-                var nameFamily = managerName.split(" ");
+    //         let user = await this.User.findOne({ phone: managerTel });
+    //         if (!user && id != 0) {
+    //             return this.response({
+    //                 res,
+    //                 code: 204,
+    //                 message: "user inot find by phone",
+    //                 data: {
+    //                     fa_m: "از این api فقط میتونید مقادیر را تغییر دهید",
+    //                 },
+    //             });
+    //         }
+    //         if (user && !userSetForAdmin && id === 0) {
+    //             return this.response({
+    //                 res,
+    //                 code: 221,
+    //                 message: "this user is exist",
+    //                 data: {
+    //                     fa_m: "این کاربر وجود دارد برای تنظیم برای این کاربر userSetForAdmin را بفرستید",
+    //                     name: user.name,
+    //                     lastName: user.lastName,
+    //                 },
+    //             });
+    //         }
+    //         if (!user && id === 0) {
+    //             managerName = managerName.trim();
+    //             var nameFamily = managerName.split(" ");
 
-                if (nameFamily.length < 2) nameFamily.push("");
-                const family = managerName.replace(nameFamily[0], "").trim();
-                user = new this.User({
-                    phone: managerTel,
-                    userName,
-                    password,
-                    isAgencyAdmin: true,
-                    name: nameFamily[0],
-                    lastName: family,
-                });
-                await user.save();
-                await this.updateRedisDocument(
-                    `user:${user._id}`,
-                    user.toObject()
-                );
-            } else if (!user.isAgencyAdmin) {
-                user.isAgencyAdmin = true;
-                await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
-            }
-            if (
-                isEmpty(user.userName) ||
-                user.userName != userName ||
-                user.password != password
-            ) {
-                user.userName = userName;
-                if (password != "***") user.password = password;
-                await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
-            }
+    //             if (nameFamily.length < 2) nameFamily.push("");
+    //             const family = managerName.replace(nameFamily[0], "").trim();
+    //             user = new this.User({
+    //                 phone: managerTel,
+    //                 userName,
+    //                 password,
+    //                 isAgencyAdmin: true,
+    //                 name: nameFamily[0],
+    //                 lastName: family,
+    //             });
+    //             await user.save();
+    //             await this.updateRedisDocument(
+    //                 `user:${user._id}`,
+    //                 user.toObject()
+    //             );
+    //         } else if (!user.isAgencyAdmin) {
+    //             user.isAgencyAdmin = true;
+    //             await user.save();
+    //             await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+    //         }
+    //         if (
+    //             isEmpty(user.userName) ||
+    //             user.userName != userName ||
+    //             user.password != password
+    //         ) {
+    //             user.userName = userName;
+    //             if (password != "***") user.password = password;
+    //             await user.save();
+    //             await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+    //         }
 
-            if (id === 0) {
-                let agency = new this.Agency({
-                    code,
-                    name,
-                    admin: user.id,
-                    managerCode,
-                    tel,
-                    districtId,
-                    districtTitle,
-                    rating,
-                    address,
-                    location:{ type: "Point", coordinates: location },
-                });
-                await agency.save();
-                const rules = [];
+    //         if (id === 0) {
+    //             let agency = new this.Agency({
+    //                 code,
+    //                 name,
+    //                 admin: user.id,
+    //                 managerCode,
+    //                 tel,
+    //                 districtId,
+    //                 districtTitle,
+    //                 rating,
+    //                 address,
+    //                 location:{ type: "Point", coordinates: location },
+    //             });
+    //             await agency.save();
+    //             const rules = [];
 
-                for (const text of textValues) {
-                    rules.push({
-                        agencyId: agency.id,
-                        type: "student",
-                        show: true,
-                        rule: text,
-                    });
-                }
-                await this.Rule.insertMany(rules);
-                return this.response({
-                    res,
-                    data: agency._id,
-                });
-                return;
-            } else {
-                let agency = await this.Agency.findByIdAndUpdate(id, {
-                    code,
-                    name,
-                    managerCode,
-                    tel,
-                    districtId,
-                    districtTitle,
-                    rating,
-                    address,
-                    location:{ type: "Point", coordinates: location },
-                });
-                return this.response({
-                    res,
-                    data: agency._id,
-                });
-            }
-        } catch (error) {
-            console.error("Error while inserting Agency:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //             for (const text of textValues) {
+    //                 rules.push({
+    //                     agencyId: agency.id,
+    //                     type: "student",
+    //                     show: true,
+    //                     rule: text,
+    //                 });
+    //             }
+    //             await this.Rule.insertMany(rules);
+    //             return this.response({
+    //                 res,
+    //                 data: agency._id,
+    //             });
+    //             return;
+    //         } else {
+    //             let agency = await this.Agency.findByIdAndUpdate(id, {
+    //                 code,
+    //                 name,
+    //                 managerCode,
+    //                 tel,
+    //                 districtId,
+    //                 districtTitle,
+    //                 rating,
+    //                 address,
+    //                 location:{ type: "Point", coordinates: location },
+    //             });
+    //             return this.response({
+    //                 res,
+    //                 data: agency._id,
+    //             });
+    //         }
+    //     } catch (error) {
+    //         console.error("Error while inserting Agency:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
     async setFirstCodeHesab(agencyId) {
         try {
             // kol level
@@ -515,7 +515,7 @@ module.exports = new (class extends controller {
         try {
             const id = req.body.id;
             const name = req.body.name;
-            let code = req.body.code;
+            // let code = req.body.code;
             const managerCode = req.body.managerCode;
             const districtId = req.body.districtId;
             const districtTitle = req.body.districtTitle;
@@ -524,33 +524,33 @@ module.exports = new (class extends controller {
             const location = req.body.location;
             const tel = req.body.tel;
             const cityCode = req.body.cityCode;
-            if (
-                code.toString().trim() === "0" ||
-                code.toString().trim() === ""
-            ) {
-                const lastAgency = await this.Agency.find(
-                    { code: { $regex: "300" + ".*" } },
-                    "code"
-                )
-                    .sort({
-                        code: -1,
-                    })
-                    .limit(1);
-                code = "30000";
-                if (lastAgency.length > 0) {
-                    code = (parseInt(lastAgency[0].code) + 1).toString();
-                }
-            } else if (id === 0) {
-                const drv = await this.Agency.findOne({ code });
-                if (drv) {
-                    return this.response({
-                        res,
-                        code: 204,
-                        message: "Code is exist before",
-                        data: { fa_m: "کد وارد شده برای شرکت تکراری است!" },
-                    });
-                }
-            }
+            // if (
+            //     code.toString().trim() === "0" ||
+            //     code.toString().trim() === ""
+            // ) {
+            //     const lastAgency = await this.Agency.find(
+            //         { code: { $regex: "300" + ".*" } },
+            //         "code"
+            //     )
+            //         .sort({
+            //             code: -1,
+            //         })
+            //         .limit(1);
+            //     code = "30000";
+            //     if (lastAgency.length > 0) {
+            //         code = (parseInt(lastAgency[0].code) + 1).toString();
+            //     }
+            // } else if (id === 0) {
+            //     const drv = await this.Agency.findOne({ code });
+            //     if (drv) {
+            //         return this.response({
+            //             res,
+            //             code: 204,
+            //             message: "Code is exist before",
+            //             data: { fa_m: "کد وارد شده برای شرکت تکراری است!" },
+            //         });
+            //     }
+            // }
             let rating = 3;
             if (req.body.rating != undefined) rating = req.body.rating;
 
@@ -560,7 +560,6 @@ module.exports = new (class extends controller {
 
                 try {
                     const agency = new this.Agency({
-                        code,
                         name,
                         admin: userId,
                         managerCode,
@@ -657,7 +656,6 @@ module.exports = new (class extends controller {
                 // });
             } else {
                 let agency = await this.Agency.findByIdAndUpdate(id, {
-                    code,
                     name,
                     admin: userId,
                     managerCode,
@@ -1912,10 +1910,25 @@ module.exports = new (class extends controller {
                 });
             }
             const agencyId = req.query.agencyId;
-            const contract = await this.AgencySet.findOne(
+            let contract = await this.AgencySet.findOne(
                 { agencyId },
                 "defHeadLine"
             );
+             if (!contract) {
+                const showFirstCostToStudent = false;
+                const showCostToDriver = true;
+                const formula = "a-(a*(b/100))";
+                const formulaForStudent = false;
+                contract = new this.AgencySet({
+                    agencyId,
+                    setter:req.user._id,
+                    showFirstCostToStudent,
+                    showCostToDriver,
+                    formula,
+                    formulaForStudent,
+                });
+                await contract.save();
+            }
 
             return this.response({
                 res,

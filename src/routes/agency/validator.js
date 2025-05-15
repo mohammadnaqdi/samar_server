@@ -45,9 +45,6 @@ module.exports = new (class {
     }
     setAgencyValidator() {
         return [
-            check("code")
-                .isLength({ min: 1, max: 40 })
-                .withMessage("code cant be empty max 40"),
             check("name").not().isEmpty().withMessage("name cant be empty"),
             check("userId").not().isEmpty().withMessage("userId cant be empty"),
             check("managerCode")
@@ -59,8 +56,7 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("districtId cant be empty"),
-            check("lat").not().isEmpty().withMessage("lat cant be empty"),
-            check("lng").not().isEmpty().withMessage("lng cant be empty"),
+            check("location").not().isEmpty().withMessage("location cant be empty"),
             check("districtTitle")
                 .not()
                 .isEmpty()

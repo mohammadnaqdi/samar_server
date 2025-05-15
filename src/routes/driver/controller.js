@@ -328,7 +328,7 @@ module.exports = new (class extends controller {
                         },
                     ],
                 },
-                "settings"
+                "settings code"
             );
             if (!agency) {
                 return this.response({
@@ -343,6 +343,7 @@ module.exports = new (class extends controller {
 
             let kol = "004";
             let moeen = "006";
+            let userCode='';
             if (userId.trim() === "") {
                 let user = await this.User.findOne({ phone });
                 if (user) {
@@ -364,6 +365,7 @@ module.exports = new (class extends controller {
                     userName: phone,
                 });
                 await user.save();
+                userCode=user.code;
                 await this.updateRedisDocument(
                     `user:${user._id}`,
                     user.toObject()
@@ -385,10 +387,11 @@ module.exports = new (class extends controller {
                         },
                     });
                 }
-                await this.User.findByIdAndUpdate(userId, {
+               const user= await this.User.findByIdAndUpdate(userId, {
                     name,
                     lastName,
                 });
+                userCode=user.code;
                 await this.updateRedisDocument(`user:${userId}`, {
                     name,
                     lastName,
@@ -402,47 +405,47 @@ module.exports = new (class extends controller {
             });
             await car.save();
             // console.log("fwefewff");
-            let driverCode = 100000001;
-            const lastLevelAccDet = await this.Driver.find()
-                .sort({ driverCode: -1 })
-                .limit(1);
-            if (lastLevelAccDet.length > 0) {
-                driverCode = parseInt(lastLevelAccDet[0].driverCode) + 1;
-            }
+            // let driverCode = 100000001;
+            // const lastLevelAccDet = await this.Driver.find()
+            //     .sort({ driverCode: -1 })
+            //     .limit(1);
+            // if (lastLevelAccDet.length > 0) {
+            //     driverCode = parseInt(lastLevelAccDet[0].driverCode) + 1;
+            // }
             let driver = new this.Driver({
                 userId: userId,
                 agencyId,
                 carId: car.id,
-                driverCode,
+                driverCode:agency.code+userCode,
             });
             await driver.save();
-            let code = driverCode.toString();
-            let desc = "";
-            if (car) {
-                desc = phone;
-            }
-            await new this.LevelAccDetail({
-                agencyId,
-                levelNo: 3,
-                levelType: 2,
-                accCode: code,
-                accName: name + " " + lastName,
-                desc,
-                editor: req.user._id,
-            }).save();
-            await new this.ListAcc({
-                agencyId,
-                code: `${kol}${moeen}${code}`,
-                codeLev1: kol,
-                codeLev2: moeen,
-                codeLev3: code,
-                groupId: 1,
-                type: 1,
-                nature: 1,
-                levelEnd: 3,
-                canEdit: false,
-                editor: req.user._id,
-            }).save();
+            // let code = driverCode.toString();
+            // let desc = "";
+            // if (car) {
+            //     desc = phone;
+            // }
+            // await new this.LevelAccDetail({
+            //     agencyId,
+            //     levelNo: 3,
+            //     levelType: 2,
+            //     accCode: code,
+            //     accName: name + " " + lastName,
+            //     desc,
+            //     editor: req.user._id,
+            // }).save();
+            // await new this.ListAcc({
+            //     agencyId,
+            //     code: `${kol}${moeen}${code}`,
+            //     codeLev1: kol,
+            //     codeLev2: moeen,
+            //     codeLev3: code,
+            //     groupId: 1,
+            //     type: 1,
+            //     nature: 1,
+            //     levelEnd: 3,
+            //     canEdit: false,
+            //     editor: req.user._id,
+            // }).save();
             return this.response({
                 res,
                 data: driver,
@@ -470,7 +473,7 @@ module.exports = new (class extends controller {
                         },
                     ],
                 },
-                ""
+                "code"
             );
             if (!agency) {
                 return this.response({
@@ -521,19 +524,19 @@ module.exports = new (class extends controller {
                 });
             }
 
-            let driverCode = 100000001;
-            const lastLevelAccDet = await this.Driver.find({})
-                .sort({ driverCode: -1 })
-                .limit(1);
-            if (lastLevelAccDet.length > 0) {
-                driverCode = parseInt(lastLevelAccDet[0].driverCode) + 1;
-            }
+            // let driverCode = 100000001;
+            // const lastLevelAccDet = await this.Driver.find({})
+            //     .sort({ driverCode: -1 })
+            //     .limit(1);
+            // if (lastLevelAccDet.length > 0) {
+            //     driverCode = parseInt(lastLevelAccDet[0].driverCode) + 1;
+            // }
 
             let newDriver = new this.Driver({
                 userId: user.id,
                 agencyId,
                 carId: driver.carId,
-                driverCode,
+                driverCode:agency.code+user.code,
                 addressId: driver.addressId,
                 drivingLicence: driver.drivingLicence,
                 pic: driver.pic,
@@ -1748,7 +1751,7 @@ module.exports = new (class extends controller {
                     }).sort({ _id: -1 });
                     const school = await this.School.findById(
                         service.schoolId,
-                        "name schoolTime location.coordinates rotaryShift"
+                        "name schoolTime location.coordinates"
                     );
                     serviceStates.push({
                         service: service,

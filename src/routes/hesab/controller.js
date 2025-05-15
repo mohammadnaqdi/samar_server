@@ -21,12 +21,15 @@ module.exports = new (class extends controller {
             const peigiri = req.body.peigiri;
             const agencyId = req.body.agencyId;
             const serviceNum = req.body.serviceNum || 0;
+            const invoice = req.body.invoice;
             const days = req.body.days || [];
-
-            if (notes.length !== besPrice.length ||
+           
+            if (
+                notes.length !== besPrice.length ||
                 bedPrice.length !== besPrice.length ||
                 accCode.length !== besPrice.length ||
-                accCode.length !== peigiri.length) {
+                accCode.length !== peigiri.length
+            ) {
                 await session.abortTransaction();
                 session.endSession();
 
@@ -39,7 +42,7 @@ module.exports = new (class extends controller {
 
             for (const code of accCode) {
                 const aa = code.substring(6);
-                if()
+                if (studentCodes.includes(aa)) continue;
                 const level = await this.LevelAccDetail.findOne(
                     {
                         accCode: aa,
@@ -94,6 +97,11 @@ module.exports = new (class extends controller {
                     sanadDate: date,
                     serviceNum,
                     days: day,
+                    isPaid: true,
+                    type: studentCodes.includes(accCode[i].substring(6))
+                        ? "student"
+                        : "other",
+                    invoice,
                 });
                 await docList.save({
                     session,
@@ -114,4 +122,178 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async setRcCheck4Student(req, res) {
+    const session = await this.CheckInfo.startSession();
+    session.startTransaction();
+
+    try {
+        const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+        const branchCode = "";
+        const {
+            date: infoDate,
+            desc,
+            docExp,
+            bankName,
+            branchName,
+            checkType,
+            price,
+            ownerHesab,
+            type,
+            checkHesab,
+            serial,
+            listCode,
+            studentCodes,
+            listDesc,
+            listPrice,
+            centers,
+            invoice,
+            studentName = "",
+        } = req.body;
+
+        if (
+            listPrice.length !== listDesc.length ||
+            listPrice.length !== listCode.length ||
+            listPrice.length !== centers.length
+        ) {
+            await session.abortTransaction();
+            session.endSession();
+            return this.response({
+                res,
+                code: 300,
+                message: "all length must be equal",
+            });
+        }
+
+        for (let i in listCode) {
+            const aa = listCode[i].substring(6);
+            if (studentCodes.includes(aa)) continue;
+            const level = await this.LevelAccDetail.findOne({ accCode: aa, agencyId }).session(session);
+            if (!level || level.levelType === 3) {
+                await session.abortTransaction();
+                session.endSession();
+                return this.response({ res, code: 300, message: "cant access" });
+            }
+        }
+
+        const aa = checkHesab.substring(6);
+        const level = await this.LevelAccDetail.findOne({ accCode: aa, agencyId }).session(session);
+        if (!level || level.levelType === 3) {
+            await session.abortTransaction();
+            session.endSession();
+            return this.response({ res, code: 300, message: "cant access" });
+        }
+
+        const checkExist = await this.CheckInfo.countDocuments({ agencyId, type, serial }).session(session);
+        if (checkExist > 0) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(503).json({ error: "the serial is duplicated" });
+        }
+
+        persianDate.toLocale("en");
+        const SalMali = new persianDate().format("YY");
+        const checkMax = await this.CheckInfo.find({ agencyId }, "infoId").sort({ infoId: -1 }).limit(1).session(session);
+        let numCheck = checkMax.length > 0 ? checkMax[0].infoId + 1 : 1;
+        const infoNum = `${SalMali}-${numCheck}`;
+
+        const checkInfo = new this.CheckInfo({
+            agencyId,
+            editor: req.user._id,
+            infoId: numCheck,
+            infoNum,
+            seCode: "0",
+            branchCode,
+            branchName,
+            bankName,
+            serial,
+            type,
+            rowCount: listPrice.length,
+            infoDate,
+            infoMoney: price,
+            accCode: checkHesab,
+            ownerHesab,
+            desc,
+        });
+        await checkInfo.save({ session });
+
+        const doc = new this.DocSanad({
+            agencyId,
+            note: docExp,
+            sanadDate: infoDate,
+            system: 2,
+            definite: false,
+            lock: false,
+            editor: req.user._id,
+        });
+        await doc.save({ session });
+
+        const descF = studentName.trim() === ""
+            ? `دریافت اینترنتی / پوز بابت ${desc} به شماره ${serial}`
+            : `دریافت اینترنتی / پوز بابت ${desc} به نام ${studentName} به شماره ${serial}`;
+        let row=1;
+        const docList1 = new this.DocListSanad({
+            agencyId,
+            titleId: doc.id,
+            doclistId: doc.sanadId,
+            row: row,
+            bed: price,
+            bes: 0,
+            note: descF,
+            accCode: checkHesab,
+            peigiri: infoNum,
+            sanadDate: infoDate,
+        });
+        await docList1.save({ session });
+        const today = new persianDate().format("YYYY/MM/DD");
+
+        for (let i in listPrice) {
+            // const day = days[i] || 0;
+            row++;
+            const docList = new this.DocListSanad({
+                agencyId,
+                titleId: doc.id,
+                doclistId: doc.sanadId,
+                row: row,
+                bed: 0,
+                bes: listPrice[i],
+                note: listDesc[i].trim() === "" ? `${checkType} در تاریخ ${today}` : listDesc[i],
+                accCode: listCode[i].toString(),
+                peigiri: infoNum,
+                sanadDate: infoDate,
+                days:0,
+                isPaid: true,
+                type: studentCodes.includes(listCode[i].substring(6)) ? "student" : "other",
+                invoice,
+            });
+            await docList.save({ session });
+        }
+        row=0;
+        for (let i in listCode) {
+            row++;
+            const checkHistory = new this.CheckHistory({
+                agencyId,
+                infoId: checkInfo.id,
+                editor: req.user._id,
+                row: row,
+                toAccCode: checkHesab,
+                fromAccCode: listCode[i],
+                money: listPrice[i],
+                status: type,
+                desc: listDesc[i],
+                sanadNum: doc.sanadId,
+            });
+            await checkHistory.save({ session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+        return res.json({ docID: doc.sanadId, checkRef: infoNum });
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("setRcCheck4Student function error:", err);
+        return res.status(500).json({ error: "Internal Server Error." });
+    }
+}
+
 })();

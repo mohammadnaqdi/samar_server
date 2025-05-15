@@ -1,7 +1,16 @@
 const mongoose = require("mongoose");
-
+const {CounterKey} =  require('./keys');
+async function getNextSequence(name) {
+  const result = await CounterKey.findOneAndUpdate(
+    { name },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return result.seq;
+}
 const userSchema = new mongoose.Schema(
     {
+        code: { type: String, unique: true },
         phone: { type: String, required: true, unique: true },
         userName: { type: String, default: "", required: false, unique: true },
         password: { type: String, default: "", required: false },
@@ -21,13 +30,20 @@ const userSchema = new mongoose.Schema(
         jwtSalt: { type: String, default: "", required: false },
         fcm: { type: [], default: [], required: false },
         ban: { type: [], default: [], required: false },
-        city: { type: Number, required: false, default: 11 },
     },
     {
         timestamps: true,
     },
 );
+userSchema.pre("save", async function (next) {
+  if (this.isNew) {
+    const cc = await getNextSequence('user');
+      this.code =pad(6,cc.toString(),'0');
+  }
+  next();
+});
 const User = mongoose.model("User", userSchema);
+
 
 const userHaSchema = new mongoose.Schema(
     {
@@ -79,3 +95,9 @@ const Role = mongoose.model("Role", roleSchema);
 
 
 module.exports = { User, UserHa, Role };
+
+function pad(width, string, padding) {
+    return width <= string.length
+        ? string
+        : pad(width, padding + string, padding);
+}

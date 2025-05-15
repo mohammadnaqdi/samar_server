@@ -1630,9 +1630,11 @@ module.exports = new (class extends controller {
             const checkHesab = req.body.checkHesab;
             const serial = req.body.serial;
             const listCode = req.body.listCode;
+            const studentCodes = req.body.studentCodes;
             const listDesc = req.body.listDesc;
             const listPrice = req.body.listPrice;
             const centers = req.body.centers;
+            const invoice = req.body.invoice;
             const days = req.body.days || [];
             const studentName = req.body.studentName || "";
 

@@ -30,8 +30,7 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("address cant be empty"),
-            check("lat").not().isEmpty().withMessage("lat cant be empty"),
-            check("lng").not().isEmpty().withMessage("lng cant be empty"),
+            check("location").not().isEmpty().withMessage("location cant be empty"),
             check("grade").isArray().withMessage("grade cant be empty"),
             check("schoolTime")
                 .isArray()

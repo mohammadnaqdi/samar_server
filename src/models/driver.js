@@ -17,7 +17,7 @@ const driverSchema = new mongoose.Schema(
             ref: "Car",
             required: true,
         },
-        driverCode: { type: Number,  unique: true },
+        driverCode: { type: String,  unique: true },
         location: {
             type: { type: String, enum: ["Point"], default: "Point", required: false },
             coordinates: {

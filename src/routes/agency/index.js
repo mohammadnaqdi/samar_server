@@ -9,13 +9,13 @@ const {
     isEnyAdmin,
 } = require("./../../middleware/auth");
 
-router.post(
-    "/InsertAgency",
-    isAdmin,
-    validator.insertAgencyValidator(),
-    controller.validate.bind(controller),
-    controller.insertAgency.bind(controller)
-);
+// router.post(
+//     "/InsertAgency",
+//     isAdmin,
+//     validator.insertAgencyValidator(),
+//     controller.validate.bind(controller),
+//     controller.insertAgency.bind(controller)
+// );
 router.get("/AllAgencies", isAdmin, controller.allAgencies.bind(controller));
 router.get("/MyAgency", isAgencyAdmin, controller.myAgency.bind(controller));
 router.post(

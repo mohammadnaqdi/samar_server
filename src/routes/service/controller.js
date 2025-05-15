@@ -27,16 +27,6 @@ module.exports = new (class extends controller {
             const driverCarPelak = req.body.driverCarPelak;
             // console.log("req.body.agencyId", req.body.agencyId);
             // console.log("agencyId", agencyId);
-
-            const lastService = await this.Service.find({}, "serviceNum")
-                .sort({
-                    serviceNum: -1,
-                })
-                .limit(1);
-            let serviceNum = 1;
-            if (lastService.length > 0) {
-                serviceNum = lastService[0].serviceNum + 1;
-            }
             const agency = await this.Agency.findOne(
                 {
                     _id: agencyId,
@@ -56,15 +46,12 @@ module.exports = new (class extends controller {
             }
 
             let service = new this.Service({
-                serviceNum,
                 distance,
                 cost,
                 driverSharing,
-                student,
-                studentCost,
                 agencyId,
                 driverId,
-                schoolId,
+                schoolIds: schoolId,
                 time,
                 routeSave,
                 percentInfo,
@@ -77,7 +64,9 @@ module.exports = new (class extends controller {
             await service.save();
             for (var i = 0; i < student.length && i < studentCost.length; i++) {
                 await this.Student.findByIdAndUpdate(student[i], {
-                    serviceId: service.serviceNum,
+                    service: service._id,
+                    serviceNum: service.serviceNum,
+                    agencyId,
                     serviceCost: studentCost[i],
                     state: 4,
                     stateTitle: "دارای سرویس",
@@ -134,8 +123,10 @@ module.exports = new (class extends controller {
                 }
                 if (exist) continue;
                 let st = await this.Student.findByIdAndUpdate(studentPast[i], {
-                    serviceId: 0,
+                    service: null,
+                    serviceNum: -1,
                     serviceCost: 0,
+                    agencyId: null,
                     state: 5,
                     stateTitle: `حذف از سرویس ${service.serviceNum}`,
                 });
@@ -158,11 +149,11 @@ module.exports = new (class extends controller {
             service.distance = distance;
             service.cost = cost;
             service.driverSharing = driverSharing;
-            service.student = student;
-            service.studentCost = studentCost;
+            // service.student = student;
+            // service.studentCost = studentCost;
             service.agencyId = agencyId;
             service.driverId = driverId;
-            service.schoolId = schoolId;
+            service.schoolIds = schoolId;
             service.time = time;
             service.routeSave = routeSave;
             service.percentInfo = percentInfo;
@@ -177,7 +168,9 @@ module.exports = new (class extends controller {
             let before = [];
             for (let i = 0; i < student.length && i < studentCost.length; i++) {
                 var st = await this.Student.findByIdAndUpdate(student[i], {
-                    serviceId: service.serviceNum,
+                    service: service._id,
+                    agencyId,
+                    serviceNum: service.serviceNum,
                     serviceCost: studentCost[i],
                     state: 4,
                     stateTitle: "دارای سرویس",
@@ -187,7 +180,7 @@ module.exports = new (class extends controller {
                     lastName: st.lastName,
                     studentCode: st.studentCode,
                     cost: st.serviceCost,
-                    serviceNum: st.serviceId,
+                    serviceNum: st.serviceNum,
                 });
             }
             await new this.OperationLog({
@@ -243,7 +236,9 @@ module.exports = new (class extends controller {
             }
             for (var stu of stChange) {
                 let st = await this.Student.findByIdAndUpdate(stu.id, {
-                    serviceId: stu.serviceNum,
+                    service: stu.service,
+                    serviceNum: stu.serviceNum,
+                    agencyId: stu.serviceNum < 1 ? null : agencyId,
                     serviceCost: stu.serviceFee,
                     state: stu.newState,
                     stateTitle: stu.stateDesc,
@@ -268,11 +263,11 @@ module.exports = new (class extends controller {
             service.distance = distance;
             service.cost = cost;
             service.driverSharing = driverSharing;
-            service.student = student;
-            service.studentCost = studentCost;
+            // service.student = student;
+            // service.studentCost = studentCost;
             service.agencyId = agencyId;
             service.driverId = driverId;
-            service.schoolId = schoolId;
+            service.schoolIds = schoolId;
             service.time = time;
             service.routeSave = routeSave;
             service.percentInfo = percentInfo;
@@ -431,7 +426,7 @@ module.exports = new (class extends controller {
                 ],
             };
             if (Array.isArray(schoolId) && schoolId.length !== 0) {
-                qr.push({ schoolId: { $in: schoolId } });
+                qr.push({ schoolIds: { $in: schoolId } });
             }
             qr.push({ delete: false });
             if (escapeRegExp(search) != "") {
@@ -444,25 +439,24 @@ module.exports = new (class extends controller {
             service = await this.Service.find({ $and: qr })
                 .skip(page * size)
                 .limit(size);
+            console.log("service len=", service.length);
             const serviceCount = await this.Service.countDocuments({
                 $and: qr,
             });
 
             let myServices = [];
             for (let i = 0; i < service.length; i++) {
-                const school = await this.School.findById(
-                    service[i].schoolId,
+                const school = await this.School.findOne(
+                    { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
+                console.log("service school=", school.name);
+                const studentService = await this.Student.find(
+                    { delete: false, service: service[i]._id },
+                    "state stateTitle service serviceNum serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract"
+                ).lean();
                 let students = [];
-                for (let a in service[i].student) {
-                    let st = await this.Student.findById(
-                        service[i].student[a],
-                        "state stateTitle serviceId serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract"
-                    );
-                    if (!st) continue;
-                    const addressS = st.address + " " + st.addressDetails;
-
+                for (let st of studentService) {
                     let sch = await this.School.findById(
                         st.school,
                         "name code districtTitle"
@@ -471,7 +465,7 @@ module.exports = new (class extends controller {
                     students.push({
                         student: st,
                         school: sch,
-                        address: addressS,
+                        address: st.address + " " + st.addressDetails,
                     });
                 }
                 if (students.length == 0) continue;
@@ -550,8 +544,8 @@ module.exports = new (class extends controller {
 
             let myServices = [];
             for (let i = 0; i < service.length; i++) {
-                const school = await this.School.findById(
-                    service[i].schoolId,
+                const school = await this.School.findOne(
+                    { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
                 let students = [];
@@ -651,7 +645,7 @@ module.exports = new (class extends controller {
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             const schoolId = ObjectId.createFromHexString(req.query.schoolId);
             const services = await this.Service.find(
-                { agencyId, delete: false, schoolId },
+                { agencyId, delete: false, schoolIds: schoolId },
                 "serviceNum cost driverName driverSharing driverPhone student driverId"
             );
             let servicesList = [];
@@ -740,7 +734,7 @@ module.exports = new (class extends controller {
             }
             qr.push({ agencyId });
             const findItem =
-                "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone student driverId schoolId active time";
+                "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone driverId schoolIds active time";
 
             const service = await this.Service.find(
                 { $and: qr },
@@ -749,8 +743,8 @@ module.exports = new (class extends controller {
 
             let myServices = [];
             for (let i = 0; i < service.length; i++) {
-                const school = await this.School.findById(
-                    service[i].schoolId,
+                const school = await this.School.findOne(
+                    { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
 
@@ -864,13 +858,13 @@ module.exports = new (class extends controller {
             let qr = [{ delete: false }, { active: true }, { agencyId }];
             const service = await this.Service.find(
                 { $and: qr },
-                "serviceNum driverPic driverId driverName driverCar driverCarPelak driverPhone student schoolId shiftId routeSave time"
+                "serviceNum driverPic driverId driverName driverCar driverCarPelak driverPhone student schoolIds shiftId routeSave time"
             );
 
             let myServices = [];
             for (let i = 0; i < service.length; i++) {
-                const school = await this.School.findById(
-                    service[i].schoolId,
+                const school = await this.School.findOne(
+                    { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
                 let moreInfo = {};
@@ -956,17 +950,17 @@ module.exports = new (class extends controller {
 
     async getAllPricing(req, res) {
         try {
-            const city=req.query.city;
-            if(!city){
-                 return this.response({
+            const city = req.query.city;
+            if (!city) {
+                return this.response({
                     res,
                     code: 204,
                     message: "city inot find by phone",
-                    
                 });
             }
             const pricingTable = await this.PricingTable.find({
-                delete: false,city:parseInt(city)
+                delete: false,
+                city: parseInt(city),
             });
             return this.response({ res, message: "ok", data: pricingTable });
         } catch (error) {
@@ -1113,16 +1107,16 @@ module.exports = new (class extends controller {
             var schoolId = req.query.schoolId;
             const students = await this.Student.find(
                 { school: schoolId, state: { $gte: 4 } },
-                "serviceId"
+                "service"
             );
             let serviceIds = [];
             for (var i in students) {
-                serviceIds.push(students[i].serviceId);
+                serviceIds.push(students[i].service);
             }
             let serviceIdOnly = [...new Set(serviceIds)];
             // console.log("serviceIdOnly=", serviceIdOnly);
             var qr = [];
-            qr.push({ serviceNum: { $in: serviceIdOnly } });
+            qr.push({ _id: { $in: serviceIdOnly } });
             qr.push({ delete: false });
             let service = [];
             for (var i in serviceIdOnly) {
@@ -1141,8 +1135,8 @@ module.exports = new (class extends controller {
             // console.log("service.length=", service.length);
             for (var i = 0; i < service.length; i++) {
                 //console.log(JSON.stringify(students[i]));
-                const school = await this.School.findById(
-                    service[i].schoolId,
+                const school = await this.School.findOne(
+                    { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates"
                 );
                 // const shift = await this.Shifts.findById(
@@ -1427,60 +1421,59 @@ module.exports = new (class extends controller {
             let page = req.body.page;
             let qr = [{ agencyId }, { delete: false }];
             let size = req.body.size || 40;
+            size = size * 4;
             if (page < 0) page = 0;
-
-            if (search != "") {
-                let studentsIDs = await this.Student.find({
-                    delete: false,
-                    $or: [
-                        { name: { $regex: ".*" + search + ".*" } },
-                        { lastName: { $regex: ".*" + search + ".*" } },
-                        { studentCode: { $regex: ".*" + search + ".*" } },
-                    ],
-                }).distinct("_id");
-                for (var i in studentsIDs) {
-                    studentsIDs[i] = studentsIDs[i].toString();
-                }
-                qr.push({ student: { $in: studentsIDs } });
-            }
+            let serviceId = await this.Student.find({
+                delete: false,
+                state: 4,
+                agencyId,
+                $or: [
+                    { name: { $regex: ".*" + search + ".*" } },
+                    { lastName: { $regex: ".*" + search + ".*" } },
+                    { studentCode: { $regex: ".*" + search + ".*" } },
+                ],
+            }).distinct('service');
+            console.log("serviceId",serviceId)
+            qr.push({_id:serviceId});
 
             const findItem =
-                "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone student driverId schoolId active time";
+                "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone driverId schoolIds active time";
 
             const service = await this.Service.find({ $and: qr }, findItem)
                 .skip(page * size)
                 .limit(size);
+                
             const serviceCount = await this.Service.countDocuments({
                 $and: qr,
             });
             let myServices = [];
             for (let i = 0; i < service.length; i++) {
-                const school = await this.School.findById(
-                    service[i].schoolId,
+                const school = await this.School.findOne(
+                    { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
-                let students = [];
-                for (let a in service[i].student) {
-                    let st = await this.Student.findById(
-                        service[i].student[a],
-                        "state stateTitle serviceId serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract"
-                    );
-                    if (!st) continue;
-                    const addressS = st.address + " " + st.addressDetails;
-
+                
+                const studentX=await this.Student.find({service:service[i]._id}).lean();
+                //  console.log("students",students.length)
+                let students=[];
+                for (const st of studentX) {
+                    //  console.log("st.school",st.school)
                     let sch = await this.School.findById(
                         st.school,
                         "name code districtTitle"
                     );
+                    //  console.log("st.sch",sch)
                     if (!sch) continue;
                     students.push({
                         student: st,
                         school: sch,
-                        address: addressS,
+                        address: st.address + " " + st.addressDetails,
                     });
                 }
-                if (students.length == 0) continue;
+                 console.log("students",students.length)
+                if (students.length === 0) continue;
                 let moreInfo = {};
+                //  console.log("school",school)
                 if (school) {
                     moreInfo.schoolName = school.name;
                     moreInfo.schoolLat = school.location.coordinates[0];
@@ -1494,6 +1487,7 @@ module.exports = new (class extends controller {
                             " " +
                             school.schoolTime[service[i].time].end;
                         var stt = "";
+                         console.log("school.schoolTime",school.schoolTime)
                         for (var t in school.schoolTime) {
                             if (t == service[i].time) continue;
                             if (shiftName === school.schoolTime[t].name) {
@@ -1506,6 +1500,7 @@ module.exports = new (class extends controller {
                                     school.schoolTime[t].shiftdayTitle;
                             }
                         }
+                        console.log("school.schoolTimeXX",school.schoolTime)
                         if (stt != "") {
                             shiftType +=
                                 school.schoolTime[service[i].time]
@@ -1520,6 +1515,7 @@ module.exports = new (class extends controller {
                     }
                     moreInfo.shiftName = shiftName;
                     moreInfo.shiftType = shiftType;
+                    console.log("shiftType",shiftType)
                 } else {
                     moreInfo.schoolName = "پیدا نشد";
                     moreInfo.schoolLat = 0;
@@ -1527,14 +1523,14 @@ module.exports = new (class extends controller {
                     moreInfo.shiftName = "";
                     moreInfo.shiftType = "";
                 }
-
+                console.log("moreInfo",moreInfo)
                 myServices.push({
                     service: service[i],
                     moreInfo: moreInfo,
                     students: students,
                 });
             }
-
+            console.log("myServices",myServices.length)
             return this.response({
                 res,
                 message: serviceCount,

@@ -699,10 +699,13 @@ module.exports = new (class extends controller {
 
     async setActionPay(req, res) {
         try {
-            const { agencyId,queueCode, amount, desc, studentCode, sanadNum } =
+            const { agencyId, queueCode, amount, desc, studentCode, sanadNum } =
                 req.body;
-            const docSanad=await this.DocSanad.findOne({agencyId,sanadId:sanadNum},'')      
-            if(!docSanad){
+            const docSanad = await this.DocSanad.findOne(
+                { agencyId, sanadId: sanadNum },
+                ""
+            );
+            if (!docSanad) {
                 return this.response({
                     res,
                     code: 404,
@@ -717,7 +720,8 @@ module.exports = new (class extends controller {
                 isOnline: false,
                 studentCode,
                 docSanadNum: sanadNum,
-                docSanadId: docSanad._id,agencyId
+                docSanadId: docSanad._id,
+                agencyId,
             });
             await payAction.save();
 
@@ -757,31 +761,56 @@ module.exports = new (class extends controller {
             if (docSanad) {
                 const doclistSanad = await this.DocListSanad.find(
                     { titleId: docSanad.id },
-                    "note bed bes accCode"
+                    "note bed bes accCode type"
                 );
 
                 for (var doc of doclistSanad) {
-                    const listAcc = await this.ListAcc.findOne({
-                        agencyId,
-                        code: doc.accCode,
-                    });
-                    let name = "";
-                    if (listAcc) {
-                        const levelDet = await this.LevelAccDetail.findOne(
-                            { agencyId, accCode: listAcc.codeLev3 },
-                            "accName"
+                    if (doc.type === "student") {
+                        const student = await this.Student.findOne(
+                            { studentCode: doc.accCode.substring(6) },
+                            "name lastName"
                         );
-                        if (levelDet) {
-                            name = levelDet.accName;
+                        if (student) {
+                            const name = student.name + " " + student.lastName;
+                            docList.push({
+                                name,
+                                accCode: doc.accCode,
+                                note: doc.note,
+                                bed: doc.bed,
+                                bes: doc.bes,
+                            });
+                        } else {
+                            docList.push({
+                                name: "دانش آموز ؟؟",
+                                accCode: doc.accCode,
+                                note: doc.note,
+                                bed: doc.bed,
+                                bes: doc.bes,
+                            });
                         }
+                    } else {
+                        const listAcc = await this.ListAcc.findOne({
+                            agencyId,
+                            code: doc.accCode,
+                        });
+                        let name = "";
+                        if (listAcc) {
+                            const levelDet = await this.LevelAccDetail.findOne(
+                                { agencyId, accCode: listAcc.codeLev3 },
+                                "accName"
+                            );
+                            if (levelDet) {
+                                name = levelDet.accName;
+                            }
+                        }
+                        docList.push({
+                            name,
+                            accCode: doc.accCode,
+                            note: doc.note,
+                            bed: doc.bed,
+                            bes: doc.bes,
+                        });
                     }
-                    docList.push({
-                        name,
-                        accCode: doc.accCode,
-                        note: doc.note,
-                        bed: doc.bed,
-                        bes: doc.bes,
-                    });
                 }
             }
 
@@ -887,9 +916,9 @@ module.exports = new (class extends controller {
                 bes: 0,
                 note: desc,
                 accCode: costCode,
-                isPaid:true,
-                invoice:queueCode,
-                peigiri:studentCode,
+                isPaid: true,
+                invoice: queueCode,
+                peigiri: studentCode,
                 sanadDate: new Date(),
             }).save();
             await new this.DocListSanad({
@@ -901,9 +930,9 @@ module.exports = new (class extends controller {
                 bes: amount,
                 note: desc,
                 accCode: wallet,
-                isPaid:true,
-                invoice:queueCode,
-                peigiri:studentCode,
+                isPaid: true,
+                invoice: queueCode,
+                peigiri: studentCode,
                 sanadDate: new Date(),
             }).save();
 
@@ -915,7 +944,8 @@ module.exports = new (class extends controller {
                 isOnline: false,
                 studentCode,
                 docSanadNum: doc.sanadId,
-                docSanadId: doc._id,agencyId
+                docSanadId: doc._id,
+                agencyId,
             });
             await payAction.save();
             if (payQueue.type === 1) {

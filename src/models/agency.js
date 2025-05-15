@@ -1,8 +1,16 @@
 const mongoose = require("mongoose");
-
+const {CounterKey} =  require('./keys');
+async function getNextSequence(name) {
+  const result = await CounterKey.findOneAndUpdate(
+    { name },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return result.seq;
+}
 const agencySchema = new mongoose.Schema(
     {
-        code: { type: String, required: true, unique: true },
+        code: { type: String, unique: true },
         name: { type: String, required: true },
         admin: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         tel: { type: String },
@@ -44,6 +52,13 @@ const agencySchema = new mongoose.Schema(
     },
 );
 agencySchema.index({ location: '2dsphere' });
+agencySchema.pre("save", async function (next) {
+  if (this.isNew) {
+    const cc = await getNextSequence('agency');
+      this.code =pad(3,cc.toString(),'0');
+  }
+  next();
+});
 //,default:[
 // {type:1,kol:'003',moeen:"005"},{type:2,kol:'004',moeen:'006'},{type:3,wallet:'008011000000008'},{type:3,cost:'008011000000009'}]
 var Agency = mongoose.model("Agency", agencySchema);
@@ -66,3 +81,10 @@ const agencySetSchema = new mongoose.Schema(
 const AgencySet = mongoose.model("AgencySet", agencySetSchema);
 
 module.exports = { Agency, AgencySet };
+
+function pad(width, string, padding) {
+    return width <= string.length
+        ? string
+        : pad(width, padding + string, padding);
+}
+

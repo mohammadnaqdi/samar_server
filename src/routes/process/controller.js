@@ -725,7 +725,6 @@ module.exports = new (class extends controller {
             let agencyId = req.body.agencyId;
             const name = req.body.name;
             const lastName = req.body.lastName;
-            let studentCode = req.body.studentCode;
             const submitId = req.user._id;
             const school = req.body.school;
             const gradeId = req.body.gradeId;
@@ -761,34 +760,7 @@ module.exports = new (class extends controller {
                 }
             }
 
-            if (
-                studentCode.toString() === "0" ||
-                studentCode.toString() === ""
-            ) {
-                let lastCode = 600000001;
-                const stx = await this.Student.find({
-                    studentCode: { $regex: "6000" + ".*" },
-                })
-                    .sort({ studentCode: -1 })
-                    .limit(1);
-                if (stx.length > 0) {
-                    lastCode = parseInt(stx[0].studentCode) + 1;
-                }
-                studentCode = lastCode.toString();
-            } else if (id === 0) {
-                const stu = await this.Student.findOne({ studentCode });
-                if (stu) {
-                    return this.response({
-                        res,
-                        code: 400,
-                        message: "student is exist",
-                        data: {
-                            fa_m: `این کد دانش آموزی تکرار است و برای ${stu.name} ${stu.lastName} ثبت شده`,
-                        },
-                    });
-                }
-            }
-
+          
             let stateTitle = "ثبت شده";
             if (req.body.state != undefined) state = req.body.state;
 
@@ -858,7 +830,6 @@ module.exports = new (class extends controller {
 
             if (id === 0) {
                 const student = new this.Student({
-                    studentCode,
                     parent: parentId,
                     school,
                     time,
@@ -882,37 +853,6 @@ module.exports = new (class extends controller {
                     nationalCode,
                 });
                 await student.save();
-
-                let code = student.studentCode;
-                const kol = "003";
-                const moeen = "005";
-
-                await new this.LevelAccDetail({
-                    agencyId,
-                    levelNo: 3,
-                    levelType: 1,
-                    accCode: code,
-                    accName: `${student.name} ${student.lastName}`,
-                    desc: sch.name,
-                    editor: req.user._id,
-                }).save();
-
-                console.log("insert code in process", code);
-
-                await new this.ListAcc({
-                    agencyId,
-                    code: `${kol}${moeen}${code}`,
-                    codeLev1: kol,
-                    codeLev2: moeen,
-                    codeLev3: code,
-                    groupId: 1,
-                    type: 1,
-                    nature: 1,
-                    levelEnd: 3,
-                    canEdit: false,
-                    editor: req.user._id,
-                }).save();
-
                 return this.response({
                     res,
                     data: { id: student._id, code: student.studentCode },
@@ -941,20 +881,6 @@ module.exports = new (class extends controller {
                     },
                     { returnOriginal: false }
                 );
-                await this.LevelAccDetail.updateMany(
-                    { accCode: student.studentCode },
-                    {
-                        accName: `${student.name} ${student.lastName}`,
-                        desc: sch.name,
-                        editor: req.user._id,
-                    }
-                );
-
-                // console.log("update code", student.studentCode);
-                // console.log(
-                //     "update name",
-                //     `${student.name} ${student.lastName}`
-                // );
 
                 return this.response({
                     res,
@@ -1160,12 +1086,18 @@ module.exports = new (class extends controller {
                 }
 
                 if (onlySchool.length === 0) {
-                    return this.response({
-                        res,
-                        code: 404,
-                        message: "your school is empty for your company",
-                        data: [],
-                    });
+                     return this.response({
+                    res,
+                    message: "ok",
+                    data: {
+                        stuState0:0,
+                        stuState1:0,
+                        stuState2:0,
+                        stuState3:0,
+                        stuState4:0,
+                        stuState5:0,
+                    },
+                });
                 }
             }
             if (onlySchool.length === 0) {

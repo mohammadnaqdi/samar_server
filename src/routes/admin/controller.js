@@ -175,7 +175,7 @@ module.exports = new (class extends controller {
                 
                 const driverActSchema = new mongoose.Schema(
                     {
-                        driverCode: { type: Number, required: true },
+                        driverCode: { type: String, required: true },
                          location: {
                             type: { type: String, enum: ["Point"], default: "Point" },
                             coordinates: {
@@ -203,7 +203,7 @@ module.exports = new (class extends controller {
             );
             const schools = await this.School.find(
                 { agencyId: agency._id, delete: false },
-                "name code gender genderTitle location.coordinates address schoolTime rotaryShift"
+                "name code gender genderTitle location.coordinates address schoolTime"
             );
 
             return this.response({

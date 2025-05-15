@@ -3,16 +3,16 @@ const mongoose = require("mongoose");
 const counterSchema = new mongoose.Schema({
     name: { type: String, unique: true },
     seq: { type: Number, default: 600000000 },
-  });
-  const Counter = mongoose.model("Counter", counterSchema);
-  async function getNextSequence(name) {
+});
+const Counter = mongoose.model("Counter", counterSchema);
+async function getNextSequence(name) {
     const result = await Counter.findOneAndUpdate(
-      { name },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+        { name },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
     );
     return result.seq;
-  }
+}
 const studentSchema = new mongoose.Schema(
     {
         studentCode: { type: String, unique: true },
@@ -26,15 +26,34 @@ const studentSchema = new mongoose.Schema(
             ref: "School",
             required: true,
         },
+        service: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Service",
+            required: false,
+            default: null,
+        },
+        agencyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Agency",
+            required: false,
+            default: null,
+        },
+        serviceCost: { type: Number, default: 0 },
+        serviceNum: { type: Number, default: -1 },
         location: {
-            type: { type: String, enum: ["Point"], default: "Point", required: true },
+            type: {
+                type: String,
+                enum: ["Point"],
+                default: "Point",
+                required: true,
+            },
             coordinates: {
                 type: [Number],
                 index: "2dsphere",
             },
         },
         address: { type: String, required: true },
-        addressDetails: { type: String, required: false,default:'' },
+        addressDetails: { type: String, required: false, default: "" },
         gradeTitle: { type: String, required: true },
         gradeId: { type: Number, required: true },
         name: { type: String, required: true },
@@ -79,19 +98,18 @@ const studentSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 studentSchema.index({ location: "2dsphere" });
 studentSchema.pre("save", async function (next) {
     if (this.isNew) {
-      const cc = await getNextSequence('student');
-      this.studentCode ="6"+pad(8,cc.toString(),'0');
+        const cc = await getNextSequence("student");
+        this.studentCode = "6" + pad(8, cc.toString(), "0");
     }
     next();
-  });
-  
-const Student = mongoose.model("Student", studentSchema);
+});
 
+const Student = mongoose.model("Student", studentSchema);
 
 module.exports = Student;
 

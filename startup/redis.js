@@ -1,8 +1,10 @@
 const { createClient } = require("redis");
 const { User } = require("../src/models/user");
 const { Bank } = require("../src/models/levels");
-const {Keys} = require("../src/models/keys");
-const {Parent} = require("../src/models/parent");
+const { Keys } = require("../src/models/keys");
+const { Parent } = require("../src/models/parent");
+const School = require("../src/models/school");
+const { Agency } = require("../src/models/agency");
 
 const redisClient = createClient({
     // path: "/home/raxitaxi/redis/redis.sock",
@@ -12,6 +14,45 @@ redisClient.on("error", (err) => console.log("Redis Client Error", err));
 
 redisClient.connect().catch(console.error);
 
+async function checkSchools() {
+    try {
+        const checkSchools = await redisClient.keys("school:*");
+        const agencies = await Agency.find({
+            delete: false,
+            active: true,
+        }).lean();
+        const agenciesId = agencies.map((agency) => agency._id);
+        const schoolC = await School.countDocuments({
+            agencyId: { $in: agenciesId },
+            delete: false,
+            active: true,
+        });
+        console.log(schoolC, "schools in mongodb");
+        if (checkSchools.length != schoolC) {
+            for (const agency of agencies) {
+                const schools = await School.find({
+                    agencyId: agency._id,
+                    delete: false,
+                    active: true,
+                }).lean();
+
+                if (schools.length === 0) continue;
+                const multi = redisClient.multi();
+                schools.forEach((school) => {
+                    multi.set(
+                        `school:${agency._id}:${school._id}`,
+                        JSON.stringify(school)
+                    );
+                });
+                await multi.exec();
+                console.log(`${schools.length} Schools added to Redis cache.`);
+            }
+        }
+        console.log(checkSchools.length, "schools in redis cache");
+    } catch (error) {
+        console.error("Error checking schools:", error);
+    }
+}
 async function checkParents() {
     try {
         const checkParents = await redisClient.keys("parent:*");
@@ -106,4 +147,11 @@ async function checkKeys() {
     }
 }
 
-module.exports = { checkUsers, checkKeys, checkBanks, redisClient,checkParents };
+module.exports = {
+    checkUsers,
+    checkKeys,
+    checkBanks,
+    redisClient,
+    checkParents,
+    checkSchools,
+};

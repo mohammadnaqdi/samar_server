@@ -19,17 +19,18 @@ const serviceSchema = new mongoose.Schema(
         driverCar: { type: String, required: true  },
         driverCarPelak: { type: String, required: true  },
         driverPhone: { type: String, required: true  },
-        students: { type: [
-            {
-                studentCost:{ type: Number },
-                id:{ type: mongoose.Schema.Types.ObjectId, ref: "Student" },
-                schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School" },
-            }
+        // students: { type: [
+        //     {
+        //         studentCost:{ type: Number },
+        //         id:{ type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+        //         schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School" },
+        //     }
 
-        ], default: [] },
+        // ], default: [] },
         agencyId: { type: mongoose.Schema.Types.ObjectId, ref: "Agency", required: true },
         driverId: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true  },
         routeSave: { type: [], default: [] },
+        schoolIds: { type: [],},
         percentInfo: { type: [], default: [] },
         delete: { type: Boolean, default: false, required: false },
         active: { type: Boolean, default: true, required: false },
@@ -41,7 +42,7 @@ const serviceSchema = new mongoose.Schema(
 );
 serviceSchema.pre("save", async function (next) {
   if (this.isNew) {
-    this.code = await getNextSequence("service");
+    this.serviceNum = await getNextSequence("service");
   }
   next();
 });

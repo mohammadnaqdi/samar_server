@@ -26,7 +26,7 @@ var Location = mongoose.model("Location", locationSchema);
 
 const driverActSchema = new mongoose.Schema(
     {
-        driverCode: { type: Number, required: true },
+        driverCode: { type: String, required: true },
          location: {
             type: { type: String, enum: ["Point"], default: "Point" },
             coordinates: {

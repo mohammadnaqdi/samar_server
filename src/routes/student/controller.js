@@ -2231,7 +2231,7 @@ module.exports = new (class extends controller {
             if (page < 0) page = 0;
             let students;
             var needList =
-                "studentCode school parent address gradeTitle gradeId name lastName serviceDistance time";
+                "studentCode school parent address gradeTitle gradeId name lastName serviceDistance time location.coordinates";
             var qr = [];
             if (search != "") {
                 qr.push({
@@ -2286,7 +2286,7 @@ module.exports = new (class extends controller {
                     students[i].parent,
                     "phone"
                 );
-                if (parent) continue;
+                if (!parent) continue;
 
                 // const payOff = await this.Payoff.find(
                 //   { personId: students[i].id },
@@ -2305,7 +2305,7 @@ module.exports = new (class extends controller {
                     moreInfo: moreInfo,
                 });
             }
-
+            console.log("myStudent",myStudent.length);
             return this.response({
                 res,
                 message: studentCount,
@@ -3034,7 +3034,7 @@ module.exports = new (class extends controller {
             for (var i = 0; i < students.length; i++) {
                 const school = await this.School.findById(
                     students[i].school,
-                    "name location.coordinates gender rotaryShift schoolTime"
+                    "name location.coordinates gender schoolTime"
                 );
                 if (!school) {
                     continue;

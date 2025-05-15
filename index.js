@@ -18,11 +18,12 @@ const Student = require("./src/models/student");
 const { isLoggined } = require("./src/middleware/auth");
 
 const router = require("./src/routes");
-const { checkUsers, checkKeys,checkParents } = require("./startup/redis");
+const { checkUsers, checkKeys,checkParents,checkSchools } = require("./startup/redis");
 
 checkUsers();
 checkKeys();
 checkParents();
+checkSchools();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

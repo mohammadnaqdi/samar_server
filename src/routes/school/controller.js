@@ -8,7 +8,6 @@ module.exports = new (class extends controller {
         try {
             const id = req.body.id;
             const name = req.body.name;
-            let code = req.body.code;
             const grade = req.body.grade;
             const districtId = req.body.districtId;
             const districtTitle = req.body.districtTitle;
@@ -19,7 +18,6 @@ module.exports = new (class extends controller {
             const gender = req.body.gender;
             const genderTitle = req.body.genderTitle;
             const schoolTime = req.body.schoolTime;
-            let rotaryShift = false;
 
             // console.log("schoolTime", schoolTime);
             // console.log("id", id);
@@ -29,39 +27,30 @@ module.exports = new (class extends controller {
                 !req.user.isadmin &&
                 id != 0
             ) {
-                let onlySchool = [];
-
-                const myAgencys = await this.Agency.find(
-                    {
-                        $and: [
-                            { delete: false },
-                            { _id: agencyId },
-                            {
-                                $or: [
-                                    { admin: req.user._id },
-                                    { users: { $in: req.user._id } },
-                                ],
-                            },
-                        ],
-                    },
-                    "delete active"
-                );
-
-                for (const myAgency of myAgencys) {
-                    if (!myAgency || myAgency.delete || !myAgency.active) {
-                        return this.response({
-                            res,
-                            code: 404,
-                            message: "not active agency",
-                            data: { fa_m: "شرکت غیرفعال یا حذف شده" },
-                        });
-                    }
-                    for (const school of myAgency.schools) {
-                        onlySchool.push(school);
+                const myAgencys = await this.Agency.find({
+                    $and: [
+                        { delete: false, active: true },
+                        {
+                            $or: [
+                                { admin: req.user._id },
+                                { users: { $in: req.user._id } },
+                            ],
+                        },
+                    ],
+                }).distinct("_id");
+                const onlySchool = await this.School.find({
+                    agencyId: { $in: myAgencys },
+                })
+                    .lean()
+                    .distinct("_id");
+                let exist = false;
+                for (var os of onlySchool) {
+                    if (os.toString() === id.toString()) {
+                        exist = true;
+                        break;
                     }
                 }
-
-                if (!onlySchool.includes(id.toString())) {
+                if (!exist) {
                     return this.response({
                         res,
                         code: 400,
@@ -73,37 +62,7 @@ module.exports = new (class extends controller {
                 }
             }
 
-            if (code.toString() === "0") {
-                const lastSchool = await this.School.find({}, "code")
-                    .sort({
-                        code: -1,
-                    })
-                    .limit(1);
-                code = "00001";
-                if (lastSchool.length > 0) {
-                    code = (parseInt(lastSchool[0].code) + 1).toString();
-                    code = pad(5, code, "0");
-                }
-                // console.log("code", code);
-            } else if (
-                id === 0 ||
-                id.toString().trim() === "" ||
-                id.toString().trim() === "0"
-            ) {
-                const drv = await this.School.findOne({ code });
-                if (drv) {
-                    return this.response({
-                        res,
-                        code: 204,
-                        message: "Code is exist before",
-                        data: { fa_m: "کد وارد شده برای مدرسه تکراری است!" },
-                    });
-                }
-            }
-
-            if (req.body.rotaryShift != undefined)
-                rotaryShift = req.body.rotaryShift;
-
+            
             let school;
             if (
                 id === 0 ||
@@ -111,7 +70,6 @@ module.exports = new (class extends controller {
                 id.toString().trim() === "0"
             ) {
                 school = new this.School({
-                    code,
                     name,
                     typeId,
                     typeTitle,
@@ -120,7 +78,6 @@ module.exports = new (class extends controller {
                     grade,
                     districtId,
                     districtTitle,
-                    rotaryShift,
                     address,
                     location: { type: "Point", coordinates: location },
                     schoolTime,
@@ -141,7 +98,6 @@ module.exports = new (class extends controller {
                     grade,
                     districtId,
                     districtTitle,
-                    rotaryShift,
                     address,
                     location: { type: "Point", coordinates: location },
                     schoolTime,
@@ -487,7 +443,7 @@ module.exports = new (class extends controller {
 
             let schools = await this.School.find(
                 { $and: [{ _id: { $in: onlySchool } }, { delete: false }] },
-                "_id code name typeTitle address location.coordinates districtId districtTitle schoolTime gender genderTitle shifts grade active rotaryShift"
+                "_id code name typeTitle address location.coordinates districtId districtTitle schoolTime gender genderTitle shifts grade active"
             );
             // console.log("schools", schools);
             for (var j = 0; j < schools.length; j++) {
@@ -593,7 +549,10 @@ module.exports = new (class extends controller {
             } else if (!user.isSchoolAdmin) {
                 user.isSchoolAdmin = true;
                 await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    user.toObject()
+                );
             }
             if (
                 isEmpty(user.userName) ||
@@ -603,7 +562,10 @@ module.exports = new (class extends controller {
                 user.userName = userName;
                 user.password = password;
                 await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    user.toObject()
+                );
             }
             await this.School.findByIdAndUpdate(schoolId, { admin: user.id });
 
