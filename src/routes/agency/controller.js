@@ -524,6 +524,7 @@ module.exports = new (class extends controller {
             const location = req.body.location;
             const tel = req.body.tel;
             const cityCode = req.body.cityCode;
+            const registrationPrice = req.body.registrationPrice;
             // if (
             //     code.toString().trim() === "0" ||
             //     code.toString().trim() === ""
@@ -568,11 +569,23 @@ module.exports = new (class extends controller {
                         districtTitle,
                         rating,
                         address,
-                        location:{ type: "Point", coordinates: location },
+                        location: { type: "Point", coordinates: location },
                         cityId: cityCode,
                     });
 
                     await agency.save({ session });
+                    let invoice = new this.Invoice({
+                        title: "هزینه ثبت نام",
+                        listAccCode: " ",
+                        listAccName: " ",
+                        confirmInfo: true,
+                        agencyId: agency._id,
+                        setter: userId,
+                        type: "registration",
+                        amount: registrationPrice,
+                    });
+
+                    await invoice.save({ session });
 
                     const rules = textValues.map((text) => ({
                         agencyId: agency._id,
@@ -664,9 +677,33 @@ module.exports = new (class extends controller {
                     districtTitle,
                     rating,
                     address,
-                    location:{ type: "Point", coordinates: location },
+                    location: { type: "Point", coordinates: location },
                     cityId: cityCode,
                 });
+                let invoice = await this.Invoice.findOne({
+                    agencyId: agency._id,
+                    type: "registration",
+                });
+                if (!invoice) {
+                    let vv = new this.Invoice({
+                        title: "هزینه ثبت نام",
+                        agencyId: agency._id,
+                        setter: userId,
+                        listAccCode: " ",
+                        listAccName: " ",
+                        confirmInfo: true,
+                        type: "registration",
+                        amount: registrationPrice,
+                    });
+
+                    await vv.save();
+                } else {
+                    await this.Invoice.updateMany(
+                        { agencyId: agency._id, type: "registration" },
+                        { $set: { amount: registrationPrice, setter: userId } }
+                    );
+                }
+
                 return this.response({
                     res,
                     data: agency.id,
@@ -794,18 +831,6 @@ module.exports = new (class extends controller {
         try {
             const { agencyId, title, code } = req.body;
 
-            let listacc = await this.ListAcc.findOne({ code: code, agencyId });
-
-            console.log("title", title);
-            if (!listacc) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: title + " listacc not find",
-                });
-            }
-            listacc.canEdit = false;
-            await listacc.save();
             const setter = req.user._id;
             let agencySet = await this.AgencySet.findOne({
                 agencyId: ObjectId.createFromHexString(agencyId),
@@ -825,12 +850,43 @@ module.exports = new (class extends controller {
                 });
                 await agencySet.save();
             }
-            await this.AgencySet.findByIdAndUpdate(agencySet._id, {
-                $pull: { defHeadLine: { title: title } },
-            });
-            await this.AgencySet.findByIdAndUpdate(agencySet._id, {
-                $push: { defHeadLine: { title: title, code: code } },
-            });
+
+            if (title === "merchentId") {
+                await this.AgencySet.findByIdAndUpdate(agencySet._id, {
+                    merchentId: code,
+                });
+            } else if (title === "tId") {
+                await this.AgencySet.findByIdAndUpdate(agencySet._id, {
+                    tId: code,
+                });
+            } else if (title === "bank") {
+                await this.AgencySet.findByIdAndUpdate(agencySet._id, {
+                    bank: code,
+                });
+            } else {
+                let listacc = await this.ListAcc.findOne({
+                    code: code,
+                    agencyId,
+                });
+
+                console.log("title", title);
+                if (!listacc) {
+                    return this.response({
+                        res,
+                        code: 404,
+                        message: title + " listacc not find",
+                    });
+                }
+                listacc.canEdit = false;
+                await listacc.save();
+                await this.AgencySet.findByIdAndUpdate(agencySet._id, {
+                    $pull: { defHeadLine: { title: title } },
+                });
+                await this.AgencySet.findByIdAndUpdate(agencySet._id, {
+                    $push: { defHeadLine: { title: title, code: code } },
+                });
+            }
+
             return this.response({
                 res,
                 message: "ok",
@@ -1121,7 +1177,7 @@ module.exports = new (class extends controller {
         }
     }
     async dashboardAgency(req, res) {
-          console.log('dashboardAgencydashboardAgencydashboardAgency')
+        console.log("dashboardAgencydashboardAgencydashboardAgency");
         try {
             if (
                 req.query.agencyId === undefined ||
@@ -1134,7 +1190,7 @@ module.exports = new (class extends controller {
                 });
             }
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
-            console.log('agencyId',agencyId)
+            console.log("agencyId", agencyId);
             const agency = await this.Agency.findOne(
                 {
                     $and: [
@@ -1162,12 +1218,11 @@ module.exports = new (class extends controller {
 
             let schoolsList = await this.School.find(
                 { agencyId: agencyId },
-                "code name typeTitle genderTitle districtTitle districtId"
+                "code name typeTitle genderTitle districtTitle districtId location.coordinates"
             );
-            console.log('schoolsList',schoolsList);
-            let schools=[];
-            for (var s of schools) {
-
+            // console.log("schoolsList", schoolsList);
+            let schools = [];
+            for (var s of schoolsList) {
                 const stAll = await this.Student.countDocuments({
                     school: s._id,
                     delete: false,
@@ -1181,7 +1236,7 @@ module.exports = new (class extends controller {
                 });
 
                 let sc = {
-                    school:s,
+                    school: s,
                     stAll,
                     stHas,
                 };
@@ -1191,7 +1246,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 delete: false,
             });
-             console.log('serviceCount',serviceCount)
+            console.log("serviceCount", serviceCount);
             // console.log("schools", JSON.stringify(schools));
             // const services = await this.Service.find(
             //     { agencyId, delete: false },
@@ -1360,25 +1415,33 @@ module.exports = new (class extends controller {
                     delete: false,
                     agencyId: co[i].id,
                 });
-                let serv = await this.Service.find(
-                    { delete: false, agencyId: co[i].id },
-                    "student cost"
-                );
-                let allSt = 0,
-                    allCost = 0;
-                for (var j in serv) {
-                    allSt += serv[j].student.length;
-                    allCost += serv[j].cost;
-                }
+                // let serv = await this.Service.find(
+                //     { delete: false, agencyId: co[i].id },
+                //     "student cost"
+                // );
+                // let allSt = 0,
+                //     allCost = 0;
+                // for (var j in serv) {
+                //     allSt += serv[j].student.length;
+                //     allCost += serv[j].cost;
+                // }
+                const allSt = await this.Student.countDocuments({
+                    agencyId: co[i].id,
+                    delete: false,
+                });
+                const serv = await this.Service.countDocuments({
+                    agencyId: co[i].id,
+                    delete: false,
+                });
                 let info = {
                     name: co[i].name,
                     active: co[i].active,
                     code: co[i].code,
                     coDrivers: coDrivers,
                     allStudent: allSt,
-                    allCosts: allCost,
+                    allCosts: 0,
                     schoolCount: schs,
-                    serviceCount: serv.length,
+                    serviceCount: serv,
                 };
                 coInfo.push(info);
             }
@@ -1428,6 +1491,25 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in agencyById:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async simpleAgencyById(req, res) {
+        try {
+            if (req.query.id === undefined) {
+                return res.status(214).json({ msg: "id need" });
+            }
+            let agency = await this.Agency.findById(
+                req.query.id,
+                "name tel location.coordinates active pic address"
+            );
+
+            return this.response({
+                res,
+                data: agency,
+            });
+        } catch (error) {
+            console.error("Error in simpleAgencyById:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1586,7 +1668,10 @@ module.exports = new (class extends controller {
                 agency.address = req.body.address;
             }
             if (req.body.location != undefined) {
-                agency.location = { type: "Point", coordinates: req.body.location };
+                agency.location = {
+                    type: "Point",
+                    coordinates: req.body.location,
+                };
             }
             if (req.body.registrationNumber != undefined) {
                 if (agency.registrationNumber != req.body.registrationNumber) {
@@ -1709,6 +1794,14 @@ module.exports = new (class extends controller {
                         lastName: "",
                     };
                 }
+                const invoice = await this.Invoice.findOne({
+                    agencyId: agencies[i]._id,
+                    type: "registration",
+                }).lean();
+                let registrationPrice = 0;
+                if (invoice) {
+                    registrationPrice = invoice.amount;
+                }
 
                 const schoolsX = await this.School.find({
                     agencyId: agencies[i]._id,
@@ -1733,6 +1826,7 @@ module.exports = new (class extends controller {
                 //     });
                 // }
                 agencies[i].schools = schoolData;
+                agencies[i].registrationPrice = registrationPrice;
             }
             return this.response({
                 res,
@@ -1776,14 +1870,22 @@ module.exports = new (class extends controller {
                 agencyId,
                 "activeHasiban coNum"
             );
-            let banks;
+            let banks = [];
             if (agency) {
                 if (agency.activeHasiban) {
                     const banksInfo = await this.BankInfo.find(
                         { agencyId: agencyId },
                         "iranBankId"
-                    ).distinct("iranBankId");
-                    banks = await this.Bank.find({ sign: { $in: banksInfo } });
+                    ).lean();
+                    for (var b of banksInfo) {
+                        let bank = await this.Bank.findOne({
+                            sign: b.iranBankId,
+                        }).lean();
+                        if (bank) {
+                            bank._id = b._id;
+                            banks.push(bank);
+                        }
+                    }
                 }
             }
 
@@ -1909,19 +2011,20 @@ module.exports = new (class extends controller {
                     message: "agencyId need",
                 });
             }
+
             const agencyId = req.query.agencyId;
             let contract = await this.AgencySet.findOne(
                 { agencyId },
-                "defHeadLine"
+                "defHeadLine merchentId tId bank"
             );
-             if (!contract) {
+            if (!contract) {
                 const showFirstCostToStudent = false;
                 const showCostToDriver = true;
                 const formula = "a-(a*(b/100))";
                 const formulaForStudent = false;
                 contract = new this.AgencySet({
                     agencyId,
-                    setter:req.user._id,
+                    setter: req.user._id,
                     showFirstCostToStudent,
                     showCostToDriver,
                     formula,
@@ -1929,6 +2032,9 @@ module.exports = new (class extends controller {
                 });
                 await contract.save();
             }
+            contract.defHeadLine.merchentId = contract.merchentId;
+            contract.defHeadLine.tId = contract.tId;
+            contract.defHeadLine.bank = contract.bank;
 
             return this.response({
                 res,

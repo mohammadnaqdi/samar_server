@@ -38,7 +38,13 @@ const studentSchema = new mongoose.Schema(
             required: false,
             default: null,
         },
+        setter: {
+            type: mongoose.Schema.Types.ObjectId,
+            required: true,
+        },
+        setterISParent:{type: Boolean, required: true,},
         serviceCost: { type: Number, default: 0 },
+        driverCost: { type: Number, default: 0 },
         serviceNum: { type: Number, default: -1 },
         location: {
             type: {
@@ -53,6 +59,7 @@ const studentSchema = new mongoose.Schema(
             },
         },
         address: { type: String, required: true },
+        driverCode: { type: String, default:'' },
         addressDetails: { type: String, required: false, default: "" },
         gradeTitle: { type: String, required: true },
         gradeId: { type: Number, required: true },

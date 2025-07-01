@@ -8,6 +8,7 @@ module.exports = function (app, express) {
             origin: [
                 'http://localhost:63594',
                 'http://localhost:55312',
+                'http://localhost:58700',
                 `https://app.${process.env.URL}`,
                 `http://app.${process.env.URL}`,
                 `https://panel.${process.env.URL}`,

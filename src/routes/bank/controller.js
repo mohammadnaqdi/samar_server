@@ -3,6 +3,114 @@ const https = require("https");
 const axios = require("axios");
 
 module.exports = new (class extends controller {
+    async bnkBanksInsert(req, res) {
+        try {
+
+        const id = req.body.id;
+        const codeHesab = req.body.hesab;
+        const agencyId = req.body.agencyId;
+        const iranBankId = req.body.iranBankId;
+        const bankName = req.body.bankName;
+        const branchCode = req.body.branchCode;
+        const branchName = req.body.branchName;
+        const accType = req.body.accType.trim();
+        const numHesab = req.body.numHesab;
+        const eCard = req.body.eCard.trim();
+        const owner = req.body.owner.trim();
+        const addressBank = req.body.addressBank.trim();
+        const addressTel = req.body.addressTel.trim();
+        const serialCheck = req.body.serialCheck;
+        const costCenter = req.body.costCenter.trim();
+        const shMeli = req.body.nationalCode.trim();
+        const editor = req.user.id;
+        if(id!=undefined && id!=Null){
+          const bankInfo=  await this.BankInfo.findByIdAndUpdate(new ObjectId(id),{
+                editor,
+                codeHesab,
+                iranBankId,
+                bankName,
+                branchCode,
+                branchName,
+                accType,
+                numHesab,
+                eCard,
+                owner,
+                addressBank,
+                addressTel,
+                serialCheck,
+                costCenter,
+                shMeli,
+            },
+            { new: true });
+          
+    
+            // await new this.OperatorAction({
+            //     actUserID: req.user.coId,
+            //     actType: 2,
+            //     actName: "ویرایش",
+            //     actTableName: "Tbl_BankInfo",
+            //     actKeyField: iranBankId.toString(),
+            //     actFormEn: "FrmBankiranSave",
+            //     actFormFa: "ویرایش حساب بانکی",
+            //     actDescription: `ویرایش حساب بانکی در ${bankName} به نام ${owner}`,
+            // }).save();
+            res.json(bankInfo);
+            return
+        }
+        let bankInfo = new this.BankInfo({
+            agencyId,
+            editor,
+            codeHesab,
+            iranBankId,
+            bankName,
+            branchCode,
+            branchName,
+            accType,
+            numHesab,
+            eCard,
+            owner,
+            addressBank,
+            addressTel,
+            serialCheck,
+            costCenter,
+            shMeli,
+        });
+        await bankInfo.save();
+
+        // await new this.OperatorAction({
+        //     actUserID: req.user.coId,
+        //     actType: 1,
+        //     actName: "ثبت",
+        //     actTableName: "Tbl_BankInfo",
+        //     actKeyField: iranBankId.toString(),
+        //     actFormEn: "FrmBankiranSave",
+        //     actFormFa: "ایجاد حساب بانکی",
+        //     actDescription: `ثبت حساب بانکی در ${bankName} به نام ${owner}`,
+        // }).save();
+        res.json(bankInfo);
+        return;
+        } catch (error) {
+           console.error("Error while bnkBanksInsert:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async bnkBanksById(req, res) {
+        try {
+
+        const id = req.query.id;
+        console.log("id",id)
+        const bankInfo=  await this.BankInfo.findById(id);
+        console.log("bankInfo",bankInfo)
+          
+    
+          
+        res.json(bankInfo);
+        return;
+        } catch (error) {
+           console.error("Error while bnkBanksById:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
     async getAddAccUrl(req, res) {
         if (
             req.query.bank === undefined ||

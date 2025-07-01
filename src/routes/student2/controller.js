@@ -285,10 +285,10 @@ module.exports = new (class extends controller {
                 // console.log("reports", reports.length);
                 const studentInfo = await this.Student.findById(
                     st,
-                    "name lastName studentCode serviceDistance serviceId"
+                    "name lastName studentCode serviceDistance serviceNum"
                 );
                 if (!studentInfo) continue;
-                // const serviceInfo=await this.Service.findOne({serviceNum:studentInfo.serviceId},'driverCar');
+                // const serviceInfo=await this.Service.findOne({serviceNum:studentInfo.serviceNum},'driverCar');
                 // let driverCar="";
                 // if(serviceInfo){
                 //     driverCar=serviceInfo.driverCar;
@@ -376,19 +376,21 @@ module.exports = new (class extends controller {
         try {
             const agencyId = ObjectId.createFromHexString(req.body.agencyId);
             let { list } = req.body;
-            for (var i in list) {
-                list[i] = list[i] + 20000;
-            }
+            console.log("list", list);
+            // for (var i in list) {
+            //     list[i] = list[i] + 20000;
+            // }
             const doc = await this.DocListSanad.find(
                 {
                     agencyId,
-                    serviceNum: { $in: list },
+                    type:'service',
+                    mId: { $in: list },
                     bes: 0,
                     bed: { $ne: 0 },
                 },
-                "doclistId days bed bes serviceNum updatedAt accCode -_id"
+                "doclistId days bed bes mId updatedAt accCode -_id"
             );
-
+console.log("doc", doc.length);
             return this.response({
                 res,
                 data: doc,
@@ -398,99 +400,99 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    async setAllStudentLevelAgencyToNewOne(req, res) {
-        try {
-            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
-            const agency = await this.Agency.findById(agencyId, "settings");
-            if (!agency) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "agency not find",
-                });
-            }
-            let kol = "003";
-            let moeen = "005";
-            let count = 0;
-            const schools = await this.School.find({
-                agency: agencyId,
-                delete: false,
-            }).lean();
-            for (var sc of schools) {
-                const students = await this.Student.find(
-                    {
-                        school: sc._id,
-                    },
-                    "studentCode"
-                );
-                console.log("st", students.length);
-                for (var st of students) {
-                    const lv = await this.LevelAccDetail.findOneAndUpdate(
-                        {
-                            accCode: st.studentCode,
-                            levelType: 1,
-                            agencyId: { $ne: agency._id },
-                        },
-                        {
-                            agencyId: agency._id,
-                            editor: req.user._id,
-                        }
-                    );
-                    if (!lv) continue;
-                    const ls = await this.ListAcc.findOne({
-                        codeLev3: st.studentCode,
-                        canEdit: false,
-                        agencyId: { $ne: agency._id },
-                    });
-                    if (!ls) continue;
-                    const doclist = await this.DocListSanad.find({
-                        accCode: ls.code,
-                    });
+    // async setAllStudentLevelAgencyToNewOne(req, res) {
+    //     try {
+    //         const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+    //         const agency = await this.Agency.findById(agencyId, "settings");
+    //         if (!agency) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "agency not find",
+    //             });
+    //         }
+    //         let kol = "003";
+    //         let moeen = "005";
+    //         let count = 0;
+    //         const schools = await this.School.find({
+    //             agency: agencyId,
+    //             delete: false,
+    //         }).lean();
+    //         for (var sc of schools) {
+    //             const students = await this.Student.find(
+    //                 {
+    //                     school: sc._id,
+    //                 },
+    //                 "studentCode"
+    //             );
+    //             console.log("st", students.length);
+    //             for (var st of students) {
+    //                 const lv = await this.LevelAccDetail.findOneAndUpdate(
+    //                     {
+    //                         accCode: st.studentCode,
+    //                         levelType: 1,
+    //                         agencyId: { $ne: agency._id },
+    //                     },
+    //                     {
+    //                         agencyId: agency._id,
+    //                         editor: req.user._id,
+    //                     }
+    //                 );
+    //                 if (!lv) continue;
+    //                 const ls = await this.ListAcc.findOne({
+    //                     codeLev3: st.studentCode,
+    //                     canEdit: false,
+    //                     agencyId: { $ne: agency._id },
+    //                 });
+    //                 if (!ls) continue;
+    //                 const doclist = await this.DocListSanad.find({
+    //                     accCode: ls.code,
+    //                 });
 
-                    for (const doc of doclist) {
-                        await this.DocSanad.findByIdAndDelete(doc.titleId);
-                        await this.DocListSanad.deleteMany({
-                            titleId: doc.titleId,
-                        });
-                    }
+    //                 for (const doc of doclist) {
+    //                     await this.DocSanad.findByIdAndDelete(doc.titleId);
+    //                     await this.DocListSanad.deleteMany({
+    //                         titleId: doc.titleId,
+    //                     });
+    //                 }
 
-                    const checkHis = await this.CheckHistory.find({
-                        $or: [{ toAccCode: ls.code }, { fromAccCode: ls.code }],
-                    });
+    //                 const checkHis = await this.CheckHistory.find({
+    //                     $or: [{ toAccCode: ls.code }, { fromAccCode: ls.code }],
+    //                 });
 
-                    for (const check of checkHis) {
-                        await this.CheckInfo.findByIdAndDelete(check.infoId);
-                        await this.CheckHistory.deleteMany({
-                            infoId: check.infoId,
-                        });
-                    }
+    //                 for (const check of checkHis) {
+    //                     await this.CheckInfo.findByIdAndDelete(check.infoId);
+    //                     await this.CheckHistory.deleteMany({
+    //                         infoId: check.infoId,
+    //                     });
+    //                 }
 
-                    await this.ListAcc.findOneAndUpdate(
-                        {
-                            codeLev3: st.studentCode,
-                            agencyId: { $ne: agency._id },
-                        },
-                        {
-                            agencyId: agency._id,
-                            code: kol + moeen + st.studentCode,
-                            codeLev1: kol,
-                            codeLev2: moeen,
-                            editor: req.user._id,
-                        }
-                    );
-                    count++;
-                }
-            }
+    //                 await this.ListAcc.findOneAndUpdate(
+    //                     {
+    //                         codeLev3: st.studentCode,
+    //                         agencyId: { $ne: agency._id },
+    //                     },
+    //                     {
+    //                         agencyId: agency._id,
+    //                         code: kol + moeen + st.studentCode,
+    //                         codeLev1: kol,
+    //                         codeLev2: moeen,
+    //                         editor: req.user._id,
+    //                     }
+    //                 );
+    //                 count++;
+    //             }
+    //         }
 
-            return this.response({
-                res,
-                data: count,
-            });
-        } catch (error) {
-            console.error(`Error while studentCondition: ${error}`);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             data: count,
+    //         });
+    //     } catch (error) {
+    //         console.error(`Error while studentCondition: ${error}`);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 
     async studentDDS(req, res) {
         try {

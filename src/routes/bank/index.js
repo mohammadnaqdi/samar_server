@@ -40,4 +40,15 @@ router.post(
     controller.chequeInquiryTransfer.bind(controller),
 );
 
+router.post(
+  '/BnkBanksInsert',
+  validator.bnkBanksInsertValidator(),
+  controller.validate.bind(controller),
+  controller.bnkBanksInsert.bind(controller)
+);
+router.get(
+  '/BnkBanksById',
+  controller.bnkBanksById.bind(controller)
+);
+
 module.exports = router;

@@ -12,10 +12,13 @@ const ddsSchema = new mongoose.Schema(
             ref: "Driver",
             required: true,
         },
+        driverCode: { type: String, required: true },
         name: { type: String, required: true },
+        lastName: { type: String, required: true },
         phone: { type: String, required: true },
-        service: [
-        ],
+        service: [],
+        year: { type: Number, required: true },
+        day: { type: Number, required: true },
         status: {
             type: String,
             enum: ["Normal", "Edited", "Absent", "NT"],
@@ -29,7 +32,7 @@ const ddsSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
-
+ddsSchema.index({ driverCode: 1, day: 1 }, { unique: true });
 const DDS = mongoose.model("DDS", ddsSchema);
 
 const dscSchema = new mongoose.Schema(

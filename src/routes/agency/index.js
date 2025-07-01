@@ -141,5 +141,6 @@ router.post(
     controller.setDefHeaderLine.bind(controller)
 );
 router.get("/GetDefHeaderLine", controller.getDefHeaderLine.bind(controller));
+router.get("/SimpleAgencyById", controller.simpleAgencyById.bind(controller));
 
 module.exports = router;

@@ -2,6 +2,8 @@ const controller = require("../controller");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const persianDate = require("persian-date");
+const axios = require("axios");
+const neshan = process.env.NESHAN;
 
 module.exports = new (class extends controller {
     async setSchool(req, res) {
@@ -62,7 +64,6 @@ module.exports = new (class extends controller {
                 }
             }
 
-            
             let school;
             if (
                 id === 0 ||
@@ -197,6 +198,129 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in schoolList:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async nearSchoolList(req, res) {
+        try {
+            const agencyId = req.body.agencyId;
+            const maxDistance = req.body.maxDistance || 20000;
+            let limit = req.body.limit || 10;
+            // console.log("limit",limit);
+            const search = req.body.search.trim();
+            const location = req.body.location;
+            let page = req.body.page || 0;
+            const districtId = req.body.districtId || 0;
+            if (limit < 1) limit = 1;
+            if (page < 0) page = 0;
+
+            const qr = [{ delete: false }];
+            if (ObjectId.isValid(agencyId)) {
+                // Check if agencyId is a valid ObjectId before using it
+                qr.push({ agencyId: ObjectId.createFromHexString(agencyId) });
+            }
+            if (districtId !== 0) qr.push({ districtId });
+            if (search !== "")
+                qr.push({
+                    $or: [
+                        { code: { $regex: ".*" + search + ".*" } },
+                        { name: { $regex: ".*" + search + ".*" } },
+                    ],
+                });
+
+            const skipCount = page * limit;
+            let schools = await this.School.aggregate([
+                {
+                    $geoNear: {
+                        near: {
+                            type: "Point",
+                            coordinates: location,
+                        },
+                        key: "location",
+                        distanceField: "dist.calculated",
+                        maxDistance: maxDistance,
+                        spherical: true,
+                    },
+                },
+                {
+                    $match: { $and: qr },
+                },
+                { $sort: { "dist.calculated": 1 } },
+                { $skip: skipCount },
+                { $limit: limit },
+            ]).exec();
+
+            // Convert aggregation result to plain JS objects (lean)
+            schools = schools.map((s) => ({ ...s }));
+            for (let i in schools) {
+                //dodo
+                // const schoolLoc = `${schools[i].location.coordinates[1]},${schools[i].location.coordinates[0]}`;
+                // const studentLoc = `${location[1]},${location[0]}`;
+                // const url = `${process.env.ROUTE_URL}/route/v1/driving/${studentLoc};${schoolLoc}?overview=full`;
+                // //  console.log("url", url);
+                // try {
+                //     const response = await axios.get(url);
+                //     if (response.status === 200) {
+                //         if (
+                //             response.data.code.toString().toLowerCase() === "ok"
+                //         ) {
+                //             schools[i].distance =
+                //                 response.data.routes[0].distance;
+                //             schools[i].duration =
+                //                 response.data.routes[0].duration;
+                //             schools[i].geometry =
+                //                 response.data.routes[0].geometry;
+                //                 console.log("distance", response.data.routes[0].distance);
+                //                 // const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${location}&destination=${schools[i].location.coordinates}`;
+                //                 // const options = {
+                //                 //     headers: { "Api-Key": neshan },
+                //                 //     timeout: 9500,
+                //                 // };
+                //                 // const directionResponse = await axios.get(
+                //                 //     directionUrl,
+                //                 //     options
+                //                 // );
+                //                 //  console.log("neshan distance=", directionResponse.data.routes[0].legs[0].distance.value);
+                //                 // console.log("overview_polyline",JSON.stringify(directionResponse.data));
+                            
+                //         }
+                //     }
+                // } catch (e) {
+                //     console.error("response", e);
+                // }
+
+                let gradeName = [];
+                for (const gradeId of schools[i].grade) {
+                    try {
+                        const grade = await this.Keys.findOne(
+                            { id: gradeId },
+                            "title"
+                        );
+                        if (grade) gradeName.push(grade.title);
+                    } catch {
+                        const grade = await this.Keys.findOne(
+                            { keyId: gradeId },
+                            "title"
+                        );
+                        if (grade) gradeName.push(grade.title);
+                    }
+                }
+                schools[i].grade = gradeName;
+            }
+
+            // Sort schools by distance (ascending)
+            schools.sort((a, b) => {
+                if (a.distance === undefined) return 1;
+                if (b.distance === undefined) return -1;
+                return a.distance - b.distance;
+            });
+
+            return this.response({
+                res,
+                data: schools,
+            });
+        } catch (error) {
+            console.error("Error in nearSchoolList:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

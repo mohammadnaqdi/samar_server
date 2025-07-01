@@ -39,16 +39,16 @@ async function sendSmsAndSave(phone, otp, isFiveDigit, isParent = false) {
             OptionalCode: OptionalCode,
         });
 
-        let config = {
-            method: "post",
-            url: "https://portal.amootsms.com/rest/SendQuickOTP",
-            headers: {
-                Authorization: Token,
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            data: data,
-        };
-        await axios.request(config);
+        // let config = {
+        //     method: "post",
+        //     url: "https://portal.amootsms.com/rest/SendQuickOTP",
+        //     headers: {
+        //         Authorization: Token,
+        //         "Content-Type": "application/x-www-form-urlencoded",
+        //     },
+        //     data: data,
+        // };
+        // await axios.request(config);
         // axios(config)
         //     .then(function (response) {
         //         // console.log("response", JSON.stringify(response.data));
@@ -112,9 +112,12 @@ async function sendSmsAndSave(phone, otp, isFiveDigit, isParent = false) {
                 phone,
                 code,
                 isParent,
+                consumed: false,
             }).save();
         } else {
             otp.code = code;
+            otp.isParent = isParent;
+            otp.consumed = false;
             await otp.save();
         }
         console.log("code=" + code);
@@ -190,18 +193,21 @@ module.exports = new (class extends controller {
             }
 
             let otp = await Otp.findOne({ phone, isParent });
+            // console.log("otp", JSON.stringify(otp));
             if (otp) {
-                const seconds = getSecondsDiff(otp.updatedAt, Date.now());
-                if (seconds < SMS_WAIT) {
-                    return this.response({
-                        res,
-                        code: 201,
-                        message: "otp code sent, wait please",
-                        data: {
-                            second: seconds,
-                            fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
-                        },
-                    });
+                if (!otp.consumed) {
+                    const seconds = getSecondsDiff(otp.updatedAt, Date.now());
+                    if (seconds < SMS_WAIT) {
+                        return this.response({
+                            res,
+                            code: 201,
+                            message: "otp code sent, wait please",
+                            data: {
+                                second: seconds,
+                                fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
+                            },
+                        });
+                    }
                 }
             }
 
@@ -272,17 +278,19 @@ module.exports = new (class extends controller {
 
             let otp = await Otp.findOne({ phone });
             if (otp) {
-                const seconds = getSecondsDiff(otp.updatedAt, Date.now());
-                if (seconds < SMS_WAIT) {
-                    return this.response({
-                        res,
-                        code: 201,
-                        message: "otp code sent, wait please",
-                        data: {
-                            second: seconds,
-                            fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
-                        },
-                    });
+                if (!otp.consumed) {
+                    const seconds = getSecondsDiff(otp.updatedAt, Date.now());
+                    if (seconds < SMS_WAIT) {
+                        return this.response({
+                            res,
+                            code: 201,
+                            message: "otp code sent, wait please",
+                            data: {
+                                second: seconds,
+                                fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
+                            },
+                        });
+                    }
                 }
             }
 
@@ -345,17 +353,19 @@ module.exports = new (class extends controller {
 
             let otp = await Otp.findOne({ phone });
             if (otp) {
-                const seconds = getSecondsDiff(otp.updatedAt, Date.now());
-                if (seconds < SMS_WAIT) {
-                    return this.response({
-                        res,
-                        code: 201,
-                        message: "otp code sent, wait please",
-                        data: {
-                            second: seconds,
-                            fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
-                        },
-                    });
+                if (!otp.consumed) {
+                    const seconds = getSecondsDiff(otp.updatedAt, Date.now());
+                    if (seconds < SMS_WAIT) {
+                        return this.response({
+                            res,
+                            code: 201,
+                            message: "otp code sent, wait please",
+                            data: {
+                                second: seconds,
+                                fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
+                            },
+                        });
+                    }
                 }
             }
 
@@ -429,17 +439,19 @@ module.exports = new (class extends controller {
 
             let otp = await Otp.findOne({ phone });
             if (otp) {
-                const seconds = getSecondsDiff(otp.updatedAt, Date.now());
-                if (seconds < SMS_WAIT) {
-                    return this.response({
-                        res,
-                        code: 201,
-                        message: "otp code sent, wait please",
-                        data: {
-                            second: seconds,
-                            fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
-                        },
-                    });
+                if (!otp.consumed) {
+                    const seconds = getSecondsDiff(otp.updatedAt, Date.now());
+                    if (seconds < SMS_WAIT) {
+                        return this.response({
+                            res,
+                            code: 201,
+                            message: "otp code sent, wait please",
+                            data: {
+                                second: seconds,
+                                fa_m: "کد اعتبارسنجی فرستاده شده, لطفا صبر کنید",
+                            },
+                        });
+                    }
                 }
             }
 
@@ -473,11 +485,12 @@ module.exports = new (class extends controller {
             const code = fixNumbers(req.body.code);
             const fcmToken = req.body.fcmToken ?? "";
             const info = req.body.info ?? "";
+            const isParent = req.body.isParent || false;
             var ip =
                 req.headers["x-forwarded-for"] || req.connection.remoteAddress;
             ip = ip.replace("::", "");
 
-            let otp = await Otp.findOne({ phone });
+            let otp = await Otp.findOne({ phone, isParent, consumed: false });
             if (!otp) {
                 return this.response({
                     res,
@@ -518,33 +531,38 @@ module.exports = new (class extends controller {
                               userName: phone,
                           });
                     await user.save();
-                    await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                    await this.updateRedisDocument(
+                        otp.isParent
+                            ? `parent:${user._id}`
+                            : `user:${user._id}`,
+                        user.toObject()
+                    );
 
                     let userInfo = new this.UserInfo({
                         userId: user._id,
                     });
                     await userInfo.save();
+                    otp.consumed = true;
+                    await otp.save();
 
-                    const userSalt = crypto.randomBytes(16).toString("hex"); // Generate per-user salt
-                    const dynamicKey = otp.isParent
-                        ? JWT_KEY
-                        : JWT_KEY + userSalt;
+                    const dynamicKey = JWT_KEY;
                     const token = jwt.sign(
                         {
                             _id: user.id,
                             date: Date.now(),
                             isParent: otp.isParent,
+                            isDriver: !otp.isParent,
                         },
                         dynamicKey,
                         {
                             algorithm: "HS256",
                         }
                     );
-                    if (!otp.isParent)
-                        await this.User.updateOne(
-                            { _id: user.id },
-                            { $set: { jwtSalt: userSalt } }
-                        );
+                    // if (!otp.isParent)
+                    //     await this.User.updateOne(
+                    //         { _id: user.id },
+                    //         { $set: { jwtSalt: userSalt } }
+                    //     );
 
                     user.fcm = [
                         {
@@ -556,7 +574,12 @@ module.exports = new (class extends controller {
                         },
                     ];
                     await user.save();
-                    await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                    await this.updateRedisDocument(
+                        otp.isParent
+                            ? `parent:${user._id}`
+                            : `user:${user._id}`,
+                        user.toObject()
+                    );
                     return this.response({
                         res,
                         message: "user is new!",
@@ -565,26 +588,22 @@ module.exports = new (class extends controller {
                 }
 
                 if (user.active) {
-                    const userSalt = crypto.randomBytes(16).toString("hex"); // Generate per-user salt
-                    const dynamicKey = otp.isParent
-                        ? JWT_KEY
-                        : JWT_KEY + userSalt;
+                    // const userSalt = crypto.randomBytes(16).toString("hex"); // Generate per-user salt
+                    otp.consumed = true;
+                    await otp.save();
+                    const dynamicKey = JWT_KEY;
                     const token = jwt.sign(
-                        { _id: user.id, date: Date.now() },
+                        {
+                            _id: user.id,
+                            date: Date.now(),
+                            isParent: otp.isParent,
+                            isDriver: !otp.isParent,
+                        },
                         dynamicKey,
                         {
                             algorithm: "HS256",
                         }
                     );
-                    if (!otp.isParent) {
-                        await this.User.updateOne(
-                            { _id: user.id },
-                            { $set: { jwtSalt: userSalt } }
-                        );
-                        await this.updateRedisDocument(`user:${user._id}`, {
-                            jwtSalt: userSalt,
-                        });
-                    }
 
                     var exist = false;
                     for (var i in user.fcm) {
@@ -610,7 +629,13 @@ module.exports = new (class extends controller {
                         });
                     }
                     await user.save();
-                    await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+
+                    await this.updateRedisDocument(
+                        otp.isParent
+                            ? `parent:${user._id}`
+                            : `user:${user._id}`,
+                        user.toObject()
+                    );
                     return this.response({
                         res,
                         message: "confirm code successfuly",
@@ -654,7 +679,7 @@ module.exports = new (class extends controller {
             const code = fixNumbers(req.body.code);
             const pass = fixNumbers(req.body.pass);
 
-            let otp = await Otp.findOne({ phone });
+            let otp = await Otp.findOne({ phone, consumed: false });
             if (!otp) {
                 return this.response({
                     res,
@@ -688,7 +713,12 @@ module.exports = new (class extends controller {
                 if (user.active) {
                     user.password = pass;
                     await user.save();
-                    await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                    otp.consumed = true;
+                    await otp.save();
+                    await this.updateRedisDocument(
+                        `user:${user._id}`,
+                        user.toObject()
+                    );
                     return this.response({
                         res,
                         message: "confirm code successfully changed pass",
@@ -858,7 +888,10 @@ module.exports = new (class extends controller {
                     lastName,
                 });
                 await userX.save();
-                await this.updateRedisDocument(`user:${user._id}`, userX.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    userX.toObject()
+                );
 
                 const userInfo = new this.UserInfo({
                     userId: userX._id,
@@ -878,35 +911,9 @@ module.exports = new (class extends controller {
         }
     }
 
-    async getVersionAndroid(req, res) {
-        try {
-            return res.json({
-                LastVersionCode: 10,
-                LastVersionName: "1.1.0",
-                url: `https://${process.env.URL}/download/school_driver_1.1.0.apk`,
-            });
-        } catch (error) {
-            console.error("Error in getVersionAndroid:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-
-    async getVersionAndroidParent(req, res) {
-        try {
-            return res.json({
-                LastVersionCode: 15,
-                LastVersionName: "1.1.5",
-                url: `https://${process.env.URL}/download/school_parent_1.1.5.apk`,
-            });
-        } catch (error) {
-            console.error("Error in getVersionAndroidParent:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-
     async updateDriverLocation(req, res) {
         try {
-            // console.log("rrrrrrrrrrr");
+            console.log("rrrrrrrrrrr");
             var lat = req.body.lat;
             var lng = req.body.lng;
             var name = req.body.name;
@@ -941,7 +948,10 @@ module.exports = new (class extends controller {
                         driversLocation[i].lastSave = Date.now();
                         let location = new this.Location({
                             userCode: driverId,
-                            location: { type: "Point", coordinates: [lat, lng] },
+                            location: {
+                                type: "Point",
+                                coordinates: [lat, lng],
+                            },
                             name,
                             angle,
                             serviceId,
@@ -950,7 +960,10 @@ module.exports = new (class extends controller {
                         });
                         location.save();
                     }
-                    driversLocation[i].location= { type: "Point", coordinates: [lat, lng] };
+                    driversLocation[i].location = {
+                        type: "Point",
+                        coordinates: [lat, lng],
+                    };
                     driversLocation[i].name = name;
                     driversLocation[i].angle = angle;
                     driversLocation[i].serviceId = serviceId;
@@ -1235,9 +1248,13 @@ module.exports = new (class extends controller {
                             agencyId,
                             titleId: doc.id,
                             doclistId: doc.sanadId,
+                            mId: doc.sanadId,
                             row: 1,
                             bed: tr.amount,
                             bes: 0,
+                            mId: doc.sanadId,
+                            mode: "pay",
+                            isOnline: true,
                             note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
                             accCode: bank,
                             peigiri: infoNum,
@@ -1250,11 +1267,12 @@ module.exports = new (class extends controller {
                             row: 2,
                             bed: 0,
                             bes: tr.amount,
-                            note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
+                            note: `${tr.desc} به شماره پیگیری ${response.RefID}`,
                             accCode: code,
+                            mId: tr.queueCode,
+                            isOnline: true,
+                            type: "invoice",
                             peigiri: infoNum,
-                            type: "student",
-                            invoice: tr.queueCode,
                         }).save();
                         await new this.CheckHistory({
                             agencyId,
@@ -1270,17 +1288,17 @@ module.exports = new (class extends controller {
                         }).save();
                     }
 
-                    await new this.PayAction({
-                        setter: tr.userId,
-                        transaction: tr.id,
-                        queueCode: tr.queueCode,
-                        amount: tr.amount,
-                        desc: tr.desc,
-                        isOnline: true,
-                        studentCode: tr.stCode,
-                        docSanadNum: num,
-                        docSanadId: id,
-                    }).save();
+                    // await new this.PayAction({
+                    //     setter: tr.userId,
+                    //     transaction: tr.id,
+                    //     queueCode: tr.queueCode,
+                    //     amount: tr.amount,
+                    //     desc: tr.desc,
+                    //     isOnline: true,
+                    //     studentCode: tr.stCode,
+                    //     docSanadNum: num,
+                    //     docSanadId: id,
+                    // }).save();
                     return res.json("ok");
                 }
                 return res.status(202).json("NOk");

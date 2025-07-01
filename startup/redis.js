@@ -59,7 +59,7 @@ async function checkParents() {
         const ParentLen = await Parent.countDocuments();
         console.log(ParentLen, "parents in mongodb");
         if (checkParents.length != ParentLen) {
-            const parents = await Parent.find().lean();
+            const parents = await Parent.find();
             if (parents.length === 0) return;
             const multi = redisClient.multi();
             parents.forEach((parent) => {
@@ -80,7 +80,7 @@ async function checkUsers() {
         const userLen = await User.countDocuments();
         console.log(userLen, "users in mongodb");
         if (checkUsers.length != userLen) {
-            const users = await User.find().lean();
+            const users = await User.find();
             if (users.length === 0) return;
             const multi = redisClient.multi();
             users.forEach((user) => {
@@ -99,7 +99,7 @@ async function checkUsers() {
 async function checkBanks() {
     try {
         const checkBanks = await redisClient.keys("bank:*");
-        const banks = await Bank.find().lean();
+        const banks = await Bank.find();
         if (checkBanks.length != banks.length) {
             if (banks.length === 0) return;
             const multi = redisClient.multi();
@@ -119,18 +119,12 @@ async function checkBanks() {
 async function checkKeys() {
     try {
         const checkKeys = await redisClient.keys("keys:*");
-        let keys = await Keys.find({ delete: false, active: true }).lean();
+        let keys = await Keys.find({ delete: false, active: true });
         console.log(keys.length, "keys in mongodb");
 
         if (checkKeys.length != keys.length) {
             if (keys.length === 0) return;
-            keys = await Keys.find({
-                delete: false,
-                active: true,
-            }).lean();
-
-            if (keys.length === 0) return;
-
+          
             const multi = redisClient.multi();
             keys.forEach((key) => {
                 multi.set(`keys:${key.type}:${key._id}`, JSON.stringify(key));

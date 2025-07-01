@@ -15,6 +15,8 @@ router.post(
 router.delete("/DeleteKey", isAdmin, controller.deleteKey.bind(controller));
 router.get("/GetSearchById", controller.getSearchById.bind(controller));
 router.get("/GetAddress", controller.getAddress.bind(controller));
+router.post("/GetAddress2",validator.getAddress2Validator(),
+    controller.validate.bind(controller), controller.getAddress2.bind(controller));
 router.get("/SearchAddress", controller.searchAddress.bind(controller));
 router.get("/GetDistance", controller.getDistance.bind(controller));
 router.get("/GetTrip", controller.getTrip.bind(controller));

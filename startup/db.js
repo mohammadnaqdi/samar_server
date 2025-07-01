@@ -56,43 +56,43 @@ module.exports = async function (mongoose) {
         }
         console.log("update student in holiday", s.length);
     }
-    if (false) {
-        let schools = await School.find({}, "name shifts schoolTime");
-        for (var i in schools) {
-            let shifts = schools[i].shifts;
-            schools[i].schoolTime = [];
-            if (schools[i].schoolTime.length != 0) continue;
-            for (var s in shifts) {
-                let shift = await Shifts.findById(shifts[s]);
-                if (!shift) continue;
-                let day = await Day.findById(shift.week[0]);
-                // let day1=await Day.findById(shift.week[1]);
-                if (!day) continue;
-                // if(!day1)continue;
-                schools[i].schoolTime.push({
-                    name: shift.name,
-                    shiftdayId: 1001,
-                    shiftdayTitle: "ایام هفته",
-                    start: day.start,
-                    end: day.end,
-                    closure: [1012],
-                });
-                let st = await Student.find({ shift: shift.id });
-                let sr = await Service.find({ shiftId: shift.id });
-                for (var t in st) {
-                    st[t].time = schools[i].schoolTime.length - 1;
-                    await st[t].save();
-                }
-                for (var t in sr) {
-                    sr[t].time = schools[i].schoolTime.length - 1;
-                    await sr[t].save();
-                }
-            }
-            console.log("save time name", schools[i].name);
-            console.log("save time schoolTime", schools[i].schoolTime.length);
-            await schools[i].save();
-        }
-    }
+    // if (false) {
+    //     let schools = await School.find({}, "name shifts schoolTime");
+    //     for (var i in schools) {
+    //         let shifts = schools[i].shifts;
+    //         schools[i].schoolTime = [];
+    //         if (schools[i].schoolTime.length != 0) continue;
+    //         for (var s in shifts) {
+    //             let shift = await Shifts.findById(shifts[s]);
+    //             if (!shift) continue;
+    //             let day = await Day.findById(shift.week[0]);
+    //             // let day1=await Day.findById(shift.week[1]);
+    //             if (!day) continue;
+    //             // if(!day1)continue;
+    //             schools[i].schoolTime.push({
+    //                 name: shift.name,
+    //                 shiftdayId: 1001,
+    //                 shiftdayTitle: "ایام هفته",
+    //                 start: day.start,
+    //                 end: day.end,
+    //                 closure: [1012],
+    //             });
+    //             let st = await Student.find({ shift: shift.id });
+    //             let sr = await Service.find({ shiftId: shift.id });
+    //             for (var t in st) {
+    //                 st[t].time = schools[i].schoolTime.length - 1;
+    //                 await st[t].save();
+    //             }
+    //             for (var t in sr) {
+    //                 sr[t].time = schools[i].schoolTime.length - 1;
+    //                 await sr[t].save();
+    //             }
+    //         }
+    //         console.log("save time name", schools[i].name);
+    //         console.log("save time schoolTime", schools[i].schoolTime.length);
+    //         await schools[i].save();
+    //     }
+    // }
     if (false) {
         Rule.count().then(async function (count) {
             try {

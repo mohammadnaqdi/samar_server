@@ -44,6 +44,7 @@ const agencySchema = new mongoose.Schema(
         endLicenceDate: { type: Date, default: null, required: false },
         settings: { type: [] },
         pack: { type: String, default: "free" },
+       
         expire: { type: Date, default: new Date() },
         startPack: { type: Date, default: new Date() },
     },
@@ -72,6 +73,9 @@ const agencySetSchema = new mongoose.Schema(
         formula: { type: String, default: "a-(a*(b/100))" },
         formulaForStudent: { type: Boolean, default: false },
         defHeadLine: { type: [],default:[] },
+        merchentId: { type: String, default: "" },
+        tId: { type: String, default: "" },
+        bank: { type: String, default: "" },
     },
     {
         timestamps: true,

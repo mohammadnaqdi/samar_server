@@ -107,7 +107,7 @@ module.exports = new (class extends controller {
 
             const sanadList = await this.DocListSanad.find(
                 { agencyId, titleId: sanad.id },
-                "row bed bes note accCode peigiri"
+                "row bed bes note accCode peigiri type"
             );
             if (!sanadList) {
                 return res.status(500).json("sql not answer");
@@ -118,16 +118,69 @@ module.exports = new (class extends controller {
 
             let hesabs = [];
             for (const sl of sanadList) {
-                const acclist = await this.ListAcc.findOne(
-                    { agencyId, code: sl.accCode },
-                    "code codeLev1 codeLev2 codeLev3 groupId type nature"
-                );
-                if (!acclist) continue;
+                let acclist;
+                let code;
+                if (sl.accCode.substring(0, 6) === "003005") {
+                    const studentCode = sl.accCode.substring(6);
+                    const student = await this.Student.findOne(
+                        { studentCode },
+                        "name lastName"
+                    );
+                    if (student) {
+                        acclist = {
+                            _id: student._id,
+                            code: sl.accCode,
+                            codeLev1: "003",
+                            codeLev2: "005",
+                            codeLev3: studentCode,
+                            groupId: 1,
+                            type: 1,
+                            nature: 1,
+                        };
+                        code = {
+                            accCode: studentCode,
+                            accName: student.name + " " + student.lastName,
+                            levelType: 1,
+                            desc: "دانش آموز",
+                        };
+                    }
+                } else if (sl.accCode.substring(0, 6) === "004006") {
+                    const driverCode = sl.accCode.substring(6);
+                    const userCode = driverCode.substring(3);
+                    const user = await this.User.findOne(
+                        { code: userCode },
+                        "name lastName"
+                    );
+                    if (user) {
+                        acclist = {
+                            _id: user._id,
+                            code: sl.accCode,
+                            codeLev1: "004",
+                            codeLev2: "006",
+                            codeLev3: driverCode,
+                            groupId: 1,
+                            type: 1,
+                            nature: 1,
+                        };
+                        code = {
+                            accCode: driverCode,
+                            accName: user.name + " " + user.lastName,
+                            levelType: 2,
+                            desc: "راننده",
+                        };
+                    }
+                } else {
+                    acclist = await this.ListAcc.findOne(
+                        { agencyId, code: sl.accCode },
+                        "code codeLev1 codeLev2 codeLev3 groupId type nature"
+                    );
+                    if (!acclist) continue;
 
-                const code = await this.LevelAccDetail.findOne(
-                    { agencyId, accCode: acclist.codeLev3 },
-                    "accCode accName levelType desc"
-                );
+                    code = await this.LevelAccDetail.findOne(
+                        { agencyId, accCode: acclist.codeLev3 },
+                        "accCode accName levelType desc"
+                    );
+                }
 
                 const result = await this.DocListSanad.aggregate([
                     {
@@ -162,25 +215,8 @@ module.exports = new (class extends controller {
         }
     }
     async accDocInsert(req, res) {
-        let session;
-        let isTransactionSupported = true;
-
-        try {
-            // Attempt to start a session and transaction
-            session = await this.DocSanad.startSession();
-            session.startTransaction();
-        } catch (error) {
-            // If transaction start fails due to replica set requirement, fallback to non-transactional mode
-            if (
-                error.message.includes("Transaction numbers are only allowed")
-            ) {
-                isTransactionSupported = false;
-                session.endSession();
-                session = null;
-            } else {
-                throw error; // Rethrow other errors
-            }
-        }
+        let session = await this.DocSanad.startSession();
+        session.startTransaction();
 
         try {
             const note = req.body.note.trim();
@@ -202,10 +238,9 @@ module.exports = new (class extends controller {
                 accCode.length !== besPrice.length ||
                 accCode.length !== peigiri.length
             ) {
-                if (isTransactionSupported) {
-                    await session.abortTransaction();
-                    session.endSession();
-                }
+                await session.abortTransaction();
+                session.endSession();
+
                 return this.response({
                     res,
                     code: 300,
@@ -221,14 +256,13 @@ module.exports = new (class extends controller {
                         agencyId,
                     },
                     null,
-                    { session: isTransactionSupported ? session : null }
+                    { session }
                 );
 
                 if (!level || level.levelType === 3) {
-                    if (isTransactionSupported) {
-                        await session.abortTransaction();
-                        session.endSession();
-                    }
+                    await session.abortTransaction();
+                    session.endSession();
+
                     return this.response({
                         res,
                         code: 300,
@@ -249,7 +283,7 @@ module.exports = new (class extends controller {
                 atf,
             });
             await doc.save({
-                session: isTransactionSupported ? session : null,
+                session,
             });
 
             for (let i = 0; i < besPrice.length; i++) {
@@ -268,17 +302,14 @@ module.exports = new (class extends controller {
                     accCode: accCode[i],
                     peigiri: peigiri[i],
                     sanadDate: date,
+                    mId: doc.sanadId,
                     serviceNum,
                     days: day,
                 });
-                await docList.save({
-                    session: isTransactionSupported ? session : null,
-                });
+                await docList.save({ session });
             }
-            if (isTransactionSupported) {
-                await session.commitTransaction();
-                session.endSession();
-            }
+            await session.commitTransaction();
+            session.endSession();
 
             return this.response({
                 res,
@@ -286,10 +317,8 @@ module.exports = new (class extends controller {
                 data: doc.sanadId,
             });
         } catch (error) {
-            if (isTransactionSupported) {
-                await session.abortTransaction();
-                session.endSession();
-            }
+            await session.abortTransaction();
+            session.endSession();
             console.error("Error in accDocInsertT:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
@@ -389,94 +418,94 @@ module.exports = new (class extends controller {
     //     }
     // }
 
-    async accDocInsertALL(req, res) {
-        try {
-            const note = "تتمه حق سرویس";
-            const date = new Date();
-            const faree = "";
-            const atf = "";
-            const agencyId = ObjectId.createFromHexString(
-                "65a3923ccf2856d13b3600c4"
-            );
-            const serviceNum = 0;
-            const days = [];
-            const schools = await this.School.find({ agencyId }).distinct(
-                "_id"
-            );
-            if (!schools) {
-                return res.status(404).json({ error: "schools NotFind" });
-            }
-            for (var sc of schools) {
-                let notes = ["خدمات نرم افزاری"];
-                let besPrice = [650000];
-                let bedPrice = [0];
-                let accCode = ["006008000000005"];
-                let peigiri = [""];
-                const students = await this.Student.find(
-                    {
-                        school: ObjectId.createFromHexString(sc),
-                        state: 4,
-                        delete: false,
-                    },
-                    "studentCode"
-                );
-                console.log("student count", students.length);
-                if (students.length === 0) continue;
-                besPrice = [students.length * 650000];
-                for (var st of students) {
-                    notes.push("تتمه حق سرویس");
-                    besPrice.push(0);
-                    bedPrice.push(650000);
-                    accCode.push("003005" + st.studentCode);
-                    peigiri.push("");
-                }
-                let doc = new this.DocSanad({
-                    agencyId,
-                    note,
-                    sanadDate: date,
-                    system: 1,
-                    definite: false,
-                    lock: false,
-                    editor: req.user._id,
-                    faree,
-                    atf,
-                });
-                await doc.save();
+    // async accDocInsertALL(req, res) {
+    //     try {
+    //         const note = "تتمه حق سرویس";
+    //         const date = new Date();
+    //         const faree = "";
+    //         const atf = "";
+    //         const agencyId = ObjectId.createFromHexString(
+    //             "65a3923ccf2856d13b3600c4"
+    //         );
+    //         const serviceNum = 0;
+    //         const days = [];
+    //         const schools = await this.School.find({ agencyId }).distinct(
+    //             "_id"
+    //         );
+    //         if (!schools) {
+    //             return res.status(404).json({ error: "schools NotFind" });
+    //         }
+    //         for (var sc of schools) {
+    //             let notes = ["خدمات نرم افزاری"];
+    //             let besPrice = [650000];
+    //             let bedPrice = [0];
+    //             let accCode = ["006008000000005"];
+    //             let peigiri = [""];
+    //             const students = await this.Student.find(
+    //                 {
+    //                     school: ObjectId.createFromHexString(sc),
+    //                     state: 4,
+    //                     delete: false,
+    //                 },
+    //                 "studentCode"
+    //             );
+    //             console.log("student count", students.length);
+    //             if (students.length === 0) continue;
+    //             besPrice = [students.length * 650000];
+    //             for (var st of students) {
+    //                 notes.push("تتمه حق سرویس");
+    //                 besPrice.push(0);
+    //                 bedPrice.push(650000);
+    //                 accCode.push("003005" + st.studentCode);
+    //                 peigiri.push("");
+    //             }
+    //             let doc = new this.DocSanad({
+    //                 agencyId,
+    //                 note,
+    //                 sanadDate: date,
+    //                 system: 1,
+    //                 definite: false,
+    //                 lock: false,
+    //                 editor: req.user._id,
+    //                 faree,
+    //                 atf,
+    //             });
+    //             await doc.save();
 
-                for (let i = 0; i < besPrice.length; i++) {
-                    let day = 0;
-                    if (days[i]) {
-                        day = days[i];
-                    }
-                    let docList = new this.DocListSanad({
-                        agencyId,
-                        titleId: doc.id,
-                        doclistId: doc.sanadId,
-                        row: i + 1,
-                        bed: bedPrice[i],
-                        bes: besPrice[i],
-                        note: notes[i],
-                        accCode: accCode[i],
-                        peigiri: peigiri[i],
-                        sanadDate: date,
-                        serviceNum,
-                        days: day,
-                    });
-                    await docList.save();
-                }
+    //             for (let i = 0; i < besPrice.length; i++) {
+    //                 let day = 0;
+    //                 if (days[i]) {
+    //                     day = days[i];
+    //                 }
+    //                 let docList = new this.DocListSanad({
+    //                     agencyId,
+    //                     titleId: doc.id,
+    //                     doclistId: doc.sanadId,
+    //                     row: i + 1,
+    //                     bed: bedPrice[i],
+    //                     bes: besPrice[i],
+    //                     note: notes[i],
+    //                     accCode: accCode[i],
+    //                     peigiri: peigiri[i],
+    //                     sanadDate: date,
+    //                     serviceNum,
+    //                     days: day,
+    //                 });
+    //                 await docList.save();
+    //             }
 
-                // break;
-            }
+    //             // break;
+    //         }
 
-            return this.response({
-                res,
-                message: "ok",
-            });
-        } catch (error) {
-            console.error("Error in accDocInsertALL:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             message: "ok",
+    //         });
+    //     } catch (error) {
+    //         console.error("Error in accDocInsertALL:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 
     async chargeCompanyByAdmin(req, res) {
         try {
@@ -519,6 +548,8 @@ module.exports = new (class extends controller {
                 note: "افزایش اعتبار توسط ادمین",
                 accCode: wallet,
                 peigiri: "",
+                mId: doc.sanadId,
+                type: "charge",
                 sanadDate: new Date(),
             }).save();
 
@@ -532,6 +563,8 @@ module.exports = new (class extends controller {
                 note: "افزایش اعتبار توسط ادمین",
                 accCode: charge,
                 peigiri: "",
+                mId: doc.sanadId,
+                type: "charge",
                 sanadDate: new Date(),
             }).save();
 
@@ -584,7 +617,9 @@ module.exports = new (class extends controller {
                 bes: 0,
                 note: "کاهش اعتبار توسط ادمین",
                 accCode: charge,
+                type: "unCharge",
                 peigiri: "",
+                mId: doc.sanadId,
                 sanadDate: new Date(),
             }).save();
             await new this.DocListSanad({
@@ -597,6 +632,8 @@ module.exports = new (class extends controller {
                 note: "کاهش اعتبار توسط ادمین",
                 accCode: wallet,
                 peigiri: "",
+                mId: doc.sanadId,
+                type: "unCharge",
                 sanadDate: new Date(),
             }).save();
 
@@ -675,6 +712,7 @@ module.exports = new (class extends controller {
                     accCode: accCode[i],
                     peigiri: peigiri[i],
                     sanadDate: date,
+                    mId: doc.sanadId,
                 });
                 // console.log("i", i);
                 await docList.save();
@@ -713,9 +751,11 @@ module.exports = new (class extends controller {
 
             if (startDate) {
                 start = Date.parse(startDate);
+                start = new Date(formatDate(start));
             }
             if (endDate) {
                 end = Date.parse(endDate);
+                end = new Date(formatDate(end));
             }
 
             let qr = [{ agencyId }, { accCode: code }];
@@ -729,14 +769,15 @@ module.exports = new (class extends controller {
 
             let mandeh = 0;
             if (start) {
-                const stt = new Date(formatDate(start));
-                const yesterday = new Date();
-                yesterday.setDate(stt.getDate() - 1);
+                // const yesterday = new Date();
+                // yesterday.setDate(stt.getDate() - 1);
+                // console.log("yesterday",yesterday);
+                console.log("start", start);
 
                 const result = await this.DocListSanad.aggregate([
                     {
                         $match: {
-                            sanadDate: { $lte: yesterday },
+                            sanadDate: { $lt: start },
                             accCode: code,
                             agencyId,
                         },
@@ -752,8 +793,9 @@ module.exports = new (class extends controller {
                 ]);
 
                 mandeh = result[0]?.total || 0;
+                console.log("mandeh", mandeh);
             }
-
+            
             const docList = await this.DocListSanad.find(
                 { $and: qr },
                 "titleId row bed bes note peigiri serviceNum days"
@@ -833,12 +875,14 @@ module.exports = new (class extends controller {
             let start = null,
                 end = null;
 
-            if (startDate) {
-                start = Date.parse(startDate);
-            }
-            if (endDate) {
-                end = Date.parse(endDate);
-            }
+              if (startDate) {
+            start = Date.parse(startDate);
+             start = new Date(formatDate(start));
+        }
+        if (endDate) {
+            end = Date.parse(endDate);
+             end = new Date(formatDate(end));
+        }
 
             let qr = [];
             if (amount !== -1) {
@@ -863,9 +907,7 @@ module.exports = new (class extends controller {
 
             let mandeh = 0;
             if (start && agencyId) {
-                const stt = new Date(formatDate(start));
-                const yesterday = new Date();
-                yesterday.setDate(stt.getDate() - 1);
+              
 
                 let code = wallet;
                 if (!code) {
@@ -875,7 +917,7 @@ module.exports = new (class extends controller {
                 const result = await this.DocListSanad.aggregate([
                     {
                         $match: {
-                            sanadDate: { $lte: yesterday },
+                            sanadDate: { $lt: start },
                             accCode: code,
                             agencyId,
                         },
@@ -948,12 +990,14 @@ module.exports = new (class extends controller {
             const endDate = req.query.end;
             let start = null,
                 end = null;
-            if (startDate != undefined && startDate != "") {
-                start = Date.parse(startDate);
-            }
-            if (endDate != undefined && endDate != "") {
-                end = Date.parse(endDate);
-            }
+              if (startDate) {
+            start = Date.parse(startDate);
+             start = new Date(formatDate(start));
+        }
+        if (endDate) {
+            end = Date.parse(endDate);
+             end = new Date(formatDate(end));
+        }
 
             let qr = [];
             qr.push({ agencyId });
@@ -968,14 +1012,12 @@ module.exports = new (class extends controller {
 
             let mandeh = 0;
             if (start != null) {
-                const stt = new Date(formatDate(start));
-                const yesterday = new Date();
-                yesterday.setDate(stt.getDate() - 1);
+              
 
                 const result = await this.DocListSanad.aggregate([
                     {
                         $match: {
-                            sanadDate: { $lte: yesterday },
+                            sanadDate: { $lt: start },
                             accCode: code,
                             agencyId,
                         },
@@ -1046,12 +1088,14 @@ module.exports = new (class extends controller {
             const endDate = req.query.end;
             let start = null,
                 end = null;
-            if (startDate != undefined && startDate != "") {
-                start = Date.parse(startDate);
-            }
-            if (endDate != undefined && endDate != "") {
-                end = Date.parse(endDate);
-            }
+              if (startDate) {
+            start = Date.parse(startDate);
+             start = new Date(formatDate(start));
+        }
+        if (endDate) {
+            end = Date.parse(endDate);
+             end = new Date(formatDate(end));
+        }
 
             let qr = [];
             qr.push({ agencyId });
@@ -1066,14 +1110,12 @@ module.exports = new (class extends controller {
 
             let mandeh = 0;
             if (start != null) {
-                const stt = new Date(formatDate(start));
-                const yesterday = new Date();
-                yesterday.setDate(stt.getDate() - 1);
+           
 
                 const result = await this.DocListSanad.aggregate([
                     {
                         $match: {
-                            sanadDate: { $lte: yesterday },
+                            sanadDate: { $lt: start },
                             accCode: code,
                             agencyId,
                         },
@@ -1575,19 +1617,19 @@ module.exports = new (class extends controller {
             if (docSanad) {
                 await this.DocListSanad.deleteMany({ titleId: docSanad._id });
             }
-            await this.PayAction.updateMany(
-                { agencyId, docSanadNum: sanadId },
-                { $set: { delete: true } }
-            );
+            // await this.PayAction.updateMany(
+            //     { agencyId, docSanadNum: sanadId },
+            //     { $set: { delete: true } }
+            // );
             await this.DocListSanad.deleteMany({
                 agencyId,
                 doclistId: sanadId,
             });
             await this.DocSanad.deleteMany({ agencyId, sanadId });
-            await this.PayAction.updateMany(
-                { studentCode: stCode, queueCode },
-                { $set: { delete: true } }
-            );
+            // await this.PayAction.updateMany(
+            //     { studentCode: stCode, queueCode },
+            //     { $set: { delete: true } }
+            // );
             const checkHis = await this.CheckHistory.find({
                 agencyId,
                 sanadNum: sanadId,
@@ -1614,367 +1656,366 @@ module.exports = new (class extends controller {
         }
     }
 
-    async bnkRcInsertT(req, res) {
-        try {
-            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
-            const branchCode = "";
-            const infoDate = req.body.date;
-            const desc = req.body.desc;
-            const docExp = req.body.docExp;
-            const bankName = req.body.bankName;
-            const branchName = req.body.branchName;
-            const checkType = req.body.checkType;
-            const price = req.body.price;
-            const ownerHesab = req.body.ownerHesab;
-            const type = req.body.type;
-            const checkHesab = req.body.checkHesab;
-            const serial = req.body.serial;
-            const listCode = req.body.listCode;
-            const studentCodes = req.body.studentCodes;
-            const listDesc = req.body.listDesc;
-            const listPrice = req.body.listPrice;
-            const centers = req.body.centers;
-            const invoice = req.body.invoice;
-            const days = req.body.days || [];
-            const studentName = req.body.studentName || "";
+    // async bnkRcInsertT(req, res) {
+    //     try {
+    //         const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+    //         const branchCode = "";
+    //         const infoDate = req.body.date;
+    //         const desc = req.body.desc;
+    //         const docExp = req.body.docExp;
+    //         const bankName = req.body.bankName;
+    //         const branchName = req.body.branchName;
+    //         const checkType = req.body.checkType;
+    //         const price = req.body.price;
+    //         const ownerHesab = req.body.ownerHesab;
+    //         const type = req.body.type;
+    //         const checkHesab = req.body.checkHesab;
+    //         const serial = req.body.serial;
+    //         const listCode = req.body.listCode;
+    //         const listDesc = req.body.listDesc;
+    //         const listPrice = req.body.listPrice;
+    //         const centers = req.body.centers;
+    //         const days = req.body.days || [];
+    //         const studentName = req.body.studentName || "";
 
-            if (
-                listPrice.length !== listDesc.length ||
-                listPrice.length !== listCode.length ||
-                listPrice.length !== centers.length
-            ) {
-                return this.response({
-                    res,
-                    code: 300,
-                    message: "all length must be equal",
-                });
-            }
+    //         if (
+    //             listPrice.length !== listDesc.length ||
+    //             listPrice.length !== listCode.length ||
+    //             listPrice.length !== centers.length
+    //         ) {
+    //             return this.response({
+    //                 res,
+    //                 code: 300,
+    //                 message: "all length must be equal",
+    //             });
+    //         }
 
-            for (var i in listCode) {
-                const aa = listCode[i].substring(6);
-                const level = await this.LevelAccDetail.findOne({
-                    accCode: aa,
-                    agencyId,
-                });
-                if (!level || level.levelType === 3) {
-                    return this.response({
-                        res,
-                        code: 300,
-                        message: "cant access",
-                    });
-                }
-            }
+    //         for (var i in listCode) {
+    //             const aa = listCode[i].substring(6);
+    //             const level = await this.LevelAccDetail.findOne({
+    //                 accCode: aa,
+    //                 agencyId,
+    //             });
+    //             if (!level || level.levelType === 3) {
+    //                 return this.response({
+    //                     res,
+    //                     code: 300,
+    //                     message: "cant access",
+    //                 });
+    //             }
+    //         }
 
-            const aa = checkHesab.substring(6);
-            const level = await this.LevelAccDetail.findOne({
-                accCode: aa,
-                agencyId,
-            });
-            if (!level || level.levelType === 3) {
-                return this.response({
-                    res,
-                    code: 300,
-                    message: "cant access",
-                });
-            }
+    //         const aa = checkHesab.substring(6);
+    //         const level = await this.LevelAccDetail.findOne({
+    //             accCode: aa,
+    //             agencyId,
+    //         });
+    //         if (!level || level.levelType === 3) {
+    //             return this.response({
+    //                 res,
+    //                 code: 300,
+    //                 message: "cant access",
+    //             });
+    //         }
 
-            const checkExist = await this.CheckInfo.countDocuments({
-                agencyId,
-                type,
-                serial,
-            });
+    //         const checkExist = await this.CheckInfo.countDocuments({
+    //             agencyId,
+    //             type,
+    //             serial,
+    //         });
 
-            if (checkExist > 0) {
-                return res
-                    .status(503)
-                    .json({ error: "the serial is duplicated" });
-            }
+    //         if (checkExist > 0) {
+    //             return res
+    //                 .status(503)
+    //                 .json({ error: "the serial is duplicated" });
+    //         }
 
-            persianDate.toLocale("en");
-            var SalMali = new persianDate().format("YY");
-            const checkMax = await this.CheckInfo.find({ agencyId }, "infoId")
-                .sort({ infoId: -1 })
-                .limit(1);
-            let numCheck = 1;
-            if (checkMax.length > 0) {
-                numCheck = checkMax[0].infoId + 1;
-            }
-            const infoNum = `${SalMali}-${numCheck}`;
-            let checkInfo = new this.CheckInfo({
-                agencyId,
-                editor: req.user._id,
-                infoId: numCheck,
-                infoNum,
-                seCode: "0",
-                branchCode,
-                branchName,
-                bankName,
-                serial,
-                type,
-                rowCount: listPrice.length,
-                infoDate,
-                infoMoney: price,
-                accCode: checkHesab,
-                ownerHesab,
-                desc,
-            });
-            await checkInfo.save();
+    //         persianDate.toLocale("en");
+    //         var SalMali = new persianDate().format("YY");
+    //         const checkMax = await this.CheckInfo.find({ agencyId }, "infoId")
+    //             .sort({ infoId: -1 })
+    //             .limit(1);
+    //         let numCheck = 1;
+    //         if (checkMax.length > 0) {
+    //             numCheck = checkMax[0].infoId + 1;
+    //         }
+    //         const infoNum = `${SalMali}-${numCheck}`;
+    //         let checkInfo = new this.CheckInfo({
+    //             agencyId,
+    //             editor: req.user._id,
+    //             infoId: numCheck,
+    //             infoNum,
+    //             seCode: "0",
+    //             branchCode,
+    //             branchName,
+    //             bankName,
+    //             serial,
+    //             type,
+    //             rowCount: listPrice.length,
+    //             infoDate,
+    //             infoMoney: price,
+    //             accCode: checkHesab,
+    //             ownerHesab,
+    //             desc,
+    //         });
+    //         await checkInfo.save();
 
-            let doc = new this.DocSanad({
-                agencyId,
-                note: docExp,
-                sanadDate: infoDate,
-                system: 2,
-                definite: false,
-                lock: false,
-                editor: req.user._id,
-            });
-            await doc.save();
-            const descF =
-                studentName.trim() === ""
-                    ? `دریافت اینترنتی / پوز بابت ${desc} به شماره ${serial}`
-                    : `دریافت اینترنتی / پوز بابت ${desc} به نام ${studentName} به شماره ${serial}`;
+    //         let doc = new this.DocSanad({
+    //             agencyId,
+    //             note: docExp,
+    //             sanadDate: infoDate,
+    //             system: 2,
+    //             definite: false,
+    //             lock: false,
+    //             editor: req.user._id,
+    //         });
+    //         await doc.save();
+    //         const descF =
+    //             studentName.trim() === ""
+    //                 ? `دریافت اینترنتی / پوز بابت ${desc} به شماره ${serial}`
+    //                 : `دریافت اینترنتی / پوز بابت ${desc} به نام ${studentName} به شماره ${serial}`;
 
-            let docList = new this.DocListSanad({
-                agencyId,
-                titleId: doc.id,
-                doclistId: doc.sanadId,
-                row: 1,
-                bed: price,
-                bes: 0,
-                note: descF,
-                accCode: checkHesab,
-                peigiri: infoNum,
-                sanadDate: infoDate,
-            });
-            await docList.save();
-            persianDate.toLocale("en");
-            var today = new persianDate().format("YYYY/MM/DD");
-            var now = new persianDate().format("HH:mm:ss");
-            for (var i in listPrice) {
-                let day = 0;
-                if (days[i]) {
-                    day = days[i];
-                }
-                let docList = new this.DocListSanad({
-                    agencyId,
-                    titleId: doc.id,
-                    doclistId: doc.sanadId,
-                    row: i + 2,
-                    bed: 0,
-                    bes: listPrice[i],
-                    note:
-                        listDesc[i].trim() === ""
-                            ? `${checkType} در تاریخ ${today}`
-                            : listDesc[i],
-                    accCode: listCode[i].toString(),
-                    peigiri: infoNum,
-                    sanadDate: infoDate,
-                    days: day,
-                });
-                await docList.save();
-            }
+    //         let docList = new this.DocListSanad({
+    //             agencyId,
+    //             titleId: doc.id,
+    //             doclistId: doc.sanadId,
+    //             row: 1,
+    //             bed: price,
+    //             bes: 0,
+    //             note: descF,
+    //             accCode: checkHesab,
+    //             peigiri: infoNum,
+    //             sanadDate: infoDate,
+    //             mId: doc.sanadId,
+    //         });
+    //         await docList.save();
+    //         persianDate.toLocale("en");
+    //         var today = new persianDate().format("YYYY/MM/DD");
+    //         // var now = new persianDate().format("HH:mm:ss");
+    //         for (var i in listPrice) {
+    //             let day = 0;
+    //             if (days[i]) {
+    //                 day = days[i];
+    //             }
+    //             let docList = new this.DocListSanad({
+    //                 agencyId,
+    //                 titleId: doc.id,
+    //                 doclistId: doc.sanadId,
+    //                 row: i + 2,
+    //                 bed: 0,
+    //                 bes: listPrice[i],
+    //                 note:
+    //                     listDesc[i].trim() === ""
+    //                         ? `${checkType} در تاریخ ${today}`
+    //                         : listDesc[i],
+    //                 accCode: listCode[i].toString(),
+    //                 peigiri: infoNum,
+    //                 sanadDate: infoDate,
+    //                 days: day,
+    //             });
+    //             await docList.save();
+    //         }
 
-            for (var i in listCode) {
-                let checkHistory = new this.CheckHistory({
-                    agencyId,
-                    infoId: checkInfo.id,
-                    editor: req.user._id,
-                    row: i + 1,
-                    toAccCode: checkHesab,
-                    fromAccCode: listCode[i],
-                    money: listPrice[i],
-                    status: type,
-                    desc: listDesc[i],
-                    sanadNum: doc.sanadId,
-                });
-                await checkHistory.save();
-            }
+    //         for (var i in listCode) {
+    //             let checkHistory = new this.CheckHistory({
+    //                 agencyId,
+    //                 infoId: checkInfo.id,
+    //                 editor: req.user._id,
+    //                 row: i + 1,
+    //                 toAccCode: checkHesab,
+    //                 fromAccCode: listCode[i],
+    //                 money: listPrice[i],
+    //                 status: type,
+    //                 desc: listDesc[i],
+    //                 sanadNum: doc.sanadId,
+    //             });
+    //             await checkHistory.save();
+    //         }
 
-            return res.json({ docID: doc.sanadId, checkRef: infoNum });
-        } catch (err) {
-            console.error("bnkRcInsertT function error:", err);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-    async bnkPyNetInsert(req, res) {
-        try {
-            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
-            const branchCode = req.body.branchCode;
-            const infoDate = req.body.date;
-            const desc = req.body.desc;
-            const docExp = req.body.docExp;
-            const bankName = req.body.bankName;
-            const branchName = req.body.branchName;
-            const checkType = req.body.checkType;
-            const price = req.body.price;
-            const ownerHesab = req.body.ownerHesab;
-            const type = req.body.type;
-            const checkHesab = req.body.checkHesab;
-            const serial = req.body.serial;
-            const listCode = req.body.listCode;
-            const listDesc = req.body.listDesc;
-            const listPrice = req.body.listPrice;
-            const centers = req.body.centers;
-            const serviceNum = req.body.serviceNum || 0;
-            const days = req.body.days || [];
-            const studentName = req.body.studentName || "";
+    //         return res.json({ docID: doc.sanadId, checkRef: infoNum });
+    //     } catch (err) {
+    //         console.error("bnkRcInsertT function error:", err);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
+    // async bnkPyNetInsert(req, res) {
+    //     try {
+    //         const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+    //         const branchCode = req.body.branchCode;
+    //         const infoDate = req.body.date;
+    //         const desc = req.body.desc;
+    //         const docExp = req.body.docExp;
+    //         const bankName = req.body.bankName;
+    //         const branchName = req.body.branchName;
+    //         const checkType = req.body.checkType;
+    //         const price = req.body.price;
+    //         const ownerHesab = req.body.ownerHesab;
+    //         const type = req.body.type;
+    //         const checkHesab = req.body.checkHesab;
+    //         const serial = req.body.serial;
+    //         const listCode = req.body.listCode;
+    //         const listDesc = req.body.listDesc;
+    //         const listPrice = req.body.listPrice;
+    //         const centers = req.body.centers;
+    //         const serviceNum = req.body.serviceNum || 0;
+    //         const days = req.body.days || [];
+    //         const studentName = req.body.studentName || "";
 
-            if (
-                listPrice.length !== listDesc.length ||
-                listPrice.length !== listCode.length ||
-                listPrice.length !== centers.length
-            ) {
-                return this.response({
-                    res,
-                    code: 300,
-                    message: "all length must be equal",
-                });
-            }
+    //         if (
+    //             listPrice.length !== listDesc.length ||
+    //             listPrice.length !== listCode.length ||
+    //             listPrice.length !== centers.length
+    //         ) {
+    //             return this.response({
+    //                 res,
+    //                 code: 300,
+    //                 message: "all length must be equal",
+    //             });
+    //         }
 
-            for (var i in listCode) {
-                const aa = listCode[i].substring(6);
-                const level = await this.LevelAccDetail.findOne({
-                    accCode: aa,
-                    agencyId,
-                });
-                if (!level || level.levelType === 3) {
-                    return this.response({
-                        res,
-                        code: 300,
-                        message: "cant access",
-                    });
-                }
-            }
+    //         for (var i in listCode) {
+    //             const aa = listCode[i].substring(6);
+    //             const level = await this.LevelAccDetail.findOne({
+    //                 accCode: aa,
+    //                 agencyId,
+    //             });
+    //             if (!level || level.levelType === 3) {
+    //                 return this.response({
+    //                     res,
+    //                     code: 300,
+    //                     message: "cant access",
+    //                 });
+    //             }
+    //         }
 
-            const aa = checkHesab.substring(6);
-            const level = await this.LevelAccDetail.findOne({
-                accCode: aa,
-                agencyId,
-            });
-            if (!level || level.levelType === 3) {
-                return this.response({
-                    res,
-                    code: 300,
-                    message: "cant access",
-                });
-            }
+    //         const aa = checkHesab.substring(6);
+    //         const level = await this.LevelAccDetail.findOne({
+    //             accCode: aa,
+    //             agencyId,
+    //         });
+    //         if (!level || level.levelType === 3) {
+    //             return this.response({
+    //                 res,
+    //                 code: 300,
+    //                 message: "cant access",
+    //             });
+    //         }
 
-            const checkExist = await this.CheckInfo.countDocuments({
-                agencyId,
-                type,
-                serial,
-            });
+    //         const checkExist = await this.CheckInfo.countDocuments({
+    //             agencyId,
+    //             type,
+    //             serial,
+    //         });
 
-            if (checkExist > 0) {
-                return res
-                    .status(503)
-                    .json({ error: "the serial is duplicated" });
-            }
+    //         if (checkExist > 0) {
+    //             return res
+    //                 .status(503)
+    //                 .json({ error: "the serial is duplicated" });
+    //         }
 
-            persianDate.toLocale("en");
-            var SalMali = new persianDate().format("YY");
-            const checkMax = await this.CheckInfo.find({ agencyId }, "infoId")
-                .sort({ infoId: -1 })
-                .limit(1);
-            let numCheck = 1;
-            if (checkMax.length > 0) {
-                numCheck = checkMax[0].infoId + 1;
-            }
-            const infoNum = `${SalMali}-${numCheck}`;
-            let checkInfo = new this.CheckInfo({
-                agencyId,
-                editor: req.user._id,
-                infoId: numCheck,
-                infoNum,
-                seCode: "0",
-                branchCode,
-                branchName,
-                bankName,
-                serial,
-                type,
-                rowCount: listPrice.length,
-                infoDate,
-                infoMoney: price,
-                accCode: checkHesab,
-                ownerHesab,
-                desc,
-            });
-            await checkInfo.save();
+    //         persianDate.toLocale("en");
+    //         var SalMali = new persianDate().format("YY");
+    //         const checkMax = await this.CheckInfo.find({ agencyId }, "infoId")
+    //             .sort({ infoId: -1 })
+    //             .limit(1);
+    //         let numCheck = 1;
+    //         if (checkMax.length > 0) {
+    //             numCheck = checkMax[0].infoId + 1;
+    //         }
+    //         const infoNum = `${SalMali}-${numCheck}`;
+    //         let checkInfo = new this.CheckInfo({
+    //             agencyId,
+    //             editor: req.user._id,
+    //             infoId: numCheck,
+    //             infoNum,
+    //             seCode: "0",
+    //             branchCode,
+    //             branchName,
+    //             bankName,
+    //             serial,
+    //             type,
+    //             rowCount: listPrice.length,
+    //             infoDate,
+    //             infoMoney: price,
+    //             accCode: checkHesab,
+    //             ownerHesab,
+    //             desc,
+    //         });
+    //         await checkInfo.save();
 
-            let doc = new this.DocSanad({
-                agencyId,
-                note: docExp,
-                sanadDate: infoDate,
-                system: 2,
-                definite: false,
-                lock: false,
-                editor: req.user._id,
-            });
-            await doc.save();
+    //         let doc = new this.DocSanad({
+    //             agencyId,
+    //             note: docExp,
+    //             sanadDate: infoDate,
+    //             system: 2,
+    //             definite: false,
+    //             lock: false,
+    //             editor: req.user._id,
+    //         });
+    //         await doc.save();
 
-            persianDate.toLocale("en");
-            var today = new persianDate().format("YYYY/MM/DD");
-            for (var i in listPrice) {
-                let day = 0;
-                if (days[i]) {
-                    day = days[i];
-                }
-                await new this.DocListSanad({
-                    agencyId,
-                    titleId: doc.id,
-                    doclistId: doc.sanadId,
-                    row: i + 1,
-                    bes: 0,
-                    bed: listPrice[i],
-                    note:
-                        listDesc[i].trim() === ""
-                            ? `${checkType} در تاریخ ${today}`
-                            : listDesc[i],
-                    accCode: listCode[i].toString(),
-                    peigiri: infoNum,
-                    sanadDate: infoDate,
-                    serviceNum,
-                    days: day,
-                }).save();
-            }
-            const descF = `پرداخت ${checkType} به شماره ${serial} بابت ${desc}`;
-            let docList = new this.DocListSanad({
-                agencyId,
-                titleId: doc.id,
-                doclistId: doc.sanadId,
-                row: listPrice.length + 1,
-                bes: price,
-                bed: 0,
-                note: descF,
-                accCode: checkHesab,
-                peigiri: infoNum,
-                sanadDate: infoDate,
-                serviceNum,
-            });
-            await docList.save();
+    //         persianDate.toLocale("en");
+    //         var today = new persianDate().format("YYYY/MM/DD");
+    //         for (var i in listPrice) {
+    //             let day = 0;
+    //             if (days[i]) {
+    //                 day = days[i];
+    //             }
+    //             await new this.DocListSanad({
+    //                 agencyId,
+    //                 titleId: doc.id,
+    //                 doclistId: doc.sanadId,
+    //                 row: i + 1,
+    //                 bes: 0,
+    //                 bed: listPrice[i],
+    //                 note:
+    //                     listDesc[i].trim() === ""
+    //                         ? `${checkType} در تاریخ ${today}`
+    //                         : listDesc[i],
+    //                 accCode: listCode[i].toString(),
+    //                 peigiri: infoNum,
+    //                 sanadDate: infoDate,
+    //                 serviceNum,
+    //                 days: day,
+    //             }).save();
+    //         }
+    //         const descF = `پرداخت ${checkType} به شماره ${serial} بابت ${desc}`;
+    //         let docList = new this.DocListSanad({
+    //             agencyId,
+    //             titleId: doc.id,
+    //             doclistId: doc.sanadId,
+    //             row: listPrice.length + 1,
+    //             bes: price,
+    //             bed: 0,
+    //             note: descF,
+    //             accCode: checkHesab,
+    //             peigiri: infoNum,
+    //             sanadDate: infoDate,
+    //             serviceNum,
+    //         });
+    //         await docList.save();
 
-            for (var i in listCode) {
-                await new this.CheckHistory({
-                    agencyId,
-                    infoId: checkInfo.id,
-                    editor: req.user._id,
-                    row: i + 1,
-                    toAccCode: listCode[i],
-                    fromAccCode: checkHesab,
-                    money: listPrice[i],
-                    status: type,
-                    desc: listDesc[i],
-                    sanadNum: doc.sanadId,
-                }).save();
-            }
+    //         for (var i in listCode) {
+    //             await new this.CheckHistory({
+    //                 agencyId,
+    //                 infoId: checkInfo.id,
+    //                 editor: req.user._id,
+    //                 row: i + 1,
+    //                 toAccCode: listCode[i],
+    //                 fromAccCode: checkHesab,
+    //                 money: listPrice[i],
+    //                 status: type,
+    //                 desc: listDesc[i],
+    //                 sanadNum: doc.sanadId,
+    //             }).save();
+    //         }
 
-            return res.json({ docID: doc.sanadId, checkRef: infoNum });
-        } catch (err) {
-            console.error("bnkRcInsertT function error:", err);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return res.json({ docID: doc.sanadId, checkRef: infoNum });
+    //     } catch (err) {
+    //         console.error("bnkRcInsertT function error:", err);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 
     async bnkActionVosool(req, res) {
         try {
@@ -2022,8 +2063,10 @@ module.exports = new (class extends controller {
                 accCode: hesab,
                 peigiri: checkInfo.infoNum,
                 sanadDate: date,
+                mId: doc.sanadId,
             });
             await docList.save();
+
             docList = new this.DocListSanad({
                 agencyId,
                 titleId: doc.id,
@@ -2035,6 +2078,7 @@ module.exports = new (class extends controller {
                 accCode: hesab,
                 peigiri: checkInfo.infoNum,
                 sanadDate: date,
+                mId: doc.sanadId,
             });
             await docList.save();
 

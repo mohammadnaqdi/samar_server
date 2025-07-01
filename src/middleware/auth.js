@@ -28,7 +28,8 @@ async function isLoggined(req, res, next) {
     try {
         const decodedX = jwt.decode(token);
         let userSalt;
-        if (!decodedX.isParent) {
+        const checkSalt=!(decodedX.isParent || decodedX.isDriver);
+        if (checkSalt) {
             userSalt = await getUserSalt(decodedX._id);
             if (!userSalt) {
                 return res.status(401).json({ message: "Invalid token salt" });
@@ -36,7 +37,7 @@ async function isLoggined(req, res, next) {
         }
         // console.log("userSalt",userSalt)
         // console.log("decodedX.isParent",decodedX.isParent)
-        const dynamicKey = decodedX.isParent
+        const dynamicKey = !checkSalt
             ? process.env.JWT_KEY
             : process.env.JWT_KEY + userSalt;
         const decoded = jwt.verify(token, dynamicKey);
@@ -64,6 +65,7 @@ async function isLoggined(req, res, next) {
         user = JSON.parse(user);
         user.id = user._id;
         user._id = cnObjectId(user._id);
+        user.isParent=decodedX.isParent;
 
         if (user.agencyId) {
             user.agencyId = cnObjectId(user.agencyId);
@@ -91,7 +93,7 @@ async function isLoggined(req, res, next) {
         req.user = user;
         next();
     } catch (error) {
-        console.log("Error verifying token:", error);
+        console.log("Error verifying token:", 'jwt expired');
         return res.status(401).json({ message: "Invalid token" });
     }
 }

@@ -66,10 +66,16 @@ router.post(
 router.get("/GetRule", controller.getRule.bind(controller));
 
 router.post(
-    "/SetNewUser",
+    "/SetNewUser",isEnyAdmin,
     validator.setNewUserValidator(),
     controller.validate.bind(controller),
     controller.setNewUser.bind(controller),
+);
+router.post(
+    "/SetNewParent",
+    validator.setNewUserValidator(),
+    controller.validate.bind(controller),
+    controller.setNewParent.bind(controller),
 );
 
 router.get(

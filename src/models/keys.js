@@ -58,6 +58,7 @@ const citySchema = new mongoose.Schema({
   name: { type: String, required: true },
   code: { type: Number, unique: true },
   province: { type: Number, required: true },
+  meter: { type: Number, default:20000},
   active: { type: Boolean, default: true, required: false },
   isCenter: { type: Boolean, default: true, required: false },
   delete: { type: Boolean, default: false, required: false },

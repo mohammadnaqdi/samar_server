@@ -1,13 +1,14 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const helmet = require("helmet");
+
 const mongoose = require("mongoose");
 const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
 
+const helmet = require("helmet");
 const logger = require("./startup/logging");
 
 const { User } = require("./src/models/user");
@@ -24,7 +25,6 @@ checkUsers();
 checkKeys();
 checkParents();
 checkSchools();
-
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(helmet({
@@ -250,7 +250,7 @@ global.__ioSocket = io.on("connection", async (socket) => {
         }
     });
     socket.on("startService2", async (data) => {
-        console.log(`startService2${data.serviceNum}`);
+        console.log(`startService2 :${data.serviceNum}`);
         io.emit(`service${data.serviceNum}`, data);
         try {
             const users = await User.find({ _id: data.parentsId }, "fcm");

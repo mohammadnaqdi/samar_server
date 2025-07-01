@@ -4,14 +4,23 @@ const controller = require("./controller");
 const validator = require("./validator");
 const { isLoggined, isEnyAdmin } = require("./../../middleware/auth");
 
+// router.post(
+//     "/SetPayQueue",
+//     isLoggined,
+//     isEnyAdmin,
+//     validator.setPayQueueValidator(),
+//     controller.validate.bind(controller),
+//     controller.setPayQueue.bind(controller),
+// );
 router.post(
-    "/SetPayQueue",
+    "/InsertInvoice",
     isLoggined,
     isEnyAdmin,
-    validator.setPayQueueValidator(),
+    validator.insertInvoiceValidator(),
     controller.validate.bind(controller),
-    controller.setPayQueue.bind(controller),
+    controller.insertInvoice.bind(controller),
 );
+
 router.get("/Payment", isLoggined, controller.payment.bind(controller));
 router.get("/Payment2", isLoggined, controller.payment2.bind(controller));
 router.get("/PaymentCo", isLoggined, controller.paymentCo.bind(controller));
@@ -21,14 +30,17 @@ router.get(
     controller.paymentChargeAdmin.bind(controller),
 );
 router.get("/GetPayQueue", isLoggined, controller.getPayQueue.bind(controller));
-router.post(
-    "/SetActionPay",
-    isLoggined,
-    isEnyAdmin,
-    validator.setActionPayValidator(),
-    controller.validate.bind(controller),
-    controller.setActionPay.bind(controller),
-);
+router.get("/GetInvoceId", isLoggined, controller.getInvoceId.bind(controller));
+router.get("/SetInstallments", isLoggined,isEnyAdmin, controller.setInstallments.bind(controller));
+router.post("/SetInstallmentForStudent", isLoggined,isEnyAdmin, controller.setInstallmentForStudent.bind(controller));
+// router.post(
+//     "/SetActionPay",
+//     isLoggined,
+//     isEnyAdmin,
+//     validator.setActionPayValidator(),
+//     controller.validate.bind(controller),
+//     controller.setActionPay.bind(controller),
+// );
 router.post(
     "/ShowMorePay",
     isLoggined,
@@ -36,13 +48,21 @@ router.post(
     controller.validate.bind(controller),
     controller.showMorePay.bind(controller),
 );
+// router.post(
+//     "/SetActionPayWithWallet",
+//     isLoggined,
+//     isEnyAdmin,
+//     validator.setActionPayWithWalletValidator(),
+//     controller.validate.bind(controller),
+//     controller.setActionPayWithWallet.bind(controller),
+// );
 router.post(
-    "/SetActionPayWithWallet",
+    "/PayRegistrationWithWallet",
     isLoggined,
     isEnyAdmin,
-    validator.setActionPayWithWalletValidator(),
+    validator.payRegistrationWithWalletValidator(),
     controller.validate.bind(controller),
-    controller.setActionPayWithWallet.bind(controller),
+    controller.payRegistrationWithWallet.bind(controller),
 );
 
 router.get(

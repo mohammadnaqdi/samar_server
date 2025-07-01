@@ -228,6 +228,9 @@ module.exports = new (class extends controller {
                             row: 1,
                             bed: tr.amount,
                             bes: 0,
+                            isOnline: true,
+                            mId: doc.sanadId,
+                            mode: "pay",
                             note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
                             accCode: bank,
                             peigiri: infoNum,
@@ -240,6 +243,9 @@ module.exports = new (class extends controller {
                             row: 2,
                             bed: 0,
                             bes: tr.amount,
+                            isOnline: true,
+                            mId: tr.queueCode,
+                            type: "invoice",
                             note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
                             accCode: code,
                             peigiri: infoNum,
@@ -258,18 +264,18 @@ module.exports = new (class extends controller {
                         }).save();
                     }
 
-                    await new this.PayAction({
-                        setter: tr.userId,
-                        agencyId: tr.agencyId,
-                        transaction: tr.id,
-                        queueCode: tr.queueCode,
-                        amount: tr.amount,
-                        desc: tr.desc,
-                        isOnline: true,
-                        studentCode: tr.stCode,
-                        docSanadNum: num,
-                        docSanadId: id,
-                    }).save();
+                    // await new this.PayAction({
+                    //     setter: tr.userId,
+                    //     agencyId: tr.agencyId,
+                    //     transaction: tr.id,
+                    //     queueCode: tr.queueCode,
+                    //     amount: tr.amount,
+                    //     desc: tr.desc,
+                    //     isOnline: true,
+                    //     studentCode: tr.stCode,
+                    //     docSanadNum: num,
+                    //     docSanadId: id,
+                    // }).save();
 
                     __ioSocket.emit(tr.stCode, { queueCode: tr.queueCode });
                     //send sms
@@ -611,6 +617,8 @@ module.exports = new (class extends controller {
                             row: 1,
                             bed: tr.amount,
                             bes: 0,
+                            isOnline: true,
+                            mId: doc.sanadId,
                             note: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
                             accCode: bank,
                             peigiri: infoNum,
@@ -623,6 +631,9 @@ module.exports = new (class extends controller {
                             row: 2,
                             bed: 0,
                             bes: tr.amount,
+                            isOnline: true,
+                            mId: tr.queueCode,
+                            type: "invoice",
                             note: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
                             accCode: code,
                             peigiri: infoNum,
@@ -643,18 +654,18 @@ module.exports = new (class extends controller {
 
                     console.log("before pay");
 
-                    await new this.PayAction({
-                        setter: tr.userId,
-                        transaction: tr.id,
-                        agencyId: tr.agencyId,
-                        queueCode: tr.queueCode,
-                        amount: tr.amount,
-                        desc: tr.desc,
-                        isOnline: true,
-                        studentCode: tr.stCode,
-                        docSanadNum: num,
-                        docSanadId: id,
-                    }).save();
+                    // await new this.PayAction({
+                    //     setter: tr.userId,
+                    //     transaction: tr.id,
+                    //     agencyId: tr.agencyId,
+                    //     queueCode: tr.queueCode,
+                    //     amount: tr.amount,
+                    //     desc: tr.desc,
+                    //     isOnline: true,
+                    //     studentCode: tr.stCode,
+                    //     docSanadNum: num,
+                    //     docSanadId: id,
+                    // }).save();
 
                     //send sms
                     // if (tr.agencyId === null) {
@@ -981,6 +992,7 @@ module.exports = new (class extends controller {
                         doclistId: doc.sanadId,
                         row: 1,
                         bed: 0,
+                        mId: doc.sanadId,
                         bes: transAction.amount,
                         note: `شارژ کیف پول به شماره پیگیری ${response.RefID}`,
                         accCode: bank,
@@ -994,6 +1006,7 @@ module.exports = new (class extends controller {
                         row: 2,
                         bed: transAction.amount,
                         bes: 0,
+                        mId: doc.sanadId,
                         note: `شارژ کیف پول به شماره پیگیری ${response.RefID}`,
                         accCode: wallet,
                         peigiri: infoNum,
@@ -1277,6 +1290,7 @@ module.exports = new (class extends controller {
                         doclistId: doc.sanadId,
                         row: 1,
                         bed: 0,
+                        mId: doc.sanadId,
                         bes: transAction.amount,
                         note: `افزایش اعتبار پنل به شماره پیگیری ${response.RefID}`,
                         accCode: bank,
@@ -1290,6 +1304,7 @@ module.exports = new (class extends controller {
                         row: 2,
                         bed: transAction.amount,
                         bes: 0,
+                        mId: doc.sanadId,
                         note: `افزایش اعتبار پنل به شماره پیگیری ${response.RefID}`,
                         accCode: charge,
                         peigiri: infoNum,

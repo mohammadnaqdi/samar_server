@@ -82,6 +82,7 @@ module.exports = new (class extends controller {
                 bes: 0,
                 note: desc,
                 accCode: costCode,
+                mId: doc.sanadId,
                 peigiri: "",
                 sanadDate: new Date(),
             }).save();
@@ -94,6 +95,7 @@ module.exports = new (class extends controller {
                 bes: price,
                 note: desc,
                 accCode: wallet,
+                mId: doc.sanadId,
                 peigiri: "",
                 sanadDate: new Date(),
             }).save();
@@ -391,6 +393,7 @@ module.exports = new (class extends controller {
                     bes: 0,
                     note: desc2,
                     accCode: costCode,
+                    mId: doc.sanadId,
                     peigiri: "",
                     sanadDate: new Date(),
                 }).save();
@@ -403,6 +406,7 @@ module.exports = new (class extends controller {
                     bes: price,
                     note: desc2,
                     accCode: wallet,
+                    mId: doc.sanadId,
                     peigiri: "",
                     sanadDate: new Date(),
                 }).save();
@@ -514,33 +518,33 @@ module.exports = new (class extends controller {
                     id,
                     "active delete avanak avanakNumber"
                 );
-                if (
-                    student.active &&
-                    !student.delete &&
-                    student.avanak &&
-                    student.avanakNumber.length > 6
-                ) {
-                    let data = qs.stringify({
-                        number: student.avanakNumber,
-                        messageId: 32293806,
-                        UserName: amootUser,
-                        Password: amootPass,
-                        serverid: 0,
-                        vote: false,
-                    });
+                // if (
+                //     student.active &&
+                //     !student.delete &&
+                //     student.avanak &&
+                //     student.avanakNumber.length > 6
+                // ) {
+                //     let data = qs.stringify({
+                //         number: student.avanakNumber,
+                //         messageId: 32293806,
+                //         UserName: amootUser,
+                //         Password: amootPass,
+                //         serverid: 0,
+                //         vote: false,
+                //     });
 
-                    let config = {
-                        method: "post",
-                        url: "https://portal.avanak.ir/webservice3.asmx/QuickSend",
-                        headers: {
-                            Authorization: amoot_t,
-                            "Content-Type": "application/x-www-form-urlencoded",
-                        },
-                        data: data,
-                    };
+                    // let config = {
+                    //     method: "post",
+                    //     url: "https://portal.avanak.ir/webservice3.asmx/QuickSend",
+                    //     headers: {
+                    //         Authorization: amoot_t,
+                    //         "Content-Type": "application/x-www-form-urlencoded",
+                    //     },
+                    //     data: data,
+                    // };
 
-                    await axios.request(config);
-                }
+                    // await axios.request(config);
+                // }
             });
 
             await Promise.all(requests);

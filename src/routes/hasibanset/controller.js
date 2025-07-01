@@ -1418,6 +1418,80 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async changeSanadPay(req, res) {
+        try {
+            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+            const accCode = req.body.accCode;
+            const type = req.body.type;
+            const days = req.body.days || 0;
+            const sanadId = req.body.sanadId;
+            const mId = req.body.mId;
+            const studentId = req.body.studentId || null;
+
+            const docA = await this.DocSanad.findOne({ agencyId, sanadId });
+            if (!docA) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "Document not found",
+                });
+            }
+            let doc = await this.DocListSanad.findOne({
+                agencyId,
+                doclistId: sanadId,
+                accCode,
+            });
+            if (!doc) {
+                return this.response({
+                    res,
+                    code: 405,
+                    message: "doc not found",
+                });
+            }
+           if(mId!=0) doc.mId = mId;
+            doc.type = type;
+            if (days != 0) {
+                doc.days = days;
+            }
+            await doc.save();
+            if (studentId) {
+                const payQueue = await this.PayQueue.findOneAndUpdate(
+                    {
+                        agencyId,
+                        studentId,
+                        code: mId,
+                    },
+                    {
+                        isPaid: true,
+                        setter: req.user._id,
+                        payDate: new Date(),
+                    }
+                );
+                if (payQueue && payQueue.type === "prePayment") {
+                    const invoice = await this.Invoice.findOne({
+                        agencyId,
+                        code: mId,
+                    });
+                    if (invoice && invoice.confirmPrePaid) {
+                        let student = await this.Student.findById(studentId);
+                        if (student && student.state === 2) {
+                            student.state = 3;
+                            student.stateTitle = "در انتظار تعیین سرویس";
+                            await student.save();
+                        }
+                    }
+                }
+            }
+
+            return this.response({
+                res,
+                data: doc.note,
+            });
+        } catch (error) {
+            console.error("Error in changeSanadPay:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async getHesabByListCode(req, res) {
         const agencyId = req.body.agencyId;
@@ -1575,8 +1649,9 @@ module.exports = new (class extends controller {
             const name = req.body.name;
             const mainId = req.body.mainId;
             const desc = req.body.desc ?? "";
+            console.log("name", name);
 
-            if (id.trim().length < 5) {
+            if (!ObjectId.isValid(id)) {
                 const lastGroup = await this.GroupAcc.find(
                     { agencyId },
                     "groupId"
@@ -1600,10 +1675,11 @@ module.exports = new (class extends controller {
                     data: gp,
                 });
             }
+            console.log("id", id);
             const gp = await this.GroupAcc.findByIdAndUpdate(id, {
-                name,
-                desc,
-                mainId,
+                name: name,
+                desc: desc,
+                mainId: mainId,
                 editor: req.user._id,
             });
             return this.response({

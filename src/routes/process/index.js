@@ -27,13 +27,7 @@ router.post(
     controller.studentPayState2.bind(controller)
 );
 
-router.post(
-    "/SetStudent",
-    isEnyAdmin,
-    validator.setStudentValidator(),
-    controller.validate.bind(controller),
-    controller.setStudent.bind(controller),
-);
+
 router.post(
     "/StudentListByIds",
     isEnyAdmin,

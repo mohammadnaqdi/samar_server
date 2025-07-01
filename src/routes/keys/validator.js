@@ -31,8 +31,11 @@ module.exports = new (class {
                 .isLength({ min: 1, max: 40 })
                 .withMessage("title cant be empty max 40"),
             check("type").not().isEmpty().withMessage("type cant be empty"),
-            check("cityCode").not().isEmpty().withMessage("cityCode cant be empty"),
-            check("cityCode").isNumeric().withMessage("cityCode is be number")
+            check("cityCode")
+                .not()
+                .isEmpty()
+                .withMessage("cityCode cant be empty"),
+            check("cityCode").isNumeric().withMessage("cityCode is be number"),
         ];
     }
     changeShiftValidator() {
@@ -54,18 +57,36 @@ module.exports = new (class {
                 .withMessage("isHoliday cant be empty"),
         ];
     }
-     setCityValidator() {
+    setCityValidator() {
         return [
             check("code").not().isEmpty().withMessage("code cant be empty"),
             check("code").isNumeric().withMessage("code cant be string"),
-            check("province").not().isEmpty().withMessage("province cant be empty"),
+            check("province")
+                .not()
+                .isEmpty()
+                .withMessage("province cant be empty"),
             check("name").not().isEmpty().withMessage("name cant be empty"),
             check("active").not().isEmpty().withMessage("active cant be empty"),
         ];
     }
-       getMySearchValidator() {
+    getMySearchValidator() {
         return [
-            check("location").not().isEmpty().withMessage("location cant be empty"),
+            check("location")
+                .not()
+                .isEmpty()
+                .withMessage("location cant be empty"),
+        ];
+    }
+    getAddress2Validator() {
+        return [
+            check("lat")
+                .not()
+                .isEmpty()
+                .withMessage("lat cant be empty"),
+            check("lng")
+                .not()
+                .isEmpty()
+                .withMessage("lng cant be empty"),
         ];
     }
 })();

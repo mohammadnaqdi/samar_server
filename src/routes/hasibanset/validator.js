@@ -95,4 +95,13 @@ module.exports = new (class {
             check("percent").isNumeric().withMessage("percent cant be empty"),
         ];
     }
+    changeSanadPayValidator() {
+        return [
+            check("agencyId").not().isEmpty().withMessage("agencyId cant be empty"),
+            check("type").not().isEmpty().withMessage("type cant be empty"),
+            check("accCode").not().isEmpty().withMessage("accCode cant be empty"),
+            check("sanadId").isNumeric().withMessage("sanadId cant be empty"),
+            check("mId").isNumeric().withMessage("mId cant be empty"),
+        ];
+    }
 })();

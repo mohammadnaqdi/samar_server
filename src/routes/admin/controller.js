@@ -301,7 +301,7 @@ module.exports = new (class extends controller {
                             { delete: false },
                         ],
                     },
-                    "studentCode parent school address addressDetails location gradeTitle name lastName gender state serviceId time"
+                    "studentCode parent school address addressDetails location gradeTitle name lastName gender state serviceNum time"
                 );
                 //  console.log("agencyId",agencyId);
                 // console.log("onlyParent",JSON.stringify(onlyParent));
@@ -649,7 +649,7 @@ module.exports = new (class extends controller {
 
             let allStudent = await this.Student.find(
                 { $and: qr },
-                "studentCode parent school gradeTitle name lastName state serviceId serviceCost"
+                "studentCode parent school gradeTitle name lastName state serviceNum serviceCost"
             );
 
             var studentFilter = [];
@@ -795,7 +795,7 @@ module.exports = new (class extends controller {
                 });
             }
 
-            const serviceNum = student.serviceId;
+            const serviceNum = student.serviceNum;
             const schoolId = student.school;
             const address = {
                 route: student.address,
@@ -889,7 +889,7 @@ module.exports = new (class extends controller {
                         (studentInfo.homeLng = 0),
                         (studentInfo.schoolLng = 0),
                         (studentInfo.state = 0),
-                        (studentInfo.serviceId = 0),
+                        (studentInfo.serviceNum = 0),
                         (studentInfo.serviceDistance = 0),
                         (studentInfo.gradeId = 0);
                     if (student) {
@@ -906,7 +906,7 @@ module.exports = new (class extends controller {
                         studentInfo.gender = student.gender;
                         studentInfo.state = student.state;
                         studentInfo.stateTitle = student.stateTitle;
-                        studentInfo.serviceId = student.serviceId;
+                        studentInfo.serviceNum = student.serviceNum;
                         studentInfo.stateTitle = student.stateTitle;
                         studentInfo.serviceDistance = student.serviceDistance;
                         studentInfo.gradeId = student.gradeId;

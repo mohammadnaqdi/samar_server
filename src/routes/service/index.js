@@ -120,9 +120,9 @@ router.post(
     controller.validate.bind(controller),
     controller.serviceByOneStudent.bind(controller)
 );
-router.get(
-    "/FindNotEqualService",
-    controller.findNotEqualService.bind(controller)
-);
+// router.get(
+//     "/FindNotEqualService",
+//     controller.findNotEqualService.bind(controller)
+// );
 
 module.exports = router;

@@ -55,11 +55,6 @@ router.post(
     controller.validate.bind(controller),
     controller.inspectorPhoneCheck.bind(controller),
 );
-router.get("/GetVersionAndroid", controller.getVersionAndroid.bind(controller));
-router.get(
-    "/GetVersionAndroidParent",
-    controller.getVersionAndroidParent.bind(controller),
-);
 router.get(
     "/GetDriverLocation",
     isLoggined,

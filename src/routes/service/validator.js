@@ -25,6 +25,10 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("driverId cant be empty"),
+            check("driverCost")
+                .not()
+                .isEmpty()
+                .withMessage("driverCost cant be empty"),
             check("schoolId")
                 .not()
                 .isEmpty()
@@ -140,6 +144,10 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("studentCost cant be empty"),
+            check("driverCost")
+                .not()
+                .isEmpty()
+                .withMessage("driverCost cant be empty"),
             check("agencyId")
                 .not()
                 .isEmpty()

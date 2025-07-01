@@ -37,6 +37,7 @@ async function generateToken(amount, invoice) {
                 "Content-Type": "application/json",
             },
         });
+        console.log("response", response);
 
         if (response.data.Status === 0) {
             return response.data.Accesstoken;
@@ -62,7 +63,7 @@ module.exports = new (class extends controller {
                 message: "amount & desc stCode queueCode need",
             });
         }
-        const socket = req.query.socket;
+        // const socket = req.query.socket;
 
         let amount = parseInt(req.query.amount);
         const stCode = req.query.stCode;
@@ -79,18 +80,47 @@ module.exports = new (class extends controller {
             { code: queueCode },
             "amount amount03 amount37 amount7i merchentId agencyId type"
         );
-        const payAction = await this.PayAction.find({
-            queueCode,
-            studentCode: req.query.stCode,
-            delete: false,
-        });
-        if (payAction.length > 0) {
+        if (!payQueue) {
             return this.response({
                 res,
-                code: 210,
+                code: 404,
+                message: "payQueue not find",
+            });
+        }
+        const docListSanad = await this.DocListSanad.findOne(
+            {
+                $and: [
+                    {
+                        $or: [
+                            { accCode: "003005" + stCode },
+                            { forCode: "003005" + stCode },
+                        ],
+                    },
+                    { mId: queueCode },
+                    { type: "invoice" },
+                ],
+            },
+            ""
+        ).lean();
+        if (docListSanad) {
+            return this.response({
+                res,
+                code: 203,
                 message: "this queue is paid refresh please",
             });
         }
+        // const payAction = await this.PayAction.find({
+        //     queueCode,
+        //     studentCode: req.query.stCode,
+        //     delete: false,
+        // });
+        // if (payAction.length > 0) {
+        //     return this.response({
+        //         res,
+        //         code: 210,
+        //         message: "this queue is paid refresh please",
+        //     });
+        // }
 
         if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
             if (student.serviceDistance <= 3000) {
@@ -141,7 +171,7 @@ module.exports = new (class extends controller {
             });
         }
         if (amount < 10000) {
-            console.log("log here2");
+            console.log("amount < 10000", amount);
             return this.response({
                 res,
                 code: 203,
@@ -153,7 +183,12 @@ module.exports = new (class extends controller {
             amount != payQueue.amount &&
             payQueue.type != 7
         ) {
-            console.log("log here3");
+            console.log(
+                "amount not correct",
+                amount,
+                "payQueue.amount",
+                payQueue.amount
+            );
 
             return this.response({
                 res,
@@ -212,11 +247,12 @@ module.exports = new (class extends controller {
                 });
             }
         }
-        // console.log("amount", amount);
+        console.log("amount", amount);
         // const url = config.get("url.address3");
         if (!desc.includes("شرکت")) {
             desc = desc + " " + process.env.URL;
         }
+        console.log("desc", desc);
         try {
             let invoice = generateInvoice();
 
@@ -340,18 +376,47 @@ module.exports = new (class extends controller {
             { code: queueCode },
             "amount amount03 amount37 amount7i merchentId agencyId type"
         );
-        const payAction = await this.PayAction.find({
-            queueCode,
-            studentCode: req.query.stCode,
-            delete: false,
-        });
-        if (payAction.length > 0) {
+        if (!payQueue) {
             return this.response({
                 res,
-                code: 210,
+                code: 404,
+                message: "payQueue not find",
+            });
+        }
+        const docListSanad = await this.DocListSanad.findOne(
+            {
+                $and: [
+                    {
+                        $or: [
+                            { accCode: "003005" + stCode },
+                            { forCode: "003005" + stCode },
+                        ],
+                    },
+                    { mId: queueCode },
+                    { type: "invoice" },
+                ],
+            },
+            ""
+        ).lean();
+        if (docListSanad) {
+            return this.response({
+                res,
+                code: 203,
                 message: "this queue is paid refresh please",
             });
         }
+        // const payAction = await this.PayAction.find({
+        //     queueCode,
+        //     studentCode: req.query.stCode,
+        //     delete: false,
+        // });
+        // if (payAction.length > 0) {
+        //     return this.response({
+        //         res,
+        //         code: 210,
+        //         message: "this queue is paid refresh please",
+        //     });
+        // }
 
         if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
             if (student.serviceDistance <= 3000) {
@@ -697,43 +762,43 @@ module.exports = new (class extends controller {
         }
     }
 
-    async setActionPay(req, res) {
-        try {
-            const { agencyId, queueCode, amount, desc, studentCode, sanadNum } =
-                req.body;
-            const docSanad = await this.DocSanad.findOne(
-                { agencyId, sanadId: sanadNum },
-                ""
-            );
-            if (!docSanad) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "docSanad not find",
-                });
-            }
-            let payAction = new this.PayAction({
-                setter: req.user._id,
-                queueCode,
-                amount,
-                desc,
-                isOnline: false,
-                studentCode,
-                docSanadNum: sanadNum,
-                docSanadId: docSanad._id,
-                agencyId,
-            });
-            await payAction.save();
+    // async setActionPay(req, res) {
+    //     try {
+    //         const { agencyId, queueCode, amount, desc, studentCode, sanadNum } =
+    //             req.body;
+    //         const docSanad = await this.DocSanad.findOne(
+    //             { agencyId, sanadId: sanadNum },
+    //             ""
+    //         );
+    //         if (!docSanad) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "docSanad not find",
+    //             });
+    //         }
+    //         let payAction = new this.PayAction({
+    //             setter: req.user._id,
+    //             queueCode,
+    //             amount,
+    //             desc,
+    //             isOnline: false,
+    //             studentCode,
+    //             docSanadNum: sanadNum,
+    //             docSanadId: docSanad._id,
+    //             agencyId,
+    //         });
+    //         await payAction.save();
 
-            return this.response({
-                res,
-                data: payAction.id,
-            });
-        } catch (error) {
-            console.error("Error while 00023:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             data: payAction.id,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while 00023:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 
     async showMorePay(req, res) {
         try {
@@ -744,7 +809,7 @@ module.exports = new (class extends controller {
                 "name lastName phone"
             );
             let transAction = null;
-            if (transaction != null) {
+            if (transaction != null && transaction != "") {
                 transAction = await this.Transactions.findById(
                     transaction,
                     "authority refID amount desc updatedAt"
@@ -765,7 +830,7 @@ module.exports = new (class extends controller {
                 );
 
                 for (var doc of doclistSanad) {
-                    if (doc.type === "student") {
+                    if (doc.accCode.substring(0, 6) === "003005") {
                         const student = await this.Student.findOne(
                             { studentCode: doc.accCode.substring(6) },
                             "name lastName"
@@ -824,25 +889,208 @@ module.exports = new (class extends controller {
         }
     }
 
-    async setActionPayWithWallet(req, res) {
+    // async setActionPayWithWallet(req, res) {
+    //     try {
+    //         const { queueCode, studentCode } = req.body;
+    //         const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+    //         let payQueue = await this.PayQueue.findOne({ code: queueCode });
+    //         if (!payQueue) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "payQueue not find",
+    //             });
+    //         }
+    //         if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
+    //             if (student.serviceDistance <= 3000) {
+    //                 payQueue.amount = payQueue.amount03;
+    //             } else if (student.serviceDistance <= 7000) {
+    //                 payQueue.amount = payQueue.amount37;
+    //             } else {
+    //                 payQueue.amount = payQueue.amount7i;
+    //             }
+    //         }
+    //         const amount = payQueue.amount;
+    //         const agency = await this.Agency.findById(agencyId, "settings");
+    //         const student = await this.Student.findOne(
+    //             { studentCode },
+    //             "name lastName"
+    //         );
+    //         let name = "دانش آموز";
+
+    //         if (!student || !agency) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "student or agency not find",
+    //             });
+    //         }
+    //         const docListSanad = await this.DocListSanad.findOne({
+    //             $and: [
+    //                 {
+    //                     $or: [
+    //                         { accCode: "003005" + studentCode },
+    //                         { forCode: "003005" + studentCode },
+    //                     ],
+    //                 },
+    //                 { mId: queueCode },
+    //                 { type: "invoice" },
+    //             ],
+    //         }).lean();
+    //         if (docListSanad) {
+    //             return this.response({
+    //                 res,
+    //                 code: 203,
+    //                 message: "this queue is paid refresh please",
+    //             });
+    //         }
+    //         name = student.name + " " + student.lastName + " کد " + studentCode;
+    //         const wallet = agency.settings.find(
+    //             (obj) => obj.wallet != undefined
+    //         ).wallet;
+    //         // console.log("setting", agency.settings);
+    //         const costCode = agency.settings.find(
+    //             (obj) => obj.cost != undefined
+    //         ).cost;
+    //         if (!costCode || !wallet) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "costCode || wallet not find",
+    //             });
+    //         }
+    //         let mandeh = 0;
+    //         const result = await this.DocListSanad.aggregate([
+    //             {
+    //                 $match: {
+    //                     accCode: wallet,
+    //                     agencyId: agencyId,
+    //                 },
+    //             },
+    //             {
+    //                 $group: {
+    //                     _id: null,
+    //                     total: {
+    //                         $sum: {
+    //                             $subtract: ["$bed", "$bes"],
+    //                         },
+    //                     },
+    //                 },
+    //             },
+    //         ]);
+    //         // console.log("result",result);
+    //         mandeh = result[0]?.total || 0;
+    //         if (amount > mandeh) {
+    //             return this.response({
+    //                 res,
+    //                 code: 205,
+    //                 message: "The account balance is insufficient",
+    //             });
+    //         }
+    //         const desc = `پرداخت ${payQueue.title} از کیف پول بابت دانش آموز ${name}`;
+    //         let doc = new this.DocSanad({
+    //             agencyId,
+    //             note: desc,
+    //             sanadDate: new Date(),
+    //             system: 3,
+    //             definite: false,
+    //             lock: true,
+    //             editor: req.user._id,
+    //         });
+    //         await doc.save();
+    //         let docPaid = new this.DocListSanad({
+    //             agencyId,
+    //             titleId: doc.id,
+    //             doclistId: doc.sanadId,
+    //             row: 1,
+    //             bed: amount,
+    //             bes: 0,
+    //             note: desc,
+    //             accCode: costCode,
+    //             mId: doc.sanadId,
+    //             peigiri: studentCode,
+    //             sanadDate: new Date(),
+    //         });
+    //         await docPaid.save();
+    //         await new this.DocListSanad({
+    //             agencyId,
+    //             titleId: doc.id,
+    //             doclistId: doc.sanadId,
+    //             row: 2,
+    //             bed: 0,
+    //             bes: amount,
+    //             note: desc,
+    //             accCode: wallet,
+    //             mId: queueCode,
+    //             type: "invoice",
+    //             forCode: "003005" + studentCode,
+    //             peigiri: studentCode,
+    //             sanadDate: new Date(),
+    //         }).save();
+
+    //         // let payAction = new this.PayAction({
+    //         //     setter: req.user._id,
+    //         //     queueCode,
+    //         //     amount,
+    //         //     desc,
+    //         //     isOnline: false,
+    //         //     studentCode,
+    //         //     docSanadNum: doc.sanadId,
+    //         //     docSanadId: doc._id,
+    //         //     agencyId,
+    //         // });
+    //         // await payAction.save();
+    //         if (payQueue.type === 1) {
+    //             let student = await this.Student.findOne({
+    //                 studentCode: studentCode,
+    //             });
+    //             if (student.state < 2) {
+    //                 student.state = 2;
+    //                 student.stateTitle = "در انتظار پیش پرداخت";
+    //                 await student.save();
+    //             }
+    //         }
+
+    //         await new this.OperationLog({
+    //             userId: req.user._id,
+    //             name: req.user.name + " " + req.user.lastName,
+    //             agencyId,
+    //             targetIds: [student._id],
+    //             targetTable: "student",
+    //             sanadId: doc.sanadId,
+    //             actionName: "setActionPayWithWallet",
+    //             actionNameFa: "تایید اطلاعات و ثبت پرداخت از کیف پول",
+    //             desc: desc,
+    //         }).save();
+    //         return this.response({
+    //             res,
+    //             data: { docPaid: docPaid, sanadId: doc.sanadId },
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while setActionPayWithWallet:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
+    async payRegistrationWithWallet(req, res) {
         try {
-            const { queueCode, studentCode } = req.body;
+            const { studentId } = req.body;
             const agencyId = ObjectId.createFromHexString(req.body.agencyId);
-            let payQueue = await this.PayQueue.findOne({ code: queueCode });
-            if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
-                if (student.serviceDistance <= 3000) {
-                    payQueue.amount = payQueue.amount03;
-                } else if (student.serviceDistance <= 7000) {
-                    payQueue.amount = payQueue.amount37;
-                } else {
-                    payQueue.amount = payQueue.amount7i;
-                }
+            let payQueue = await this.PayQueue.findOne({
+                studentId,
+                type: "registration",
+            });
+            if (!payQueue) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "payQueue not find",
+                });
             }
             const amount = payQueue.amount;
             const agency = await this.Agency.findById(agencyId, "settings");
-            const student = await this.Student.findOne(
-                { studentCode },
-                "name lastName"
+            const student = await this.Student.findById(
+                studentId,
+                "name lastName studentCode state stateTitle"
             );
             let name = "دانش آموز";
 
@@ -853,7 +1101,67 @@ module.exports = new (class extends controller {
                     message: "student or agency not find",
                 });
             }
-            name = student.name + " " + student.lastName + " کد " + studentCode;
+            const docListSanad = await this.DocListSanad.findOne({
+                $and: [
+                    {
+                        $or: [
+                            { accCode: "003005" + student.studentCode },
+                            { forCode: "003005" + student.studentCode },
+                        ],
+                    },
+                    { mId: payQueue.code },
+                    { type: "invoice" },
+                ],
+            }).lean();
+            if (docListSanad) {
+                if (payQueue.type === "registration") {
+                    if (student.state < 2) {
+                        student.state = 2;
+                        student.stateTitle = "در انتظار پیش پرداخت";
+                        await student.save();
+                    }
+                }
+                const prePayment = await this.PayQueue.findOne({
+                    agencyId: agency._id,
+                    studentId: student._id,
+                    type: "prePayment",
+                });
+                if (!prePayment || !prePayment.delete) {
+                    const invoice = await this.Invoice.findOne({
+                        agencyId: agency._id,
+                        type: "prePayment",
+                        delete: false,
+                    });
+                    if (invoice) {
+                        let payQueue = new this.PayQueue({
+                            inVoiceId: invoice._id,
+                            code: invoice.code,
+                            agencyId: agency._id,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice.type,
+                            amount: invoice.amount,
+                            title: invoice.title,
+                            maxDate: invoice.maxDate,
+                            isPaid: false,
+                        });
+                        await payQueue.save();
+                    }
+                }
+                return this.response({
+                    res,
+                    data: {
+                        docPaid: docListSanad,
+                        sanadId: docListSanad.doclistId,
+                    },
+                });
+            }
+            name =
+                student.name +
+                " " +
+                student.lastName +
+                " کد " +
+                student.studentCode;
             const wallet = agency.settings.find(
                 (obj) => obj.wallet != undefined
             ).wallet;
@@ -907,7 +1215,7 @@ module.exports = new (class extends controller {
                 editor: req.user._id,
             });
             await doc.save();
-            await new this.DocListSanad({
+            let docPaid = new this.DocListSanad({
                 agencyId,
                 titleId: doc.id,
                 doclistId: doc.sanadId,
@@ -916,11 +1224,11 @@ module.exports = new (class extends controller {
                 bes: 0,
                 note: desc,
                 accCode: costCode,
-                isPaid: true,
-                invoice: queueCode,
-                peigiri: studentCode,
+                mId: doc.sanadId,
+                peigiri: student.studentCode,
                 sanadDate: new Date(),
-            }).save();
+            });
+            await docPaid.save();
             await new this.DocListSanad({
                 agencyId,
                 titleId: doc.id,
@@ -930,32 +1238,60 @@ module.exports = new (class extends controller {
                 bes: amount,
                 note: desc,
                 accCode: wallet,
-                isPaid: true,
-                invoice: queueCode,
-                peigiri: studentCode,
+                mId: payQueue.code,
+                type: "invoice",
+                forCode: "003005" + student.studentCode,
+                peigiri: student.studentCode,
                 sanadDate: new Date(),
             }).save();
+            payQueue.isPaid = true;
+            payQueue.payDate = new Date();
+            await payQueue.save();
 
-            let payAction = new this.PayAction({
-                setter: req.user._id,
-                queueCode,
-                amount,
-                desc,
-                isOnline: false,
-                studentCode,
-                docSanadNum: doc.sanadId,
-                docSanadId: doc._id,
-                agencyId,
-            });
-            await payAction.save();
-            if (payQueue.type === 1) {
-                let student = await this.Student.findOne({
-                    studentCode: studentCode,
-                });
+            // let payAction = new this.PayAction({
+            //     setter: req.user._id,
+            //     queueCode,
+            //     amount,
+            //     desc,
+            //     isOnline: false,
+            //     studentCode,
+            //     docSanadNum: doc.sanadId,
+            //     docSanadId: doc._id,
+            //     agencyId,
+            // });
+            // await payAction.save();
+            if (payQueue.type === "registration") {
                 if (student.state < 2) {
                     student.state = 2;
                     student.stateTitle = "در انتظار پیش پرداخت";
                     await student.save();
+                }
+                const prePayment = await this.PayQueue.findOne({
+                    agencyId: agency._id,
+                    studentId: student._id,
+                    type: "prePayment",
+                });
+                if (!prePayment || !prePayment.delete) {
+                    const invoice = await this.Invoice.findOne({
+                        agencyId: agency._id,
+                        type: "prePayment",
+                        delete: false,
+                    });
+                    if (invoice) {
+                        let payQueue = new this.PayQueue({
+                            inVoiceId: invoice._id,
+                            code: invoice.code,
+                            agencyId: agency._id,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice.type,
+                            amount: invoice.amount,
+                            title: invoice.title,
+                            maxDate: invoice.maxDate,
+                            isPaid: false,
+                        });
+                        await payQueue.save();
+                    }
                 }
             }
 
@@ -966,13 +1302,13 @@ module.exports = new (class extends controller {
                 targetIds: [student._id],
                 targetTable: "student",
                 sanadId: doc.sanadId,
-                actionName: "setActionPayWithWallet",
+                actionName: "payRegistrationWithWallet",
                 actionNameFa: "تایید اطلاعات و ثبت پرداخت از کیف پول",
                 desc: desc,
             }).save();
             return this.response({
                 res,
-                data: { payAction: payAction, sanadId: doc.sanadId },
+                data: { docPaid: docPaid, sanadId: doc.sanadId },
             });
         } catch (error) {
             console.error("Error while setActionPayWithWallet:", error);
@@ -1039,7 +1375,126 @@ module.exports = new (class extends controller {
         }
     }
 
-    async setPayQueue(req, res) {
+    // async setPayQueue(req, res) {
+    //     try {
+    //         const {
+    //             id,
+    //             amount,
+    //             title,
+    //             active,
+    //             desc,
+    //             schools,
+    //             grades,
+    //             students,
+    //             optinal,
+    //             maxDate,
+    //             merchentId,
+    //             listAccCode,
+    //             listAccName,
+
+    //             type,
+    //         } = req.body;
+    //         let { amount03, amount37, amount7i } = req.body;
+    //         if (!amount03) {
+    //             amount03 = -1;
+    //         }
+    //         if (!amount37) {
+    //             amount37 = -1;
+    //         }
+    //         if (!amount7i) {
+    //             amount7i = -1;
+    //         }
+
+    //         const confirmInfo = req.body.confirmInfo ?? true;
+    //         const confirmPrePaid = req.body.confirmPrePaid ?? true;
+
+    //         const agencyId =
+    //             req.body.agencyId.trim() === "" ? null : req.body.agencyId;
+    //         if (agencyId === null && !req.user.isadmin) {
+    //             return this.response({
+    //                 res,
+    //                 code: 214,
+    //                 message: "agency need",
+    //             });
+    //         }
+    //         if (id === "0") {
+    //             let code = 1;
+    //             const lastQu = await this.PayQueue.find({})
+    //                 .sort({ code: -1 })
+    //                 .limit(1);
+    //             if (lastQu.length > 0) {
+    //                 code = lastQu[0].code + 1;
+    //             }
+    //             let payQueue = new this.PayQueue({
+    //                 agencyId,
+    //                 setter: req.user._id,
+    //                 code,
+    //                 amount,
+    //                 amount03,
+    //                 amount37,
+    //                 amount7i,
+    //                 maxDate,
+    //                 merchentId,
+    //                 title,
+    //                 active,
+    //                 desc,
+    //                 schools,
+    //                 grades,
+    //                 students,
+    //                 optinal,
+    //                 confirmInfo,
+    //                 confirmPrePaid,
+    //                 listAccCode,
+    //                 listAccName,
+    //                 type,
+    //             });
+    //             await payQueue.save();
+    //             return this.response({
+    //                 res,
+    //                 message: "new insert",
+    //                 data: { code, id: payQueue.id },
+    //             });
+    //         }
+
+    //         const pay = await this.PayQueue.findByIdAndUpdate(id, {
+    //             amount,
+    //             amount03,
+    //             amount37,
+    //             amount7i,
+    //             title,
+    //             active,
+    //             desc,
+    //             merchentId,
+    //             schools,
+    //             maxDate,
+    //             grades,
+    //             students,
+    //             optinal,
+    //             active,
+    //             confirmInfo,
+    //             confirmPrePaid,
+    //             listAccCode,
+    //             listAccName,
+    //         });
+    //         if (!pay) {
+    //             this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "not find",
+    //             });
+    //             return;
+    //         }
+    //         return this.response({
+    //             res,
+    //             message: "update",
+    //             data: { code: pay.code, id },
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while 00028:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
+    async insertInvoice(req, res) {
         try {
             const {
                 id,
@@ -1048,113 +1503,96 @@ module.exports = new (class extends controller {
                 active,
                 desc,
                 schools,
-                grades,
-                students,
-                optinal,
                 maxDate,
-                merchentId,
-                listAccCode,
-                listAccName,
-
+                distance,
+                confirmInfo,
+                confirmPrePaid,
                 type,
             } = req.body;
-            let { amount03, amount37, amount7i } = req.body;
-            if (!amount03) {
-                amount03 = -1;
-            }
-            if (!amount37) {
-                amount37 = -1;
-            }
-            if (!amount7i) {
-                amount7i = -1;
-            }
+            const isDelete = req.body.delete;
+            const fixPrice = req.body.fixPrice;
 
-            const confirmInfo = req.body.confirmInfo ?? true;
-            const confirmPrePaid = req.body.confirmPrePaid ?? true;
-
+            console.log("fixPrice", fixPrice);
+            console.log("id", id);
             const agencyId =
                 req.body.agencyId.trim() === "" ? null : req.body.agencyId;
-            if (agencyId === null && !req.user.isadmin) {
+            const counter = req.body.counter || 0;
+            if (type === "registration" && !req.user.isSuperAdmin) {
                 return this.response({
                     res,
-                    code: 214,
-                    message: "agency need",
+                    code: 405,
+                    message: "cant access ",
                 });
             }
-            if (id === "0") {
-                let code = 1;
-                const lastQu = await this.PayQueue.find({})
-                    .sort({ code: -1 })
-                    .limit(1);
-                if (lastQu.length > 0) {
-                    code = lastQu[0].code + 1;
-                }
-                let payQueue = new this.PayQueue({
+            if (!mongoose.isValidObjectId(id)) {
+                let payQueue = new this.Invoice({
                     agencyId,
                     setter: req.user._id,
-                    code,
                     amount,
-                    amount03,
-                    amount37,
-                    amount7i,
+                    distance,
                     maxDate,
-                    merchentId,
                     title,
                     active,
                     desc,
                     schools,
-                    grades,
-                    students,
-                    optinal,
+                    counter,
                     confirmInfo,
                     confirmPrePaid,
-                    listAccCode,
-                    listAccName,
                     type,
+                    delete: isDelete,
+                    fixPrice,
                 });
                 await payQueue.save();
                 return this.response({
                     res,
                     message: "new insert",
-                    data: { code, id: payQueue.id },
+                    data: { code: payQueue.code, id: payQueue.id },
                 });
             }
 
-            const pay = await this.PayQueue.findByIdAndUpdate(id, {
-                amount,
-                amount03,
-                amount37,
-                amount7i,
-                title,
-                active,
-                desc,
-                merchentId,
-                schools,
-                maxDate,
-                grades,
-                students,
-                optinal,
-                active,
-                confirmInfo,
-                confirmPrePaid,
-                listAccCode,
-                listAccName,
-            });
-            if (!pay) {
-                this.response({
-                    res,
-                    code: 404,
-                    message: "not find",
-                });
-                return;
+            const payQueue = await this.Invoice.findByIdAndUpdate(
+                id,
+                {
+                    setter: req.user._id,
+                    amount,
+                    distance,
+                    maxDate,
+                    title,
+                    active,
+                    desc,
+                    schools,
+                    counter,
+                    confirmPrePaid,
+                    delete: isDelete,
+                    fixPrice,
+                },
+                { new: true }
+            );
+            if (payQueue.type != "installment") {
+                await this.PayQueue.updateMany(
+                    {
+                        code: payQueue.code,
+                        isPaid: false,
+                        isSetAuto: true,
+                    },
+                    {
+                        amount,
+                        maxDate,
+                        title,
+                        counter,
+                        confirmPrePaid,
+                        delete: isDelete,
+                    }
+                );
             }
+
             return this.response({
                 res,
                 message: "update",
-                data: { code: pay.code, id },
+                data: { code: payQueue.code, id: payQueue.id },
             });
         } catch (error) {
-            console.error("Error while 00028:", error);
+            console.error("Error while insertInvoice:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1168,6 +1606,7 @@ module.exports = new (class extends controller {
                     message: "agencyId need",
                 });
             }
+            const type = req.query.type || "other";
             const ag =
                 req.query.agencyId.trim() === "" ? null : req.body.agencyId;
             if (ag === null || ag === "null") {
@@ -1178,15 +1617,54 @@ module.exports = new (class extends controller {
                 });
                 return;
             }
-            const pays = await this.PayQueue.find({
-                agencyId: ObjectId.createFromHexString(req.query.agencyId),
-            });
+            let qu = [
+                { agencyId: ObjectId.createFromHexString(req.query.agencyId) },
+            ];
+            console.log("type", type);
+            if (type === "other") {
+                qu.push({ $or: [{ type: "optional" }, { type: "force" }] });
+            } else {
+                qu.push({ type: type });
+            }
+            const pays = await this.PayQueue.find({ $and: qu });
             return this.response({
                 res,
                 data: pays,
             });
         } catch (error) {
             console.error("Error while 00029:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async getInvoceId(req, res) {
+        try {
+            if (req.query.agencyId === undefined) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId need",
+                });
+            }
+            const type = req.query.type || "other";
+            let qu = [
+                { agencyId: ObjectId.createFromHexString(req.query.agencyId) },
+            ];
+            console.log("type", type);
+            if (type === "other") {
+                qu.push({ $or: [{ type: "optional" }, { type: "force" }] });
+            } else {
+                qu.push({ type: type });
+            }
+            const pays = await this.Invoice.find({ $and: qu }).sort({
+                counter: 1,
+            });
+            return this.response({
+                res,
+                data: pays,
+            });
+        } catch (error) {
+            console.error("Error while getInvoceId:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1202,27 +1680,254 @@ module.exports = new (class extends controller {
             }
             const queueCode = parseInt(req.query.queueCode);
             const studentCode = req.query.studentCode;
-            const action = await this.PayAction.findOne({
-                queueCode,
-                studentCode,
-                delete: false,
-            });
-            if (!action) {
+            const docListSanad = await this.DocListSanad.findOne({
+                $and: [
+                    {
+                        $or: [
+                            { accCode: "003005" + studentCode },
+                            { forCode: "003005" + studentCode },
+                        ],
+                    },
+                    { mId: queueCode },
+                    { type: "invoice" },
+                ],
+            }).lean();
+            if (!docListSanad) {
                 return this.response({
                     res,
                     code: 404,
-                    message: "action not find",
+                    message: "sanad not find",
                 });
             }
-            const transAction = await this.Transactions.findById(
-                action.transaction
-            );
+            // const action = await this.PayAction.findOne({
+            //     queueCode,
+            //     studentCode,
+            //     delete: false,
+            // });
+            // if (!action) {
+            //     return this.response({
+            //         res,
+            //         code: 404,
+            //         message: "action not find",
+            //     });
+            // }
+            let transAction = null;
+            if (docListSanad.isOnline) {
+                transAction = await this.Transactions.findById(
+                    action.transaction
+                );
+            }
             return this.response({
                 res,
-                data: { action, transAction },
+                data: { action: docListSanad, transAction },
             });
         } catch (error) {
             console.error("Error while 00030:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setInstallments(req, res) {
+        try {
+            if (req.query.agencyId === undefined || !req.query.schoolId) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId schoolId need",
+                });
+            }
+            const schoolId = req.query.schoolId;
+            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+            const installments = await this.Invoice.find({
+                agencyId,
+                type: "installment",
+                delete: false,
+            });
+            if (installments.length === 0) {
+                return this.response({
+                    res,
+                    code: 203,
+                    message: "installments not set",
+                });
+            }
+
+            const school = await this.School.findOne({
+                _id: schoolId,
+                agencyId,
+            });
+            if (!school) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "school not find",
+                });
+            }
+            const students = await this.Student.find(
+                {
+                    school: school._id,
+                    state: 4,
+                    delete: false,
+                },
+                "studentCode"
+            ).lean();
+            for (var student of students) {
+                const studentCode = student.studentCode;
+                let remaining = 0;
+                console.log("studentCode", studentCode);
+                const result = await this.DocListSanad.aggregate([
+                    {
+                        $match: {
+                            accCode: "003005" + studentCode,
+                            agencyId,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            // totalbed: { $sum: '$bed' },
+                            // totalbes: { $sum: '$bes' }
+                            total: {
+                                $sum: {
+                                    $subtract: ["$bed", "$bes"],
+                                },
+                            },
+                        },
+                    },
+                ]);
+                console.log("result", result);
+                remaining = result[0] === undefined ? 0 : result[0].total;
+                if (remaining > 100000) {
+                    const oldPq = await this.PayQueue.find({
+                        studentId: student._id,
+                        type: "installment",
+                    });
+                    let counterPay = [];
+                    if (oldPq.length > 0) {
+                        if (!oldPq[0].isSetAuto) {
+                            continue;
+                        }
+                        for (var op of oldPq) {
+                            if (!op.isPaid) {
+                                await this.PayQueue.findByIdAndDelete(op._id);
+                            } else {
+                                counterPay.push(op.counter);
+                            }
+                        }
+                    }
+                    let invoices = installments;
+                    for (var i = 0; i < invoices.length; i++) {
+                        for (var cp of counterPay) {
+                            if (cp === invoices[i].counter) {
+                                invoices.splice(i, 1);
+                                i--;
+                                break;
+                            }
+                        }
+                    }
+                    if (invoices.length === 0) {
+                        invoices.push(installments[installments.length - 1]);
+                    }
+                    const everyPrice = Math.round(remaining / invoices.length);
+                    for (var invoice of invoices) {
+                        await new this.PayQueue({
+                            inVoiceId: invoice._id,
+                            code: invoice.code,
+                            agencyId: agencyId,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice.type,
+                            counter: invoice.counter,
+                            amount: everyPrice,
+                            title: invoice.title,
+                            maxDate: invoice.maxDate,
+                            isPaid: false,
+                        }).save();
+                    }
+                }
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error while setInstallments:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setInstallmentForStudent(req, res) {
+        try {
+            const { id, codes, amounts, deletes, agencyId } = req.body;
+            if (
+                codes.length !== amounts.length ||
+                codes.length !== deletes.length
+            ) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message:
+                        "counters and amounts and deletes must be same length",
+                });
+            }
+            for (var i = 0; i < codes.length; i++) {
+                if (
+                    codes[i] === undefined ||
+                    amounts[i] === undefined ||
+                    deletes[i] === undefined
+                ) {
+                    return this.response({
+                        res,
+                        code: 214,
+                        message:
+                            "codes and amounts and deletes must be defined",
+                    });
+                }
+                const invoice = await this.Invoice.findOne({
+                    agencyId,
+                    type: "installment",
+                    code: codes[i],
+                });
+                if (invoice) {
+                    let payQueue = await this.PayQueue.findOne({
+                        inVoiceId: invoice._id,
+                        studentId: id,
+                    });
+                    if (payQueue) {
+                        if (!payQueue.isPaid) {
+                            payQueue.amount = amounts[i];
+                            payQueue.delete = deletes[i];
+                            payQueue.isSetAuto = false;
+                            await payQueue.save();
+                        }else{
+                             payQueue.isSetAuto = false;
+                            await payQueue.save();
+                        }
+                    } else {
+                        if (!deletes[i]) {
+                            await new this.PayQueue({
+                                inVoiceId: invoice._id,
+                                code: invoice.code,
+                                agencyId: agencyId,
+                                studentId: id,
+                                setter: req.user._id,
+                                type: invoice.type,
+                                counter: invoice.counter,
+                                amount: amounts[i],
+                                title: invoice.title,
+                                maxDate: invoice.maxDate,
+                                isPaid: false,
+                                isSetAuto:false
+                            }).save();
+                        }
+                    }
+                }
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error while setInstallmentForStudent:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1271,7 +1976,7 @@ module.exports = new (class extends controller {
             const studentId = req.query.studentId;
             let student = await this.Student.findById(
                 studentId,
-                "studentCode serviceId serviceCost state gradeId school serviceDistance"
+                "studentCode service serviceNum serviceCost state gradeId school serviceDistance"
             );
             if (!student) {
                 return this.response({
@@ -1294,7 +1999,6 @@ module.exports = new (class extends controller {
             let code = kol + moeen + student.studentCode;
             let remaining = 0;
             if (agencyId != null) {
-                code = kol + moeen + student.studentCode;
                 const result = await this.DocListSanad.aggregate([
                     {
                         $match: {
@@ -1322,146 +2026,32 @@ module.exports = new (class extends controller {
             }
             let qr = [];
             qr.push({ delete: false });
-            if (student.state === 0) qr.push({ type: 1 });
+            let payQueues = await this.PayQueue.find({
+                studentId,delete:false
+            }).sort({
+                maxDate:1
+            });
 
-            var searchQ = {
-                $or: [
-                    {
-                        $and: [
-                            { schools: student.school.toString() },
-                            { grades: [] },
-                            { students: [] },
-                            { agencyId: null },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: student.school.toString() },
-                            { grades: [] },
-                            { students: [] },
-                            { agencyId },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: student.school.toString() },
-                            { grades: student.gradeId },
-                            { students: [] },
-                            { agencyId: null },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: student.school.toString() },
-                            { grades: student.gradeId },
-                            { students: [] },
-                            { agencyId },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: [] },
-                            { grades: student.gradeId },
-                            { students: [] },
-                            { agencyId: null },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: [] },
-                            { grades: student.gradeId },
-                            { students: [] },
-                            { agencyId },
-                        ],
-                    },
-                    { students: code },
-                    {
-                        $and: [
-                            { schools: [] },
-                            { grades: [] },
-                            { students: [] },
-                            { agencyId },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: [] },
-                            { grades: [] },
-                            { students: [] },
-                            { agencyId: null },
-                        ],
-                    },
-                ],
-            };
-            qr.push(searchQ);
-            let payQueues = await this.PayQueue.find(
-                { $and: qr },
-                "agencyId active amount amount03 amount37 amount7i code createdAt desc merchentId maxDate optinal title confirmInfo confirmPrePaid listAccCode listAccName type"
-            );
-
-            for (var i in payQueues) {
-                if (
-                    payQueues[i].amount03 != -1 &&
-                    payQueues[i].amount03 != undefined
-                ) {
-                    if (student.serviceDistance <= 3000) {
-                        payQueues[i].amount = payQueues[i].amount03;
-                    } else if (student.serviceDistance <= 7000) {
-                        payQueues[i].amount = payQueues[i].amount37;
-                    } else {
-                        payQueues[i].amount = payQueues[i].amount7i;
-                    }
-                }
-            }
             var pays = [];
-            let addType7 = false;
             for (var payQueue of payQueues) {
-                if (payQueue.type === 7 && remaining > 0) {
-                    payQueue.amount =
-                        (Math.abs(payQueue.amount) * Math.abs(remaining)) / 100;
-                    payQueue.amount = financial(payQueue.amount);
-                } else if (payQueue.amount < 0 && remaining < 0) {
-                    payQueue.amount =
-                        (Math.abs(payQueue.amount) * Math.abs(remaining)) / 100;
-                }
-
-                // if (payQueue.amount < 10000) {
-                //     continue;
-                // }
-
-                const payAction = await this.PayAction.find({
-                    queueCode: payQueue.code,
-                    studentCode: student.studentCode,
-                    delete: false,
+                const doclistSanad = await this.DocListSanad.findOne({
+                    $and: [
+                        {
+                            $or: [{ accCode: code }, { forCode: code }],
+                        },
+                        { mId: payQueue.code },
+                        { type: "invoice" },
+                    ],
                 });
-                if (
-                    !(payAction.length === 0 && !payQueue.active) &&
-                    (!addType7 || payQueue.type != 7)
-                ) {
-                    if (payAction.length > 0) {
-                        // console.log("payAction[0].amount", payAction[0].amount);
-                        // console.log("payAction[0].docSanadNum", payAction[0].docSanadNum);
-                        payQueue.amount = payAction[0].amount;
-                        const sanad = await this.DocSanad.findOne({
-                            agencyId,
-                            sanadId: payAction[0].docSanadNum,
-                        });
-                        if (sanad) {
-                            const sanadList = await this.DocListSanad.findOne({
-                                titleId: sanad,
-                                accCode: code,
-                            });
-                            if (sanadList) {
-                                payAction[0].amount = Math.abs(
-                                    sanadList.bed - sanadList.bes
-                                );
-                            }
-                        }
-                    }
-                    pays.push({ payQueue, payAction });
-                    if (payQueue.type === 7 && payAction.length === 0) {
-                        addType7 = true;
-                    }
+                if (!doclistSanad) {
+                    pays.push({ payQueue, doclistSanad: null });
+                    continue;
+                }
+                pays.push({ payQueue, doclistSanad: doclistSanad });
+                if (!payQueue.isPaid) {
+                    payQueue.isPaid = true;
+                    payQueue.payDate = doclistSanad.createdAt;
+                    await payQueue.save();
                 }
             }
 
@@ -1470,7 +2060,7 @@ module.exports = new (class extends controller {
                 data: { pays, remaining },
             });
         } catch (error) {
-            console.error("Error while 00032:", error);
+            console.error("Error while getStudentPays:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

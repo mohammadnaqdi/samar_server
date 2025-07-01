@@ -10,159 +10,162 @@ const ObjectId = mongoose.Types.ObjectId;
 module.exports = new (class extends controller {
     //for we dont need to create a new object only export directly a class
 
-    async insertStudent(req, res) {
-        // try {
-        const name = req.body.name;
-        const lastName = req.body.lastName;
-        //  let studentCode = req.body.studentCode;
-        const parent = req.user._id;
-        const school = req.body.school;
-        const gradeId = req.body.gradeId;
-        const gradeTitle = req.body.gradeTitle;
-        const time = req.body.time;
-        const fatherName = req.body.fatherName;
-        const parentReleation = req.body.parentReleation;
-        const addressText = req.body.addressText;
-        const details = req.body.details;
-        const location = req.body.location;
-        const isIranian = req.body.isIranian;
-        const gender = req.body.gender;
-        const checkDistance = req.body.checkDistance || false;
-        const nationalCode = req.body.nationalCode ?? "";
-        const studentCount = await this.Student.countDocuments({
-            parent,
-            name,
-            lastName,
-            delete: false,
-        });
-        if (studentCount > 0) {
-            return this.response({
-                res,
-                code: 403,
-                message: "student is duplicated",
-            });
-        }
-        let state = 0;
-        console.log("time", time);
-        // console.log("gradeId", gradeId);
-        // console.log("gradeTitle", gradeTitle);
-        // console.log("shift", shift);
-        let stateTitle = "ثبت شده";
-        if (req.body.state != undefined) state = req.body.state;
-        if (state > 1) {
-            state = 1;
-        }
-        if (state === 1) {
-            stateTitle = "در انتظار تایید اطلاعات";
-        }
-        const sch = await this.School.findById(school, "location.coordinates");
-        if (!sch) {
-            return this.response({
-                res,
-                code: 400,
-                message: "school not find",
-                data: { fa_m: "مدرسه پیدا نشد" },
-            });
-        }
-        let origin = location[0] + "," + location[1];
-        let dest = sch.location.coordinates[0] + "," + sch.location.coordinates[1];
-        const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
+    // async insertStudent(req, res) {
+    //     // try {
+    //     const name = req.body.name;
+    //     const lastName = req.body.lastName;
+    //     //  let studentCode = req.body.studentCode;
+    //     const parent = req.user._id;
+    //     const school = req.body.school;
+    //     const gradeId = req.body.gradeId;
+    //     const gradeTitle = req.body.gradeTitle;
+    //     const time = req.body.time;
+    //     const fatherName = req.body.fatherName;
+    //     const parentReleation = req.body.parentReleation;
+    //     const addressText = req.body.addressText;
+    //     const details = req.body.details;
+    //     const location = req.body.location;
+    //     const isIranian = req.body.isIranian;
+    //     const gender = req.body.gender;
+    //     const checkDistance = req.body.checkDistance || false;
+    //     const nationalCode = req.body.nationalCode ?? "";
+    //     const studentCount = await this.Student.countDocuments({
+    //         parent,
+    //         name,
+    //         lastName,
+    //         delete: false,
+    //     });
+    //     if (studentCount > 0) {
+    //         return this.response({
+    //             res,
+    //             code: 403,
+    //             message: "student is duplicated",
+    //         });
+    //     }
+    //     let state = 0;
+    //     console.log("time", time);
+    //     // console.log("gradeId", gradeId);
+    //     // console.log("gradeTitle", gradeTitle);
+    //     // console.log("shift", shift);
+    //     let stateTitle = "ثبت شده";
+    //     if (req.body.state != undefined) state = req.body.state;
+    //     if (state > 1) {
+    //         state = 1;
+    //     }
+    //     if (state === 1) {
+    //         stateTitle = "در انتظار تایید اطلاعات";
+    //     }
+    //     const sch = await this.School.findById(school, "location.coordinates");
+    //     if (!sch) {
+    //         return this.response({
+    //             res,
+    //             code: 400,
+    //             message: "school not find",
+    //             data: { fa_m: "مدرسه پیدا نشد" },
+    //         });
+    //     }
+    //     let origin = location[0] + "," + location[1];
+    //     let dest =
+    //         sch.location.coordinates[0] + "," + sch.location.coordinates[1];
+    //     const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
 
-        const options = {
-            headers: {
-                "Api-Key": neshan,
-            },
-            timeout: 5500,
-        };
+    //     const options = {
+    //         headers: {
+    //             "Api-Key": neshan,
+    //         },
+    //         timeout: 5500,
+    //     };
 
-        let serviceDistance = 0;
-        try {
-            const response = await axios.get(url, options);
-            // console.log("neshan response=", response.data);
-            serviceDistance = response.data.routes[0].legs[0].distance.value;
-        } catch (error) {
-            console.log("Neshan error=", error);
-        }
+    //     let serviceDistance = 0;
+    //     try {
+    //         const response = await axios.get(url, options);
+    //         // console.log("neshan response=", response.data);
+    //         serviceDistance = response.data.routes[0].legs[0].distance.value;
+    //     } catch (error) {
+    //         console.log("Neshan error=", error);
+    //     }
 
-        // Finding agency related to the school
-        const agency = await this.Agency.findById(sch.agencyId, "settings");
-        let agencyId = agency ? agency._id : null;
+    //     // Finding agency related to the school
+    //     const agency = await this.Agency.findById(sch.agencyId, "settings");
+    //     let agencyId = agency ? agency._id : null;
 
-        let lastCode = 600000001;
-        const stx = await this.Student.find({
-            studentCode: { $regex: "6000" + ".*" },
-        })
-            .sort({ studentCode: -1 })
-            .limit(1);
+    //     let lastCode = 600000001;
+    //     const stx = await this.Student.find({
+    //         studentCode: { $regex: "6000" + ".*" },
+    //     })
+    //         .sort({ studentCode: -1 })
+    //         .limit(1);
 
-        if (stx.length > 0) {
-            lastCode = parseInt(stx[0].studentCode) + 1;
-        }
+    //     if (stx.length > 0) {
+    //         lastCode = parseInt(stx[0].studentCode) + 1;
+    //     }
 
-        const studentCode = lastCode.toString();
+    //     const studentCode = lastCode.toString();
 
-        await new this.LevelAccDetail({
-            agencyId,
-            levelNo: 3,
-            levelType: 1,
-            accCode: studentCode,
-            accName: `${name} ${lastName}`,
-            desc: sch.name,
-            editor: req.user._id,
-        }).save();
+    //     await new this.LevelAccDetail({
+    //         agencyId,
+    //         levelNo: 3,
+    //         levelType: 1,
+    //         accCode: studentCode,
+    //         accName: `${name} ${lastName}`,
+    //         desc: sch.name,
+    //         editor: req.user._id,
+    //     }).save();
 
-        console.log("Insert code:", studentCode);
+    //     console.log("Insert code:", studentCode);
 
-        let kol = "003";
-        let moeen = "005";
+    //     let kol = "003";
+    //     let moeen = "005";
 
-        try {
-            await new this.ListAcc({
-                agencyId,
-                code: `${kol}${moeen}${studentCode}`,
-                codeLev1: kol,
-                codeLev2: moeen,
-                codeLev3: studentCode,
-                groupId: 1,
-                type: 1,
-                nature: 1,
-                levelEnd: 3,
-                canEdit: false,
-                editor: req.user._id,
-            }).save();
+    //     try {
+    //         await new this.ListAcc({
+    //             agencyId,
+    //             code: `${kol}${moeen}${studentCode}`,
+    //             codeLev1: kol,
+    //             codeLev2: moeen,
+    //             codeLev3: studentCode,
+    //             groupId: 1,
+    //             type: 1,
+    //             nature: 1,
+    //             levelEnd: 3,
+    //             canEdit: false,
+    //             editor: req.user._id,
+    //         }).save();
 
-            const student = new this.Student({
-                studentCode,
-                parent,
-                school,
-                time,
-                address: addressText,
-                addressDetails: details,
-                location: { type: "Point", coordinates: location },
-                gradeTitle,
-                gradeId,
-                name,
-                lastName,
-                fatherName,
-                gender,
-                parentReleation,
-                isIranian,
-                state,
-                stateTitle,
-                serviceDistance,
-                nationalCode,
-            });
-            await student.save();
+    //         const student = new this.Student({
+    //             studentCode,
+    //             parent,
+    //             school,
+    //             time,
+    //             address: addressText,
+    //             addressDetails: details,
+    //             location: { type: "Point", coordinates: location },
+    //             gradeTitle,
+    //             gradeId,
+    //             name,
+    //             lastName,
+    //             fatherName,
+    //             gender,
+    //             parentReleation,
+    //             isIranian,
+    //             state,
+    //             stateTitle,
+    //             serviceDistance,
+    //             nationalCode,
+    //             setter: req.user._id,
+    //             setterISParent: req.user.isParent || false,
+    //         });
+    //         await student.save();
 
-            return this.response({
-                res,
-                data: student._id,
-            });
-        } catch (error) {
-            console.error("Error while insertstudent:", error);
-            return res.status(500).json({ error: "insertstudent error" });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             data: student._id,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while insertstudent:", error);
+    //         return res.status(500).json({ error: "insertstudent error" });
+    //     }
+    // }
 
     async insertStudentByAgent(req, res) {
         // try {
@@ -174,6 +177,7 @@ module.exports = new (class extends controller {
         const gradeTitle = req.body.gradeTitle;
         const time = req.body.time;
         const fatherName = req.body.fatherName;
+        const distance = req.body.distance;
         const parentReleation = req.body.parentReleation;
         const addressText = req.body.addressText;
         const details = req.body.details;
@@ -201,7 +205,10 @@ module.exports = new (class extends controller {
         let stateTitle = "در انتظار پیش پرداخت";
         const state = 2;
 
-        const sch = await this.School.findById(school, "location.coordinates");
+        const sch = await this.School.findById(
+            school,
+            "name location.coordinates agencyId"
+        );
         if (!sch) {
             return this.response({
                 res,
@@ -210,24 +217,36 @@ module.exports = new (class extends controller {
                 data: { fa_m: "مدرسه پیدا نشد" },
             });
         }
-        let origin = location[0] + "," + location[1];
-        let dest = sch.location.coordinates[0] + "," + sch.location.coordinates[1];
-        const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
-
-        const options = {
-            headers: {
-                "Api-Key": neshan,
-            },
-            timeout: 5500,
-        };
-
         let serviceDistance = 0;
-        try {
-            const response = await axios.get(url, options);
-            // console.log("neshan response=", response.data);
-            serviceDistance = response.data.routes[0].legs[0].distance.value;
-        } catch (error) {
-            console.log("Neshan error=", error);
+        if (distance == -1) {
+            try {
+                let origin = location[0] + "," + location[1];
+                let dest =
+                    sch.location.coordinates[0] +
+                    "," +
+                    sch.location.coordinates[1];
+                const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
+
+                const options = {
+                    headers: {
+                        "Api-Key": neshan,
+                    },
+                    timeout: 5500,
+                };
+
+                const response = await axios.get(url, options);
+                // console.log("neshan response=", response.data);
+                serviceDistance =
+                    response.data.routes[0].legs[0].distance.value;
+                console.log(
+                    "neshan response=",
+                    response.data.routes[0].legs[0].distance.value
+                );
+            } catch (error) {
+                console.log("Neshan error=", error);
+            }
+        } else {
+            serviceDistance = distance;
         }
 
         // Finding agency related to the school
@@ -237,50 +256,9 @@ module.exports = new (class extends controller {
         }
         let agencyId = agency._id;
 
-        let lastCode = 600000001;
-        const stx = await this.Student.find({
-            studentCode: { $regex: "6000" + ".*" },
-        })
-            .sort({ studentCode: -1 })
-            .limit(1);
-
-        if (stx.length > 0) {
-            lastCode = parseInt(stx[0].studentCode) + 1;
-        }
-
-        const studentCode = lastCode.toString();
-
-        await new this.LevelAccDetail({
-            agencyId,
-            levelNo: 3,
-            levelType: 1,
-            accCode: studentCode,
-            accName: `${name} ${lastName}`,
-            desc: sch.name,
-            editor: req.user._id,
-        }).save();
-
-        console.log("Insert student by Agent:", studentCode);
-
-        let kol = "003";
-        let moeen = "005";
         try {
-            await new this.ListAcc({
-                agencyId,
-                code: `${kol}${moeen}${studentCode}`,
-                codeLev1: kol,
-                codeLev2: moeen,
-                codeLev3: studentCode,
-                groupId: 1,
-                type: 1,
-                nature: 1,
-                levelEnd: 3,
-                canEdit: false,
-                editor: req.user._id,
-            }).save();
-
             let student = new this.Student({
-                studentCode,
+                agencyId: sch.agencyId,
                 parent,
                 school,
                 time,
@@ -299,59 +277,30 @@ module.exports = new (class extends controller {
                 stateTitle,
                 serviceDistance,
                 nationalCode,
+                setter: req.user._id,
+                setterISParent: false,
             });
             await student.save();
-            var searchQ = {
-                $or: [
-                    {
-                        $and: [
-                            { schools: student.school.toString() },
-                            { grades: [] },
-                            { students: [] },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: student.school.toString() },
-                            { grades: student.gradeId },
-                            { students: [] },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: [] },
-                            { grades: student.gradeId },
-                            { students: [] },
-                        ],
-                    },
-                    {
-                        $and: [
-                            { schools: [] },
-                            { grades: [] },
-                            { students: [] },
-                        ],
-                    },
-                ],
-            };
-            let payQueue = await this.PayQueue.findOne({
-                $and: [
-                    { agencyId: null },
-                    { active: true },
-                    { type: 1 },
-                    { delete: false },
-                    searchQ,
-                ],
+            const invoice = await this.Invoice.findOne({
+                agencyId: sch.agencyId,
+                type: "registration",
+                delete: false,
             });
-            if (payQueue) {
-                if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
-                    if (student.serviceDistance <= 3000) {
-                        payQueue.amount = payQueue.amount03;
-                    } else if (student.serviceDistance <= 7000) {
-                        payQueue.amount = payQueue.amount37;
-                    } else {
-                        payQueue.amount = payQueue.amount7i;
-                    }
-                }
+            if (invoice) {
+                let payQueue = new this.PayQueue({
+                    inVoiceId: invoice._id,
+                    code: invoice.code,
+                    agencyId: sch.agencyId,
+                    studentId: student._id,
+                    setter: req.user._id,
+                    type: invoice.type,
+                    amount: invoice.amount,
+                    title: invoice.title,
+                    maxDate: invoice.maxDate,
+                    isPaid: false,
+                });
+                await payQueue.save();
+
                 const amount = payQueue.amount;
                 const studentCode = student.studentCode;
                 const name =
@@ -427,7 +376,8 @@ module.exports = new (class extends controller {
                     bes: 0,
                     note: desc,
                     accCode: costCode,
-                    peigiri: "",
+                    mId: doc.sanadId,
+                    peigiri: studentCode,
                     sanadDate: new Date(),
                 }).save();
                 await new this.DocListSanad({
@@ -439,22 +389,29 @@ module.exports = new (class extends controller {
                     bes: amount,
                     note: desc,
                     accCode: wallet,
-                    peigiri: "",
+                    mId: payQueue.code,
+                    type: "invoice",
+                    forCode: "003005" + studentCode,
+                    peigiri: studentCode,
                     sanadDate: new Date(),
                 }).save();
-
-                let payAction = new this.PayAction({
-                    setter: req.user._id,
-                    queueCode: payQueue.code,
-                    amount,
-                    desc,
-                    isOnline: false,
-                    studentCode,
-                    docSanadNum: doc.sanadId,
-                    docSanadId: doc._id,agencyId
-                });
-                await payAction.save();
+                payQueue.isPaid = true;
+                payQueue.payDate = new Date();
+                await payQueue.save();
             }
+
+            // let payAction = new this.PayAction({
+            //     setter: req.user._id,
+            //     queueCode: payQueue.code,
+            //     amount,
+            //     desc,
+            //     isOnline: false,
+            //     studentCode,
+            //     docSanadNum: doc.sanadId,
+            //     docSanadId: doc._id,agencyId
+            // });
+            // await payAction.save();
+            // }
 
             return this.response({
                 res,
@@ -475,7 +432,6 @@ module.exports = new (class extends controller {
             let agencyId = req.body.agencyId;
             const name = req.body.name;
             const lastName = req.body.lastName;
-            let studentCode = req.body.studentCode;
             const submitId = req.user._id;
             const school = req.body.school;
             const gradeId = req.body.gradeId;
@@ -494,6 +450,7 @@ module.exports = new (class extends controller {
             const physicalConditionDesc = req.body.physicalConditionDesc;
             const nationalCode = req.body.nationalCode ?? "";
             let state = 0;
+
             // console.log("id ", id);
             // console.log("setStudent parentId", parentId);
             if (id === 0) {
@@ -507,34 +464,6 @@ module.exports = new (class extends controller {
                         res,
                         code: 403,
                         message: "student is duplicated",
-                    });
-                }
-            }
-
-            if (
-                studentCode.toString() === "0" ||
-                studentCode.toString() === ""
-            ) {
-                let lastCode = 600000001;
-                const stx = await this.Student.find({
-                    studentCode: { $regex: "6000" + ".*" },
-                })
-                    .sort({ studentCode: -1 })
-                    .limit(1);
-                if (stx.length > 0) {
-                    lastCode = parseInt(stx[0].studentCode) + 1;
-                }
-                studentCode = lastCode.toString();
-            } else if (id === 0) {
-                const stu = await this.Student.findOne({ studentCode });
-                if (stu) {
-                    return this.response({
-                        res,
-                        code: 400,
-                        message: "student is exist",
-                        data: {
-                            fa_m: `این کد دانش آموزی تکرار است و برای ${stu.name} ${stu.lastName} ثبت شده`,
-                        },
                     });
                 }
             }
@@ -553,7 +482,7 @@ module.exports = new (class extends controller {
             }
             const sch = await this.School.findById(
                 school,
-                "name location.coordinates admin"
+                "name location.coordinates admin agencyId"
             );
             if (!sch) {
                 return this.response({
@@ -578,7 +507,10 @@ module.exports = new (class extends controller {
             let serviceDistance = 0;
             if (distanse === 0) {
                 let origin = location[0] + "," + location[1];
-                let dest = sch.location.coordinates[0] + "," + sch.location.coordinates[1];
+                let dest =
+                    sch.location.coordinates[0] +
+                    "," +
+                    sch.location.coordinates[1];
                 const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
 
                 const options = {
@@ -590,7 +522,7 @@ module.exports = new (class extends controller {
 
                 try {
                     const response = await axios.get(url, options);
-                    // console.log("neshan response=", response.data);
+                    console.log("neshan response=", response.data);
                     serviceDistance =
                         response.data.routes[0].legs[0].distance.value;
                     console.log("Neshan serviceDistance", serviceDistance);
@@ -608,7 +540,7 @@ module.exports = new (class extends controller {
 
             if (id === 0) {
                 const student = new this.Student({
-                    studentCode,
+                    agencyId: sch.agencyId,
                     parent: parentId,
                     school,
                     time,
@@ -630,46 +562,30 @@ module.exports = new (class extends controller {
                     serviceDistance,
                     time,
                     nationalCode,
+                    setter: req.user._id,
+                    setterISParent: req.user.isParent || false,
                 });
                 await student.save();
-                console.log("Insert code:", studentCode);
-
-                let code = student.studentCode;
-                let kol = "003";
-                let moeen = "005";
-
-                if (!agencyId) {
-                    const agency = await this.Agency.findById(sch.agencyId);
-                    if (agency) {
-                        agencyId = agency._id;
-                    }
+                const invoice = await this.Invoice.findOne({
+                    agencyId: sch.agencyId,
+                    type: "registration",
+                    delete: false,
+                });
+                if (invoice) {
+                    let payQueue = new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        code: invoice.code,
+                        agencyId: sch.agencyId,
+                        studentId: student._id,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: false,
+                    });
+                    await payQueue.save();
                 }
-
-                await new this.LevelAccDetail({
-                    agencyId,
-                    levelNo: 3,
-                    levelType: 1,
-                    accCode: code,
-                    accName: `${student.name} ${student.lastName}`,
-                    desc: sch.name,
-                    editor: req.user._id,
-                }).save();
-
-                console.log("insert code in process", code);
-
-                await new this.ListAcc({
-                    agencyId,
-                    code: `${kol}${moeen}${code}`,
-                    codeLev1: kol,
-                    codeLev2: moeen,
-                    codeLev3: code,
-                    groupId: 1,
-                    type: 1,
-                    nature: 1,
-                    levelEnd: 3,
-                    canEdit: false,
-                    editor: req.user._id,
-                }).save();
 
                 return this.response({
                     res,
@@ -699,21 +615,6 @@ module.exports = new (class extends controller {
                     },
                     { returnOriginal: false }
                 );
-
-                await this.LevelAccDetail.updateMany(
-                    { accCode: student.studentCode },
-                    {
-                        accName: `${student.name} ${student.lastName}`,
-                        desc: sch.name,
-                        editor: req.user._id,
-                    }
-                );
-
-                // console.log("update code", student.studentCode);
-                // console.log(
-                //     "update name",
-                //     `${student.name} ${student.lastName}`
-                // );
 
                 return this.response({
                     res,
@@ -861,13 +762,35 @@ module.exports = new (class extends controller {
 
                     if (qu) {
                         if (qu.confirmInfo) {
-                            const payAction = await this.PayAction.find({
-                                queueCode,
-                                studentCode: stCode,
-                                delete: false,
-                            });
+                            // const payAction = await this.PayAction.find({
+                            //     queueCode,
+                            //     studentCode: stCode,
+                            //     delete: false,
+                            // });
+                            const docListSanad =
+                                await this.DocListSanad.findOne(
+                                    {
+                                        $and: [
+                                            {
+                                                $or: [
+                                                    {
+                                                        accCode:
+                                                            "003005" + stCode,
+                                                    },
+                                                    {
+                                                        forCode:
+                                                            "003005" + stCode,
+                                                    },
+                                                ],
+                                            },
+                                            { mId: queueCode },
+                                            { type: "invoice" },
+                                        ],
+                                    },
+                                    ""
+                                ).lean();
                             // console.log("payAction", payAction);
-                            if (payAction.length > 0) {
+                            if (docListSanad) {
                                 newSet = 2;
                             }
                         }
@@ -1172,13 +1095,13 @@ module.exports = new (class extends controller {
             const userId = req.user._id;
             const students = await this.Student.find(
                 { parent: userId, delete: false },
-                "_id studentCode school gradeId gradeTitle name lastName state stateTitle serviceId time avanak avanakNumber"
+                "_id studentCode school gradeId gradeTitle name lastName state stateTitle serviceNum service time avanak avanakNumber"
             );
             let myStudent = [];
             for (var i = 0; i < students.length; i++) {
                 const school = await this.School.findById(
                     students[i].school,
-                    "name schoolTime genderTitle code districtId"
+                    "name schoolTime genderTitle code districtId agencyId"
                 );
                 const agency = await this.Agency.findById(
                     school.agencyId,
@@ -1269,7 +1192,7 @@ module.exports = new (class extends controller {
             }
 
             let onlySchool = [];
-            console.log("agencyId", agencyId);
+            // console.log("agencyId", agencyId);
             // console.log("maxState", maxState);
             // console.log("search", search.length);
             // console.log("schools", schools);
@@ -1358,7 +1281,7 @@ module.exports = new (class extends controller {
             let students;
 
             // var needList =
-            // "_id studentCode parent school address gradeTitle gradeId name lastName fatherName parentReleation isIranian gender state stateTitle serviceId serviceCost serviceDistance active time createdAt";
+            // "_id studentCode parent school address gradeTitle gradeId name lastName fatherName parentReleation isIranian gender state stateTitle serviceNum serviceCost serviceDistance active time createdAt";
             var qr = [];
             var searchQ = {
                 $or: [
@@ -1403,7 +1326,7 @@ module.exports = new (class extends controller {
             console.log(JSON.stringify(qr));
             let sortBy = { studentCode: -1 };
             if (minState === 4 && maxState === 4) {
-                sortBy = { serviceId: -1, _id: 1 };
+                sortBy = { serviceNum: -1, _id: 1 };
             }
             students = await this.Student.find(
                 {
@@ -1415,7 +1338,7 @@ module.exports = new (class extends controller {
                 .limit(40)
                 .sort(sortBy);
 
-            //   console.log('students',JSON.stringify(students));   
+            //   console.log('students',JSON.stringify(students));
 
             let myStudent = [];
             for (var i = 0; i < students.length; i++) {
@@ -1433,28 +1356,30 @@ module.exports = new (class extends controller {
 
                 if (!parent) continue;
                 if (!school) continue;
-                const agency = await this.Agency.findOne(
-                    { schools: school.id },
-                    "name code"
-                );
-                // console.log("students[i]", students[i].name);
-                // console.log("parent", parent);
-                let payOff, payment;
-                // if (!req.user.isSchoolAdmin) {
-                //   payOff = await this.Payoff.find(
-                //     { personId: students[i].id },
-                //     "date costBed costBes refCode"
-                //   );
-                //   payment = await this.Payment.find({ student: students[i].id });
-                // }
+               let payOff, payment;
 
                 let agencyName = "",
                     agencyCode = "",
                     agencyId;
-                if (agency) {
-                    agencyName = agency.name;
-                    agencyCode = agency.code;
-                    agencyId = agency.id;
+                    let payQueue = [];
+                if (agencyId === null) {
+                    const agency = await this.Agency.findOne(
+                        { schools: school.id },
+                        "name code"
+                    );
+
+                    if (agency) {
+                        agencyName = agency.name;
+                        agencyCode = agency.code;
+                        agencyId = agency.id;
+                    }
+                }else{
+                  
+                 payQueue=await this.PayQueue.find({studentId:students[i]._id,delete:false
+                    ,
+                    type: { $in: ["prePayment", "installment"] },
+
+                 },'title isPaid maxDate type').sort({counter:1}).lean();
                 }
                 // console.log("ddddddddddddddd");
                 let serviceCost = 0,
@@ -1464,9 +1389,9 @@ module.exports = new (class extends controller {
                     serviceDriverPelak = "",
                     serviceDriverPhone = "",
                     serviceDriverCar = "";
-                if (students[i].serviceId != 0 && students[i].state === 4) {
+                if (students[i].serviceNum != 0 && students[i].state === 4) {
                     const service = await this.Service.findOne({
-                        serviceNum: students[i].serviceId,
+                        serviceNum: students[i].serviceNum,
                     });
                     if (service) {
                         serviceCost = service.cost;
@@ -1564,6 +1489,7 @@ module.exports = new (class extends controller {
                     device,
                     payOff: payOff,
                     payment: payment,
+                    payQueue:payQueue
                 };
                 myStudent.push({
                     student: students[i],
@@ -1647,7 +1573,7 @@ module.exports = new (class extends controller {
             }
 
             let students;
-            const parent = await this.User.findOne({ phone });
+            const parent = await this.Parent.findOne({ phone });
             if (!parent) {
                 return this.response({
                     res,
@@ -1657,7 +1583,7 @@ module.exports = new (class extends controller {
             }
 
             // var needList =
-            // "_id studentCode parent school address gradeTitle gradeId name lastName fatherName parentReleation isIranian gender state stateTitle serviceId serviceCost serviceDistance active time createdAt";
+            // "_id studentCode parent school address gradeTitle gradeId name lastName fatherName parentReleation isIranian gender state stateTitle serviceNum serviceCost serviceDistance active time createdAt";
             var qr = [];
             qr.push({ delete: false });
             qr.push({ parent: parent.id });
@@ -1690,20 +1616,27 @@ module.exports = new (class extends controller {
                     "name lastName phone fcm.token"
                 );
                 // console.log("parent", parent);
-                const agency = await this.Agency.findOne(
-                    { schools: school.id },
-                    "name code"
-                );
                 let payOff, payment;
 
                 let agencyName = "",
                     agencyCode = "",
                     agencyId;
-                if (agency) {
-                    agencyName = agency.name;
-                    agencyCode = agency.code;
-                    agencyId = agency.id;
+                    let payQueue = [];
+                if (agencyId === null) {
+                    const agency = await this.Agency.findOne(
+                        { schools: school.id },
+                        "name code"
+                    );
+
+                    if (agency) {
+                        agencyName = agency.name;
+                        agencyCode = agency.code;
+                        agencyId = agency.id;
+                    }
+                }else{
+                 payQueue=await this.PayQueue.find({studentId:students[i]._id,agencyId:agencyId,delete:false,type: { $in: ["prePayment", "installment"] },},'title isPaid maxDate type').sort({counter:1}).lean();
                 }
+
                 // console.log("ddddddddddddddd");
                 let serviceCost = 0,
                     serviceDriverName = "",
@@ -1712,9 +1645,9 @@ module.exports = new (class extends controller {
                     serviceDriverPelak = "",
                     serviceDriverPhone = "",
                     serviceDriverCar = "";
-                if (students[i].serviceId != 0 && students[i].state === 4) {
+                if (students[i].serviceNum != 0 && students[i].state === 4) {
                     const service = await this.Service.findOne({
-                        serviceNum: students[i].serviceId,
+                        serviceNum: students[i].serviceNum,
                     });
                     if (service) {
                         serviceCost = service.cost;
@@ -1811,6 +1744,7 @@ module.exports = new (class extends controller {
                     device,
                     payOff: payOff,
                     payment: payment,
+                    payQueue: payQueue,
                 };
                 myStudent.push({
                     student: students[i],
@@ -1871,7 +1805,7 @@ module.exports = new (class extends controller {
             let students;
 
             // var needList =
-            // "studentCode parent school address gradeTitle gradeId name lastName fatherName parentReleation isIranian gender state stateTitle serviceId serviceCost serviceDistance active time createdAt pack check";
+            // "studentCode parent school address gradeTitle gradeId name lastName fatherName parentReleation isIranian gender state stateTitle serviceNum serviceCost serviceDistance active time createdAt pack check";
             var qr = [];
             qr.push({ delete: false });
             if (
@@ -1923,10 +1857,10 @@ module.exports = new (class extends controller {
                     serviceDriverPelak = "",
                     serviceDriverPhone = "",
                     serviceDriverCar = "";
-                if (students[i].serviceId != 0 && students[i].state === 4) {
+                if (students[i].serviceNum != 0 && students[i].state === 4) {
                     const service = await this.Service.findOne(
                         {
-                            serviceNum: students[i].serviceId,
+                            serviceNum: students[i].serviceNum,
                         },
                         "-routeSave -updatedAt -studentCost -percentInfo -createdAt"
                     );
@@ -2115,7 +2049,7 @@ module.exports = new (class extends controller {
                 //console.log(JSON.stringify(students[i]));
                 const school = await this.School.findById(
                     students[i].school,
-                    "name location.coordinates grade districtId schoolTime"
+                    "name location.coordinates grade districtId schoolTime code"
                 );
 
                 // const shift = await this.Shifts.findById(students[i].shift,'name type');
@@ -2165,6 +2099,7 @@ module.exports = new (class extends controller {
                             school.schoolTime[0].end;
                     }
                     moreInfo.schoolName = school.name;
+                    moreInfo.schoolCode = school.code;
                     moreInfo.schoolLat = school.location.coordinates[0];
                     moreInfo.schoolLng = school.location.coordinates[1];
                     moreInfo.grade = school.grade;
@@ -2305,7 +2240,7 @@ module.exports = new (class extends controller {
                     moreInfo: moreInfo,
                 });
             }
-            console.log("myStudent",myStudent.length);
+            console.log("myStudent", myStudent.length);
             return this.response({
                 res,
                 message: studentCount,
@@ -2426,7 +2361,7 @@ module.exports = new (class extends controller {
             //console.log(JSON.stringify(students[i]));
             const school = await this.School.findById(
                 student.school,
-                "name location.coordinates grade districtId schoolTime"
+                "name location.coordinates grade districtId schoolTime code"
             );
             // const shift = await this.Shifts.findById(student.shift,'name type');
             const parent = await this.Parent.findById(
@@ -2474,6 +2409,7 @@ module.exports = new (class extends controller {
                         school.schoolTime[0].end;
                 }
                 moreInfo.schoolName = school.name;
+                moreInfo.schoolCode = school.code;
                 moreInfo.schoolLat = school.location.coordinates[0];
                 moreInfo.schoolLng = school.location.coordinates[1];
                 moreInfo.grade = school.grade;
@@ -2484,6 +2420,7 @@ module.exports = new (class extends controller {
                 moreInfo.schoolName = "پیدا نشد";
                 moreInfo.schoolLat = 0;
                 moreInfo.schoolLng = 0;
+                moreInfo.schoolCode = 0;
             }
             moreInfo.address = student.address;
             moreInfo.lat = student.location.coordinates[0];
@@ -2530,7 +2467,7 @@ module.exports = new (class extends controller {
                 //console.log(JSON.stringify(students[i]));
                 const school = await this.School.findById(
                     students[i].school,
-                    "name location.coordinates grade districtId schoolTime"
+                    "name location.coordinates grade districtId schoolTime code"
                 );
 
                 // const shift = await this.Shifts.findById(students[i].shift,'name type');
@@ -2582,6 +2519,7 @@ module.exports = new (class extends controller {
                             school.schoolTime[0].end;
                     }
                     moreInfo.schoolName = school.name;
+                    moreInfo.schoolCode = school.code;
                     moreInfo.schoolLat = school.location.coordinates[0];
                     moreInfo.schoolLng = school.location.coordinates[1];
                     moreInfo.grade = school.grade;
@@ -2703,9 +2641,9 @@ module.exports = new (class extends controller {
             await Promise.all([
                 this.StReport.deleteMany({ studentId: student.id }),
                 this.RatingDriver.deleteMany({ studentId: student.id }),
-                this.PayAction.deleteMany({
-                    studentCode: student.studentCode,
-                }),
+                // this.PayAction.deleteMany({
+                //     studentCode: student.studentCode,
+                // }),
                 this.Exception.deleteMany({ "points.studentId": student.id }),
             ]);
 
@@ -2718,12 +2656,12 @@ module.exports = new (class extends controller {
                     studentId: student.id,
                 }
             );
-            const payActionExists = await checkIfDocumentExists(
-                this.PayAction,
-                {
-                    studentCode: student.studentCode,
-                }
-            );
+            // const payActionExists = await checkIfDocumentExists(
+            //     this.PayAction,
+            //     {
+            //         studentCode: student.studentCode,
+            //     }
+            // );
             const exceptionExists = await checkIfDocumentExists(
                 this.Exception,
                 {
@@ -2735,14 +2673,14 @@ module.exports = new (class extends controller {
                 addressExists ||
                 stReportExists ||
                 ratingDriverExists ||
-                payActionExists ||
+                // payActionExists ||
                 pointExists ||
                 exceptionExists
             ) {
                 console.log("addressExists", addressExists);
                 console.log("stReportExists", stReportExists);
                 console.log("ratingDriverExists", ratingDriverExists);
-                console.log("payActionExists", payActionExists);
+                // console.log("payActionExists", payActionExists);
                 console.log("pointExists", pointExists);
                 console.log("exceptionExists", exceptionExists);
                 return this.response({
@@ -2903,7 +2841,7 @@ module.exports = new (class extends controller {
             const st = await this.Student.findByIdAndUpdate(id, {
                 state,
                 stateTitle,
-                serviceId: 0,
+                serviceNum: 0,
                 serviceCost: 0,
             });
             const agency = await this.Agency.findOne(
@@ -3098,7 +3036,7 @@ module.exports = new (class extends controller {
             const lastName = req.query.lastName;
             let userId = req.user._id;
             if (phone != undefined && phone.length === 11) {
-                const user = await this.User.findOne({ phone });
+                const user = await this.Parent.findOne({ phone });
                 if (user) userId = user._id;
             }
             const student = await this.Student.countDocuments({
@@ -3202,10 +3140,10 @@ module.exports = new (class extends controller {
                     { studentId: student.id },
                     { session }
                 ),
-                this.PayAction.deleteMany(
-                    { studentCode: student.studentCode },
-                    { session }
-                ),
+                // this.PayAction.deleteMany(
+                //     { studentCode: student.studentCode },
+                //     { session }
+                // ),
                 this.Exception.deleteMany(
                     { "points.studentId": student.id },
                     { session }
@@ -3216,7 +3154,7 @@ module.exports = new (class extends controller {
                 addressExists,
                 stReportExists,
                 ratingDriverExists,
-                payActionExists,
+                // payActionExists,
                 pointExists,
                 exceptionExists,
             ] = await Promise.all([
@@ -3224,9 +3162,9 @@ module.exports = new (class extends controller {
                 checkIfDocumentExists(this.RatingDriver, {
                     studentId: student.id,
                 }),
-                checkIfDocumentExists(this.PayAction, {
-                    studentCode: student.studentCode,
-                }),
+                // checkIfDocumentExists(this.PayAction, {
+                //     studentCode: student.studentCode,
+                // }),
                 checkIfDocumentExists(this.Exception, {
                     "points.studentId": student.id,
                 }),
@@ -3236,14 +3174,14 @@ module.exports = new (class extends controller {
                 addressExists ||
                 stReportExists ||
                 ratingDriverExists ||
-                payActionExists ||
+                // payActionExists ||
                 pointExists ||
                 exceptionExists
             ) {
                 console.log("addressExists", addressExists);
                 console.log("stReportExists", stReportExists);
                 console.log("ratingDriverExists", ratingDriverExists);
-                console.log("payActionExists", payActionExists);
+                // console.log("payActionExists", payActionExists);
                 console.log("pointExists", pointExists);
                 console.log("exceptionExists", exceptionExists);
                 await session.abortTransaction();
@@ -3478,26 +3416,26 @@ module.exports = new (class extends controller {
                     message: "ok",
                 });
             }
-            const payAction = await this.PayAction.find({
-                queueCode: payQueue.code,
-                studentCode: student.studentCode,
-                delete: false,
+            // const payAction = await this.PayAction.find({
+            //     queueCode: payQueue.code,
+            //     studentCode: student.studentCode,
+            //     delete: false,
+            // });
+            // if (payAction.length > 0) {
+            await this.Student.findByIdAndUpdate(student.id, {
+                avanak: true,
+                avanakNumber: phone,
             });
-            if (payAction.length > 0) {
-                await this.Student.findByIdAndUpdate(student.id, {
-                    avanak: true,
-                    avanakNumber: phone,
-                });
-                return this.response({
-                    res,
-                    message: "ok",
-                });
-            }
             return this.response({
                 res,
-                code: 403,
-                message: "payAction need",
+                message: "ok",
             });
+            // }
+            // return this.response({
+            //     res,
+            //     code: 403,
+            //     message: "payAction need",
+            // });
         } catch (error) {
             console.error("Error while 00051:", error);
             return res.status(500).json({ error: "Internal Server Error." });
@@ -3548,7 +3486,6 @@ module.exports = new (class extends controller {
     async changeStudentDate(req, res) {
         try {
             const { startOfContract, endOfContract, studentId } = req.query;
-            
 
             let student = await this.Student.findById(studentId);
             if (!student) {
@@ -3634,14 +3571,9 @@ module.exports = new (class extends controller {
         try {
             const id = req.user._id;
 
-            const studentCodes = await this.ListAcc.find({ editor: id })
-                .sort({ createdAt: -1 })
-                .lean()
-                .exec()
-                .then((docs) => docs.map((doc) => doc.codeLev3));
-
             const students = await this.Student.find({
-                studentCode: { $in: studentCodes },
+                setter: id,
+                delete: false,
             }).lean();
 
             if (students.length === 0) {

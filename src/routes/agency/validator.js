@@ -69,6 +69,10 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("cityCode cant be empty"),
+            check("registrationPrice")
+                .not()
+                .isEmpty()
+                .withMessage("registrationPrice cant be empty"),
         ];
     }
     updateAgencyInfoValidator() {

@@ -1,4 +1,6 @@
 const controller = require("../controller");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 module.exports = new (class extends controller {
     async update(req, res) {
         try {
@@ -49,7 +51,8 @@ module.exports = new (class extends controller {
     async setName(req, res) {
         try {
             let id = req.user._id;
-            let user = await this.User.findById(id);
+            const isParent=req.body.isParent || req.user.isParent;
+            let user =isParent?await this.Parent.findById(id): await this.User.findById(id);
             if (!user) {
                 return res.status(214).json({ msg: "user not find" });
             }
@@ -72,7 +75,7 @@ module.exports = new (class extends controller {
                 user.userName = userName;
             }
             await user.save();
-            await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+            await this.updateRedisDocument(isParent?`parent:${user._id}`:`user:${user._id}`, user.toObject());
 
             return this.response({
                 res,
@@ -248,6 +251,36 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async setNewParent(req, res) {
+        try {
+            let user = await this.Parent.findOne({
+                phone: req.body.phone.trim(),
+            });
+            if (user) {
+                // return res.status(216).json({ msg: "this phone is repeat" });
+            } else {
+                user = new this.Parent({
+                    phone: req.body.phone.trim(),
+                    userName: req.body.phone.trim(),
+                    name: req.body.name.trim(),
+                    lastName: req.body.lastName.trim(),
+                });
+                await user.save();
+                await this.updateRedisDocument(
+                    `parent:${user._id}`,
+                    user.toObject()
+                );
+            }
+            return this.response({
+                res,
+                message: "ok",
+                data: user.id,
+            });
+        } catch (error) {
+            console.error("Error while setNewParent:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
     // async sendNotif2User(req,res){
 
     //   let id=req.body.userId;
@@ -333,7 +366,7 @@ module.exports = new (class extends controller {
             for (var i = 0; i < users.length; i++) {
                 let students = await this.Student.find(
                     { parent: users[i].id },
-                    "studentCode name lastName parentReleation state stateTitle serviceId active"
+                    "studentCode name lastName parentReleation state stateTitle serviceNum active"
                 );
 
                 usersList.push({
@@ -356,7 +389,8 @@ module.exports = new (class extends controller {
     async userCheckLogin(req, res) {
         try {
             const userId = req.user._id;
-            let user = await this.User.findById(userId);
+            const isParent=req.user.isParent;
+            let user =isParent? await this.Parent.findById(userId): await this.User.findById(userId);
             const token = req.header("x-auth-token");
             var ip =
                 req.headers["x-forwarded-for"] || req.connection.remoteAddress;
@@ -381,7 +415,7 @@ module.exports = new (class extends controller {
                     tk: token,
                 });
                 await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(isParent? `parent:${user._id}`:`user:${user._id}`, user.toObject());
             }
 
             if (exist) {

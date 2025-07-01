@@ -47,6 +47,26 @@ module.exports = new (class {
             check("page").not().isEmpty().withMessage("page cant be empty"),
         ];
     }
+    nearSchoolListValidator() {
+        return [
+            check("search").isString().withMessage("search cant be number"),
+            check("page").isInt().withMessage("page isNumber"),
+            check("page").not().isEmpty().withMessage("page cant be empty"),
+            check("location").not().isEmpty().withMessage("location cant be empty"),
+            check("maxDistance")
+                .optional()
+                .isNumeric()
+                .withMessage("maxDistance must be a number"),
+            check("limit")
+                .optional()
+                .isNumeric()
+                .withMessage("maxDistance must be a number"),
+            check("districtId")
+                .optional()
+                .isNumeric()
+                .withMessage("districtId must be a number"),
+        ];
+    }
     addManagerToSchoolValidator() {
         return [
             check("name")

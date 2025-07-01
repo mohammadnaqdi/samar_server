@@ -76,8 +76,7 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("details cant be empty"),
-            check("lng").not().isEmpty().withMessage("lng cant be empty"),
-            check("lat").not().isEmpty().withMessage("lat cant be empty"),
+            check("location").not().isEmpty().withMessage("location cant be empty"),
             check("isIranian")
                 .not()
                 .isEmpty()
@@ -85,6 +84,8 @@ module.exports = new (class {
             check("gender").not().isEmpty().withMessage("gender cant be empty"),
             check("time").not().isEmpty().withMessage("time cant be empty"),
             check("parentId").not().isEmpty().withMessage("parentId cant be empty"),
+            check("distance").not().isEmpty().withMessage("distance cant be empty"),
+            check("distance").isNumeric().withMessage("distance cant be empty"),
         ];
     }
     insertStudentBySchoolValidator() {

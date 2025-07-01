@@ -20,6 +20,56 @@ module.exports = new (class {
             check("bank").not().isEmpty().withMessage("bank cant be empty"),
         ];
     }
+     bnkBanksInsertValidator(){
+      return[
+      check('hesab')
+      .not().isEmpty()
+      .withMessage('hesab cant be empty'),
+      check('iranId')
+      .not().isEmpty()
+      .withMessage('iranId cant be empty'),
+      check('branchCode')
+      .not().isEmpty()
+      .withMessage('branchCode cant be empty'),
+      check('branchName')
+      .not().isEmpty()
+      .withMessage('branchName cant be empty'),
+      check('accType')
+      .not().isEmpty()
+      .withMessage('accType cant be empty'),
+      check('numHesab')
+      .not().isEmpty()
+      .withMessage('numHesab cant be empty'),
+      check('eCard')
+      .not().isEmpty()
+      .withMessage('eCard cant be empty'),
+      check('owner')
+      .not().isEmpty()
+      .withMessage('owner cant be empty'),
+      check('addressBank')
+      .not().isEmpty()
+      .withMessage('addressBank cant be empty'),
+      check('addressTel')
+      .not().isEmpty()
+      .withMessage('addressTel cant be empty'),
+      check('addressBank')
+      .not().isEmpty()
+      .withMessage('addressBank cant be empty'),
+      check('serialCheck')
+      .not().isEmpty()
+      .withMessage('serialCheck cant be empty'),
+      check('costCenter')
+      .not().isEmpty()
+      .withMessage('costCenter cant be empty'),
+      check('nationalCode')
+      .not().isEmpty()
+      .withMessage('nationalCode cant be empty'),
+      check('iranBankId')
+      .not().isEmpty()
+      .withMessage('iranBankId cant be empty'),
+      ]
+}
+ 
     chequeRegisterValidator() {
         return [
             check("amount").not().isEmpty().withMessage("amount cant be empty"),

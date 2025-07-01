@@ -91,5 +91,11 @@ router.post(
     controller.validate.bind(controller),
     controller.getHesabByTypeAndLevel.bind(controller)
 );
+router.post(
+    "/ChangeSanadPay",
+    validator.changeSanadPayValidator(),
+    controller.validate.bind(controller),
+    controller.changeSanadPay.bind(controller)
+);
 
 module.exports = router;

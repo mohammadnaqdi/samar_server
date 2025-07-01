@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
+const jalaali = require("jalaali-js");
+const jMoment = require("moment-jalaali");
 const Driver = require("./src/models/driver");
-const Student = require("./src/models/student");
-const { DDS } = require("./src/models/dds");
-const { AgencySet } = require("./src/models/agency");
-const { User } = require("./src/models/user");
-const { Service, DriverChange } = require("./src/models/service");
-const { ListAcc } = require("./src/models/levels");
+const Student = require("./src//models/student");
+const { DDS } = require("./src//models/dds");
+const { AgencySet } = require("./src//models/agency");
+const { User } = require("./src//models/user");
+const { Service, DriverChange } = require("./src//models/service");
+const { ListAcc } = require("./src//models/levels");
 
 function logWithTime(message) {
     const now = new Date();
@@ -20,23 +22,65 @@ function logWithTime(message) {
     console.log(`[${formattedTimestamp}] ${message}`);
 }
 
-function getMonth() {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    const isBeforeFarvardin = month === 3 && day < 22;
-    const isAfterShahrivar = month === 9 && day >= 22;
+// function getMonth() {
+//   const today = new Date();
+//   const { jy, jm } = jalaali.toJalaali(today);
 
-    if (
-        month >= 10 ||
-        month <= 6 ||
-        (month === 9 && isAfterShahrivar) ||
-        (month === 3 && isBeforeFarvardin)
-    ) {
-        return 30;
-    } else {
+//   if (jm >= 1 && jm <= 6) return 31;
+//   if (jm >= 7 && jm <= 11) return 30;
+
+//   // Esfand
+//   const isLeap = jalaali.isLeapJalaaliYear(jy);
+//   return isLeap ? 30 : 29;
+// }
+
+// function getMonth() {
+//     const now = new Date();
+//     const month = now.getMonth() + 1;
+//     const day = now.getDate();
+//     const isBeforeFarvardin = month === 3 && day < 22;
+//     const isAfterShahrivar = month === 9 && day >= 22;
+
+//     if (
+//         month >= 10 ||
+//         month <= 6 ||
+//         (month === 9 && isAfterShahrivar) ||
+//         (month === 3 && isBeforeFarvardin)
+//     ) {
+//         return 30;
+//     } else {
+//         return 31;
+//     }
+// }
+
+function getMonthDayCount(dayOfYear) {
+    if (dayOfYear >= 1 && dayOfYear <= 186) {
         return 31;
+    } else if (dayOfYear >= 187 && dayOfYear <= 336) {
+        return 30;
+    } else if (dayOfYear >= 337 && dayOfYear <= 366) {
+        return 29;
+    } else {
+        return null;
     }
+}
+
+function getDayOfYear() {
+    const currentDate = new Date();
+
+    const jalaliDate = jMoment(currentDate).format("jYYYY/jMM/jDD");
+
+    const [year, month, day] = jalaliDate.split("/").map(Number);
+
+    const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+
+    const daysBeforeCurrentMonth = monthsDays
+        .slice(0, month - 1)
+        .reduce((acc, days) => acc + days, 0);
+
+    const dayOfYear = daysBeforeCurrentMonth + day;
+
+    return dayOfYear;
 }
 
 function evaluateFormula(formula, values) {
@@ -97,44 +141,41 @@ async function percent(agencyId) {
     }
 }
 
-async function removeStudentFromService(studentId, serviceNum) {
+async function removeStudentFromService(
+    studentCode,
+    serviceId,
+    sc,
+    driverCost
+) {
     try {
-        // const service = await Service.findOne({ serviceNum, delete: false });
-        const service = await Service.findOne({'students.id':studentId,delete:false});
-        if(!service)return -1;
-
-        const index = service.student.indexOf(studentId);
-        if (index === -1) return null;
-
-        service.student.splice(index, 1);
-        service.studentCost.splice(index, 1);
-
-        const serviceCost = service.studentCost.reduce((a, b) => a + b, 0);
-        const setting = await AgencySet.findOne({ agencyId: service.agencyId });
-
-        let formula = "a-(a*(b/100))";
-        let formulaForStudent = false;
-        if (setting) {
-            formula = setting.formula;
-            formulaForStudent = setting.formulaForStudent;
+        const service = await Service.findById(serviceId);
+        if (!service) {
+            return false;
         }
 
-        const percentage = await percent(service.agencyId);
-        if (formulaForStudent) {
-            service.driverSharing = reverseEvaluateFormula(
-                serviceCost,
-                percentage,
-                formula
-            );
+        const index = service.routeSave.find(
+            (student) => student.code === studentCode
+        );
+        if (!index) return null;
+        service.routeSave.splice(index, 1);
+        service.schoolIds.splice(index, 1);
+
+        service.cost = service.cost - sc;
+        service.driverSharing = service.driverSharing - driverCost;
+        const sharesCost = service.cost - service.driverSharing;
+        if (service.percentInfo.length == 1) {
+            service.percentInfo[0].sharesCost = sharesCost;
         } else {
-            service.driverSharing = evaluateFormula(formula, {
-                a: serviceCost,
-                b: percentage,
-            });
+            let prs = service.percentInfo.reduce(
+                (acc, item) => acc + item.sharePercent,
+                0
+            );
+            for (let i = 0; i < service.percentInfo.length; i++) {
+                const shareCost =
+                    (service.percentInfo[i].sharePercent * sharesCost) / prs;
+                service.percentInfo[i].sharesCost = shareCost;
+            }
         }
-
-        service.driverSharing = Math.floor(service.driverSharing);
-        service.cost = serviceCost;
         await service.save();
 
         return service.serviceNum;
@@ -149,25 +190,32 @@ async function deleteStudent() {
         const stds = await Student.find({
             delete: false,
             state: 4,
-            endOfContract: { $lte: Date.now() },
+            end_date: { $lte: Date.now() },
         });
 
         if (stds.length > 0) {
             let count = 0;
             for (const std of stds) {
                 const removeSt = await removeStudentFromService(
-                    std.id,
-                    std.serviceId
+                    std.studentCode,
+                    std.service,
+                    std.serviceCost,
+                    std.driverCost
                 );
 
+                std.state = 5;
+                std.service = null;
+                std.serviceNum = -1;
+                std.serviceCost = 0;
+                std.driverCode = "";
+                std.driverCost = 0;
                 if (removeSt) {
-                    std.state = 5;
                     std.stateTitle = `حذف از ش.س ${removeSt} در قرارداد`;
-                    std.serviceId = 0;
-                    std.serviceCost = 0;
-                    await std.save();
-                    count++;
+                } else {
+                    std.stateTitle = `حذف از ش.س ناشناخته در قرارداد`;
                 }
+                await std.save();
+                count++;
             }
             console.log(`${count} students were outdated and removed.`);
         } else {
@@ -198,6 +246,8 @@ async function process() {
             59,
             59
         );
+        const today = getDayOfYear().toString();
+        const currentMonth = getMonthDayCount(today);
 
         const ddsPromises = drivers.map(async (driver) => {
             try {
@@ -205,6 +255,9 @@ async function process() {
                     driverId: driver._id,
                     delete: false,
                 }).lean();
+                if (services.length === 0) {
+                    return null;
+                }
 
                 let serviceDetails = [];
                 let totalDds = 0;
@@ -213,40 +266,48 @@ async function process() {
                 const serviceNums = [];
 
                 let driverName = "";
+                let driverLastName = "";
                 let driverPhone = "";
 
                 if (services.length !== 0) {
-                    serviceDetails = services.map((service) => {
-                        const students = service.student.map((std, index) => ({
-                            id: std,
-                            cost: service.studentCost[index],
-                        }));
+                    serviceDetails = await Promise.all(
+                        services.map(async (service) => {
+                            const stds = await Student.find({
+                                delete: false,
+                                service: service._id,
+                            }).lean();
+                            const students = stds.map((std) => ({
+                                id: std._id,
+                                cost: std.serviceCost,
+                            }));
 
-                        totalServiceCost += service.cost;
-                        totalDds += service.driverSharing;
-                        serviceNums.push(service.serviceNum);
+                            totalServiceCost += service.cost;
+                            totalDds += service.driverSharing;
+                            serviceNums.push(service.serviceNum);
 
-                        return {
-                            num: service.serviceNum,
-                            serviceCost: service.cost,
-                            driverShare: service.driverSharing,
-                            students,
-                        };
-                    });
+                            return {
+                                num: service.serviceNum,
+                                serviceCost: service.cost,
+                                driverShare: service.driverSharing,
+                                students,
+                            };
+                        })
+                    );
 
-                    driverName = services[0].driverName;
+                    let name = services[0].driverName.split(" ");
+                    driverName = name[0];
+                    driverLastName = name[1];
                     driverPhone = services[0].driverPhone;
                 } else {
                     const user = await User.findById(driver.userId).lean();
-                    driverName = `${user.name} ${user.lastName}`;
+                    driverName = user.name;
+                    driverLastName = user.lastName;
                     driverPhone = user.phone;
                 }
 
                 if (driver.active) {
-                    totalDds = Math.round(totalDds / getMonth());
-                    totalServiceCost = Math.round(
-                        totalServiceCost / getMonth()
-                    );
+                    totalDds = totalDds / currentMonth;
+                    totalServiceCost = totalServiceCost / currentMonth;
 
                     const change = await DriverChange.findOne({
                         delete: false,
@@ -263,13 +324,20 @@ async function process() {
                     status = "NT";
                 }
 
+                const currentDate = new Date();
+                const jalaliDate = jMoment(currentDate).format("jYYYY/jMM/jDD");
+                const year = jalaliDate.split("/").map(Number)[0];
                 return new DDS({
                     agencyId: driver.agencyId,
                     driverId: driver._id,
+                    driverCode: driver.driverCode,
                     name: driverName,
+                    lastName: driverLastName,
                     phone: driverPhone,
                     service: serviceDetails,
                     dds: totalDds,
+                    day: parseInt(today),
+                    year: parseInt(year),
                     sc: totalServiceCost,
                     status,
                 });
@@ -294,11 +362,10 @@ async function process() {
 
 async function main() {
     try {
-        await mongoose.connect(
-            "mongodb://admin:udXO3D0ZMNd8@192.168.0.7:27017/samar-rad?authSource=admin"
-        );
-        await deleteStudent();
+        await mongoose.connect("mongodb://localhost:27017/samar");
         await process();
+
+        await deleteStudent();
     } catch (error) {
         console.error("Error in main process:", error);
     } finally {

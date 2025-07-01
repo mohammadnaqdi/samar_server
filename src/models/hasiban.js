@@ -2,16 +2,16 @@ const mongoose = require("mongoose");
 const counterDocSchema = new mongoose.Schema({
     name: { type: String, unique: true },
     seq: { type: Number, default: 2 },
-  });
-  const CounterDoc = mongoose.model("CounterDoc", counterDocSchema);
-  async function getNextSequence(name) {
+});
+const CounterDoc = mongoose.model("CounterDoc", counterDocSchema);
+async function getNextSequence(name) {
     const result = await CounterDoc.findOneAndUpdate(
-      { name },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+        { name },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
     );
     return result.seq;
-  }
+}
 const docSanadSchema = new mongoose.Schema(
     {
         agencyId: {
@@ -19,7 +19,7 @@ const docSanadSchema = new mongoose.Schema(
             ref: "Agency",
             required: true,
         },
-        sanadId: { type: Number, },
+        sanadId: { type: Number },
         note: { type: String },
         sanadDate: Date,
         system: { type: Number, required: true },
@@ -31,17 +31,18 @@ const docSanadSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
+docSanadSchema.index({ agencyId: 1, sanadId: 1 }, { unique: true });
 docSanadSchema.pre("save", async function (next) {
     if (this.isNew) {
-      const num = await getNextSequence('sanad'+this.agencyId);
-      console.log("this.num",num)
-      this.sanadId = num;
-      this.atf = num.toString();
+        const num = await getNextSequence("sanad" + this.agencyId);
+        console.log("this.num", num);
+        this.sanadId = num;
+        this.atf = num.toString();
     }
     next();
-  });
+});
 var DocSanad = mongoose.model("DocSanad", docSanadSchema);
 
 /////////////////////////////////////////////////////////////
@@ -58,32 +59,45 @@ const docListSanadSchema = new mongoose.Schema(
             ref: "DocSanad",
             required: true,
         },
-        doclistId: Number,
+        doclistId: { type: Number, required: true },
         row: { type: Number, required: true },
         bed: { type: Number, required: true },
         bes: { type: Number, required: true },
-        serviceNum: { type: Number, default: 0 },
-        invoice: { type: Number, default: -1 },
-        month: { type: Number, required: false,default:0 },
-        isPaid: { type: Boolean, default: false },
+        mId: { type: Number, default: 0 }, //month & SanadId && serviceNum && invoice Number
         type: {
             type: String,
-            default: "other",
+            default: "pay",
             enum: [
-                "other",
-                "driver",
-                "student",
+                "pay",
+                "salary",
+                "paySalary",
+                "invoice",
+                "advance",
+                "service",
+                "penalty",
+                "reward",
+                "cashReg",
+                "absence",
+                "banki",
+                "charge",
+                "unCharge",
             ],
         },
+        isOnline: { type: Boolean, defautl: false },
         days: { type: Number, default: 0 },
         sanadDate: Date,
         note: { type: String },
         accCode: { type: String, required: true },
+        forCode: { type: String, default: "" },
         peigiri: { type: String, default: "" },
     },
     {
         timestamps: true,
-    },
+    }
+);
+docListSanadSchema.index(
+    { accCode: 1, mId: 1, type: 1, forCode: 1 },
+    { unique: true }
 );
 const DocListSanad = mongoose.model("DocListSanad", docListSanadSchema);
 
@@ -114,7 +128,7 @@ const checkInfoSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const CheckInfo = mongoose.model("CheckInfo", checkInfoSchema);
 /////////////////////////////////////////////////////////////
@@ -144,7 +158,7 @@ const checkHistorySchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const CheckHistory = mongoose.model("CheckHistory", checkHistorySchema);
 

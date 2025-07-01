@@ -37,5 +37,7 @@ router.post("/SetStudentSign", validator.setStudentSignValidator(),
 controller.validate.bind(controller), controller.setStudentSign.bind(controller));
 
 router.get("/GetCountSchoolContracts", controller.getCountSchoolContracts.bind(controller));
+router.post("/NearSchoolList", validator.nearSchoolListValidator(),
+    controller.validate.bind(controller), controller.nearSchoolList.bind(controller));
 
 module.exports = router;

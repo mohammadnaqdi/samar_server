@@ -10,6 +10,7 @@ const parentSchema = new mongoose.Schema(
         lastName: { type: String, default: "" },
         inActvieReason: { type: String, default: "", required: false },
         fcm: { type: [], default: [], required: false },
+        isParent: { type: Boolean, required: false, default: true },
     },
     {
         timestamps: true,

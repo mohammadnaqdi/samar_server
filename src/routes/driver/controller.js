@@ -343,7 +343,7 @@ module.exports = new (class extends controller {
 
             let kol = "004";
             let moeen = "006";
-            let userCode='';
+            let userCode = "";
             if (userId.trim() === "") {
                 let user = await this.User.findOne({ phone });
                 if (user) {
@@ -365,11 +365,8 @@ module.exports = new (class extends controller {
                     userName: phone,
                 });
                 await user.save();
-                userCode=user.code;
-                await this.updateRedisDocument(
-                    `user:${user._id}`,
-                    user.toObject()
-                );
+                userCode = user.code;
+                await this.updateRedisDocument(`user:${user._id}`, user);
                 userId = user.id;
             } else {
                 const drTest = await this.Driver.findOne({
@@ -387,11 +384,11 @@ module.exports = new (class extends controller {
                         },
                     });
                 }
-               const user= await this.User.findByIdAndUpdate(userId, {
+                const user = await this.User.findByIdAndUpdate(userId, {
                     name,
                     lastName,
                 });
-                userCode=user.code;
+                userCode = user.code;
                 await this.updateRedisDocument(`user:${userId}`, {
                     name,
                     lastName,
@@ -416,7 +413,7 @@ module.exports = new (class extends controller {
                 userId: userId,
                 agencyId,
                 carId: car.id,
-                driverCode:agency.code+userCode,
+                driverCode: agency.code + userCode,
             });
             await driver.save();
             // let code = driverCode.toString();
@@ -536,7 +533,7 @@ module.exports = new (class extends controller {
                 userId: user.id,
                 agencyId,
                 carId: driver.carId,
-                driverCode:agency.code+user.code,
+                driverCode: agency.code + user.code,
                 addressId: driver.addressId,
                 drivingLicence: driver.drivingLicence,
                 pic: driver.pic,
@@ -771,10 +768,7 @@ module.exports = new (class extends controller {
                 driver.expireSh = req.body.expireSh;
             }
             await user.save();
-            await this.updateRedisDocument(
-                    `user:${user._id}`,
-                    user.toObject()
-                );
+            await this.updateRedisDocument(`user:${user._id}`, user);
             await car.save();
             await driver.save();
 
@@ -1750,7 +1744,7 @@ module.exports = new (class extends controller {
                         serviceId: service.serviceNum,
                     }).sort({ _id: -1 });
                     const school = await this.School.findById(
-                        service.schoolId,
+                        service.schoolIds[0],
                         "name schoolTime location.coordinates"
                     );
                     serviceStates.push({
@@ -2140,9 +2134,9 @@ module.exports = new (class extends controller {
                     fcm.push({ device: device, token: firebaseToken });
                 }
                 req.user.fcm = fcm;
-                await this.User.findByIdAndUpdate(req.user._id,{fcm});
+                await this.User.findByIdAndUpdate(req.user._id, { fcm });
                 await this.updateRedisDocument(`user:${req.user._id}`, {
-                    fcm
+                    fcm,
                 });
                 // req.user.save();
             }
@@ -2187,7 +2181,7 @@ module.exports = new (class extends controller {
                         (studentInfo.homeLng = 0),
                         (studentInfo.schoolLng = 0),
                         (studentInfo.state = 0),
-                        (studentInfo.serviceId = 0),
+                        (studentInfo.serviceNum = 0),
                         (studentInfo.serviceDistance = 0),
                         (studentInfo.gradeId = 0);
                     studentInfo.supervisor = [];
@@ -2205,7 +2199,7 @@ module.exports = new (class extends controller {
                         studentInfo.gender = student.gender;
                         studentInfo.state = student.state;
                         studentInfo.stateTitle = student.stateTitle;
-                        studentInfo.serviceId = student.serviceId;
+                        studentInfo.serviceNum = student.serviceNum;
                         studentInfo.stateTitle = student.stateTitle;
                         studentInfo.serviceDistance = student.serviceDistance;
                         studentInfo.gradeId = student.gradeId;
@@ -2374,8 +2368,12 @@ module.exports = new (class extends controller {
                 if (!find) {
                     fcm.push({ device: device, token: firebaseToken });
                 }
-                req.user.fcm = fcm;
-                req.user.save();
+                await this.User.findByIdAndUpdate(req.user._id, { fcm });
+                await this.updateRedisDocument(`user:${req.user._id}`, {
+                    fcm,
+                });
+                // req.user.fcm = fcm;
+                // req.user.save();
             }
             let driversList = [];
             for (var i in drivers) {
@@ -2383,27 +2381,41 @@ module.exports = new (class extends controller {
                 const car = await this.Car.findById(driver.carId);
                 const agency = await this.Agency.findById(
                     driver.agencyId,
-                    "name code location.coordinates address active tel"
+                    "name code location.coordinates address active tel cityId"
                 );
-                let agencySet = await this.AgencySet.findOne({
-                    agencyId: agency._id,
-                });
-                if (!agencySet) {
-                    agencySet = {
-                        setter: null,
-                        showFirstCostToStudent: false,
-                        showCostToDriver: true,
-                        formula: "a-(a*(b/100))",
-                        formulaForStudent: false,
-                        updatedAt: null,
-                    };
+                if (!agency) {
+                    continue;
                 }
-                if (agencySet.formula === "") {
-                    agencySet.formula = "a-(a*(b/100))";
+                if (!agency.active) {
+                    continue;
                 }
+                let agencySet;
+                if (driver.isAgent) {
+                    agencySet = await this.AgencySet.findOne({
+                        agencyId: agency._id,
+                    });
+                    if (!agencySet) {
+                        agencySet = {
+                            setter: null,
+                            showFirstCostToStudent: false,
+                            showCostToDriver: true,
+                            formula: "a-(a*(b/100))",
+                            formulaForStudent: false,
+                            updatedAt: null,
+                        };
+                    }
+                    if (agencySet.formula === "") {
+                        agencySet.formula = "a-(a*(b/100))";
+                    }
+                }
+
                 let services = await this.Service.find(
-                    { driverId: driver.id, delete: false },
-                    "serviceNum distance driverSharing student routeSave active time"
+                    {
+                        driverId: driver._id,
+                        delete: false,
+                        agencyId: agency._id,
+                    },
+                    "serviceNum distance driverSharing routeSave active time"
                 );
                 services = services.map((service) => {
                     return {
@@ -2427,69 +2439,36 @@ module.exports = new (class extends controller {
                     ).sort({
                         _id: -1,
                     });
-                    for (var s in services[i].student) {
+                    const students = await this.Student.find({
+                        service: services[i]._id,
+                    }).lean();
+                    for (var student of students) {
                         let studentInfo = {};
-                        let student = await this.Student.findById(
-                            services[i].student[s]
-                        ).lean();
-                        if (!student) continue;
-                        (studentInfo.studentCode = ""),
-                            (studentInfo.gradeTitle = ""),
-                            (studentInfo.name = ""),
-                            (studentInfo.lastName = ""),
-                            (studentInfo.fatherName = ""),
-                            (studentInfo.physicalConditionDesc = ""),
-                            (studentInfo.physicalCondition = 0),
-                            (studentInfo.stateTitle = ""),
-                            (studentInfo.parentName = ""),
-                            (studentInfo.parentPhone = ""),
-                            (studentInfo.schoolName = ""),
-                            (studentInfo.active = true),
-                            (studentInfo.isIranian = true),
-                            (studentInfo.gender = 0),
-                            (studentInfo.homeAddress = ""),
-                            (studentInfo.schoolAddress = ""),
-                            (studentInfo.shiftName = ""),
-                            (studentInfo.shiftType = ""),
-                            (studentInfo.parentId = ""),
-                            (studentInfo.homeLat = 0),
-                            (studentInfo.schoolLat = 0),
-                            (studentInfo.homeLng = 0),
-                            (studentInfo.schoolLng = 0),
-                            (studentInfo.state = 0),
-                            (studentInfo.serviceId = 0),
-                            (studentInfo.serviceDistance = 0),
-                            (studentInfo.id = ""),
-                            (studentInfo.avanak = false);
-                        studentInfo.supervisor = [];
-                        if (student) {
-                            studentInfo.studentCode = student.studentCode;
-                            studentInfo.gradeTitle = student.gradeTitle;
-                            studentInfo.name = student.name;
-                            studentInfo.lastName = student.lastName;
-                            studentInfo.fatherName = student.fatherName;
-                            studentInfo.physicalConditionDesc =
-                                student.physicalConditionDesc;
-                            studentInfo.physicalCondition =
-                                student.physicalCondition;
-                            studentInfo.stateTitle = student.stateTitle;
-                            studentInfo.active = student.active;
-                            studentInfo.isIranian = student.isIranian;
-                            studentInfo.gender = student.gender;
-                            studentInfo.state = student.state;
-                            studentInfo.stateTitle = student.stateTitle;
-                            studentInfo.serviceId = student.serviceId;
-                            studentInfo.stateTitle = student.stateTitle;
-                            studentInfo.serviceDistance =
-                                student.serviceDistance;
-                            studentInfo.gradeId = student.gradeId;
-                            studentInfo.parentId = student.parent;
-                            studentInfo.id = student.id;
-                            studentInfo.supervisor = student.supervisor;
-                            studentInfo.avanak =
-                                student.avanak &&
-                                student.avanakNumber.length > 6;
-                        }
+                        studentInfo.studentCode = student.studentCode;
+                        studentInfo.gradeTitle = student.gradeTitle;
+                        studentInfo.name = student.name;
+                        studentInfo.lastName = student.lastName;
+                        studentInfo.fatherName = student.fatherName;
+                        studentInfo.physicalConditionDesc =
+                            student.physicalConditionDesc;
+                        studentInfo.physicalCondition =
+                            student.physicalCondition;
+                        studentInfo.stateTitle = student.stateTitle;
+                        studentInfo.active = student.active;
+                        studentInfo.isIranian = student.isIranian;
+                        studentInfo.gender = student.gender;
+                        studentInfo.state = student.state;
+                        studentInfo.stateTitle = student.stateTitle;
+                        studentInfo.serviceNum = student.serviceNum;
+                        studentInfo.stateTitle = student.stateTitle;
+                        studentInfo.serviceDistance = student.serviceDistance;
+                        studentInfo.gradeId = student.gradeId;
+                        studentInfo.parentId = student.parent;
+                        studentInfo.id = student.id;
+                        studentInfo.supervisor = student.supervisor;
+                        studentInfo.avanak =
+                            student.avanak && student.avanakNumber.length > 6;
+
                         let school = await this.School.findById(
                             student.school,
                             "name location.coordinates schoolTime"
@@ -2497,8 +2476,10 @@ module.exports = new (class extends controller {
                         if (school) {
                             studentInfo.schoolName = school.name;
                             studentInfo.schoolAddress = school.address;
-                            studentInfo.schoolLat = school.location.coordinates[0];
-                            studentInfo.schoolLng = school.location.coordinates[1];
+                            studentInfo.schoolLat =
+                                school.location.coordinates[0];
+                            studentInfo.schoolLng =
+                                school.location.coordinates[1];
                             let shiftName = "",
                                 shiftType = "";
                             if (school.schoolTime.length > student.time) {
@@ -2583,7 +2564,7 @@ module.exports = new (class extends controller {
                 data: driversList,
             });
         } catch (error) {
-            console.error("Error while 00010:", error);
+            console.error("Error while getMyInfo2:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -2638,11 +2619,11 @@ module.exports = new (class extends controller {
             let page = parseInt(req.query.page);
             if (page < 0) page = 0;
 
-            var qr = [];
-            qr.push({ delete: false });
-            qr.push({ agencyId });
+            // var qr = [];
+            // qr.push({ delete: false });
+            // qr.push({ agencyId });
 
-            let drivers = await this.Driver.find({ $and: qr })
+            let drivers = await this.Driver.find({ agencyId, delete: false })
                 .skip(page * 25)
                 .limit(25)
                 .sort({ active: -1, isAgent: -1, _id: 1 });
@@ -2682,12 +2663,20 @@ module.exports = new (class extends controller {
                     drivers[i].moreData.capacity = car.capacity ?? 0;
                     drivers[i].moreData.year = car.year;
                 }
-                const serviceChart = await this.Service.find(
-                    { driverId: drivers[i]._id, delete: false, active: true },
-                    "student -_id"
-                ).lean();
-                drivers[i].moreData.serviceChart = serviceChart;
-
+                // const serviceChart = await this.Service.find(
+                //     { driverId: drivers[i]._id, delete: false, active: true },
+                //     "student -_id"
+                // ).lean();
+                // drivers[i].moreData.serviceChart = serviceChart;
+                const studentCount = await this.Student.countDocuments({
+                    driverCode: drivers[i].driverCode,
+                });
+                const serviceCount = await this.Service.countDocuments({
+                    delete: false,
+                    driverId: drivers[i]._id,
+                });
+                drivers[i].moreData.studentCount = studentCount;
+                drivers[i].moreData.serviceCount = serviceCount;
                 delete drivers[i].carId;
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;
@@ -2857,7 +2846,7 @@ module.exports = new (class extends controller {
                 const ratin = await this.RatingDriver.aggregate([
                     {
                         $match: {
-                            driverId: ObjectId.createFromHexString(driverId),
+                            driverId,
                         },
                     },
                     { $project: { point: 1, userId: 1 } },

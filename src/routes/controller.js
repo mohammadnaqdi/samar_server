@@ -36,8 +36,8 @@ const { Holiday } = require("./../models/calendar");
 const { Versionsoft } = require("./../models/versionsoft");
 const {
     Transactions,
-    PayQueue,
-    PayAction,
+    PayQueue,Invoice
+    // PayAction,
 } = require("./../models/transactions");
 const { MessageCode, Messaging ,Seen,Notification} = require("./../models/otp");
 const {
@@ -69,6 +69,7 @@ const { redisClient } = require("../../startup/redis");
 module.exports = class {
     constructor() {
         this.redisClient = redisClient;
+        this.Invoice = Invoice;
         this.SearchLog = SearchLog;
         this.City = City;
         this.CounterKey = CounterKey;
@@ -127,7 +128,7 @@ module.exports = class {
         this.MessageCode = MessageCode;
         this.Messaging = Messaging;
         this.PayQueue = PayQueue;
-        this.PayAction = PayAction;
+        // this.PayAction = PayAction;
         this.Pack = Pack;
         this.Exception = Exception;
         this.GroupPack = GroupPack;
@@ -194,8 +195,16 @@ async scanAllKeys() {
         }
     }
 
-    async updateRedisDocument(redisKey, updates = {}) {
+   async updateRedisDocument(redisKey, updates = {}) {
         try {
+            // Convert Mongoose document to plain object if needed
+            if (typeof updates.toObject === "function") {
+                updates = updates.toObject();
+            }
+
+            // Strip out internal fields like $, __, and symbols
+            updates = JSON.parse(JSON.stringify(updates));
+
             const existing = await this.redisClient.get(redisKey);
             let parsed = {};
 
@@ -207,7 +216,8 @@ async scanAllKeys() {
                 ...parsed,
                 ...updates,
             };
-            console.log("Updated Redis Document:", updated);
+
+            // console.log("Updated Redis Document:", updated);
             await this.redisClient.set(redisKey, JSON.stringify(updated));
             return updated;
         } catch (error) {

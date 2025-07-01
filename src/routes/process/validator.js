@@ -56,51 +56,7 @@ module.exports = new (class {
                 .withMessage("studentIds cant be empty"),
         ];
     }
-    setStudentValidator() {
-        return [
-            check("id").not().isEmpty().withMessage("id cant be empty"),
-            check("name")
-                .isLength({ min: 1, max: 70 })
-                .withMessage("name cant be empty max 70"),
-            check("parentReleation")
-                .isLength({ min: 1, max: 70 })
-                .withMessage("parentReleation cant be empty max 70"),
-            check("lastName")
-                .isLength({ min: 1, max: 70 })
-                .withMessage("lastName cant be empty max 70"),
-            check("studentCode")
-                .isLength({ min: 1, max: 30 })
-                .withMessage("studentCode cant be empty max 30"),
-            check("school").not().isEmpty().withMessage("school cant be empty"),
-            check("gradeId")
-                .not()
-                .isEmpty()
-                .withMessage("gradeId cant be empty"),
-            check("gradeTitle")
-                .not()
-                .isEmpty()
-                .withMessage("gradeTitle cant be empty"),
-            check("addressText")
-                .not()
-                .isEmpty()
-                .withMessage("addressText cant be empty"),
-            check("details")
-                .not()
-                .isEmpty()
-                .withMessage("details cant be empty"),
-            check("location").not().isEmpty().withMessage("location cant be empty"),
-            check("isIranian")
-                .not()
-                .isEmpty()
-                .withMessage("isIranian cant be empty"),
-            check("gender").not().isEmpty().withMessage("gender cant be empty"),
-            check("parentId")
-                .not()
-                .isEmpty()
-                .withMessage("parentId cant be empty"),
-            check("time").not().isEmpty().withMessage("time cant be empty"),
-        ];
-    }
+    
     editDDSValidator() {
         return [
             check("id").not().isEmpty().withMessage("id cant be empty"),

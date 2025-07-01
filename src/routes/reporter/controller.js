@@ -332,7 +332,7 @@ module.exports = new (class extends controller {
                             break;
                         case "student":
                         case "studentCode":
-                            information = `${infoResult.name} ${infoResult.lastName}`;
+                            information = `${infoResult}`;
                             break;
                         case "user":
                             information = `${infoResult.name} ${infoResult.lastName}`;

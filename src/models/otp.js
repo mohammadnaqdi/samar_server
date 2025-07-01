@@ -5,6 +5,7 @@ const otpSchema = new mongoose.Schema(
         phone: { type: String, required: true },
         code: { type: String, required: true },
         isParent: { type: Boolean, default:false},
+        consumed: { type: Boolean, default:false},
     },
     {
         timestamps: true,

@@ -13,6 +13,7 @@ module.exports = new (class extends controller {
             const cost = req.body.cost;
             const student = req.body.student;
             const studentCost = req.body.studentCost;
+            const driverCost = req.body.driverCost;
             const agencyId = ObjectId.createFromHexString(req.body.agencyId);
             const driverId = req.body.driverId;
             const driverSharing = req.body.driverSharing;
@@ -33,7 +34,7 @@ module.exports = new (class extends controller {
                     delete: false,
                 },
                 ""
-            );
+            ).lean();
             if (!agency) {
                 return this.response({
                     res,
@@ -44,6 +45,17 @@ module.exports = new (class extends controller {
                     },
                 });
             }
+            const driver = await this.Driver.findOne({ _id: driverId, delete: false },'driverCode').lean();
+            if (!driver) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "Driver not found or deleted",
+                    data: {
+                        fa_m: "راننده پیدا نشد یا حذف شده است!",
+                    },
+                });
+            }
 
             let service = new this.Service({
                 distance,
@@ -51,6 +63,7 @@ module.exports = new (class extends controller {
                 driverSharing,
                 agencyId,
                 driverId,
+                
                 schoolIds: schoolId,
                 time,
                 routeSave,
@@ -66,8 +79,10 @@ module.exports = new (class extends controller {
                 await this.Student.findByIdAndUpdate(student[i], {
                     service: service._id,
                     serviceNum: service.serviceNum,
+                    driverCode:driver.driverCode,
                     agencyId,
                     serviceCost: studentCost[i],
+                    driverCost: driverCost[i],
                     state: 4,
                     stateTitle: "دارای سرویس",
                 });
@@ -91,6 +106,7 @@ module.exports = new (class extends controller {
             const student = req.body.student;
             const studentPast = req.body.studentPast;
             const studentCost = req.body.studentCost;
+            const driverCost = req.body.driverCost;
             const agencyId = req.body.agencyId;
             const driverId = req.body.driverId;
             const driverSharing = req.body.driverSharing;
@@ -112,6 +128,17 @@ module.exports = new (class extends controller {
                     message: "service not find",
                 });
             }
+             const driver = await this.Driver.findOne({ _id: driverId, delete: false },'driverCode').lean();
+            if (!driver) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "Driver not found or deleted",
+                    data: {
+                        fa_m: "راننده پیدا نشد یا حذف شده است!",
+                    },
+                });
+            }
 
             for (let i = 0; i < studentPast.length; i++) {
                 let exist = false;
@@ -126,6 +153,8 @@ module.exports = new (class extends controller {
                     service: null,
                     serviceNum: -1,
                     serviceCost: 0,
+                    driverCost: 0,
+                    driverCode:'',
                     agencyId: null,
                     state: 5,
                     stateTitle: `حذف از سرویس ${service.serviceNum}`,
@@ -171,7 +200,9 @@ module.exports = new (class extends controller {
                     service: service._id,
                     agencyId,
                     serviceNum: service.serviceNum,
+                    driverCode:driver.driverCode,
                     serviceCost: studentCost[i],
+                    driverCost: driverCost[i],
                     state: 4,
                     stateTitle: "دارای سرویس",
                 });
@@ -212,6 +243,7 @@ module.exports = new (class extends controller {
             const cost = req.body.cost;
             const student = req.body.student;
             const studentCost = req.body.studentCost;
+            const driverCost = req.body.driverCost;
             const agencyId = req.body.agencyId;
             const driverId = req.body.driverId;
             const driverSharing = req.body.driverSharing;
@@ -225,7 +257,17 @@ module.exports = new (class extends controller {
             const driverPhone = req.body.driverPhone;
             const driverCarPelak = req.body.driverCarPelak;
             const stChange = req.body.stChange || [];
-
+             const driver = await this.Driver.findOne({ _id: driverId, delete: false },'driverCode').lean();
+            if (!driver) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "Driver not found or deleted",
+                    data: {
+                        fa_m: "راننده پیدا نشد یا حذف شده است!",
+                    },
+                });
+            }
             let service = await this.Service.findById(id);
             if (!service) {
                 return this.response({
@@ -240,6 +282,8 @@ module.exports = new (class extends controller {
                     serviceNum: stu.serviceNum,
                     agencyId: stu.serviceNum < 1 ? null : agencyId,
                     serviceCost: stu.serviceFee,
+                    driverCost: stu.driverFee,
+                    driverCode:driver.driverCode,
                     state: stu.newState,
                     stateTitle: stu.stateDesc,
                 });
@@ -552,7 +596,7 @@ module.exports = new (class extends controller {
                 for (let a in service[i].student) {
                     let st = await this.Student.findById(
                         service[i].student[a],
-                        "state stateTitle serviceId parent name lastName school gradeTitle studentCode time"
+                        "state stateTitle serviceNum parent name lastName school gradeTitle studentCode time"
                     );
                     let sch = await this.School.findById(
                         st.school,
@@ -1005,7 +1049,9 @@ module.exports = new (class extends controller {
             }).save();
             for (let i = 0; i < service.student.length; i++) {
                 await this.Student.findByIdAndUpdate(service.student[i], {
-                    serviceId: 0,
+                    service: null,
+                    serviceNum:-1,
+                    driverCode:'',
                     serviceCost: 0,
                     state: 3,
                     stateTitle: "حذف سرویس درانتظار",
@@ -1147,7 +1193,7 @@ module.exports = new (class extends controller {
                 for (var a in service[i].student) {
                     let st = await this.Student.findById(
                         service[i].student[a],
-                        "state stateTitle serviceId serviceCost name lastName school gradeTitle studentCode startOfContract endOfContract"
+                        "state stateTitle serviceNum serviceCost name lastName school gradeTitle studentCode startOfContract endOfContract"
                     );
                     let sch = await this.School.findById(
                         st.school,
@@ -1155,7 +1201,7 @@ module.exports = new (class extends controller {
                     );
                     students.push({ student: st, school: sch });
                 }
-                //  let students = await this.Student.find({id: { '$in': service[i].student }},'state stateTitle serviceId serviceCost name lastName school gradeTitle');
+                //  let students = await this.Student.find({id: { '$in': service[i].student }},'state stateTitle serviceNum serviceCost name lastName school gradeTitle');
                 let moreInfo = {};
                 if (school) {
                     moreInfo.schoolName = school.name;
@@ -1542,67 +1588,67 @@ module.exports = new (class extends controller {
         }
     }
 
-    async findNotEqualService(req, res) {
-        try {
-            const { agencyId } = req.query;
+    // async findNotEqualService(req, res) {
+    //     try {
+    //         const { agencyId } = req.query;
 
-            const services = await this.Service.find({
-                agencyId,
-                delete: false,
-            });
-            let notEqualServices = [];
-            let notEqualNum = [];
-            let notActiveStudent = [];
-            for (var i = 0; i < services.length; i++) {
-                const students = services[i].student;
-                const studentCost = services[i].studentCost;
-                if (students.length != studentCost.length) {
-                    notEqualServices.push(
-                        services[i].serviceNum + "-" + services[i].driverPhone
-                    );
-                    continue;
-                }
-                for (var j = 0; j < students.length; j++) {
-                    const student = await this.Student.findById(students[j]);
-                    if (!student) {
-                        notActiveStudent.push(students[j]);
-                        continue;
-                    }
-                    if (student.serviceId != services[i].serviceNum) {
-                        notEqualNum.push(
-                            services[i].serviceNum +
-                                "-" +
-                                services[i].driverPhone
-                        );
-                    }
-                    if (
-                        Math.abs(
-                            student.serviceCost - services[i].studentCost[j]
-                        ) > 10000
-                    ) {
-                        notEqualServices.push(
-                            services[i].serviceNum +
-                                "-" +
-                                services[i].driverPhone
-                        );
-                    }
-                    if (student.state != 4 || student.delete) {
-                        notActiveStudent.push(student.studentCode);
-                    }
-                }
-            }
-            let arrayWithoutDuplicates = [...new Set(notEqualServices)];
-            return this.response({
-                res,
-                data: {
-                    notEqualServices: arrayWithoutDuplicates,
-                    notEqualNum,
-                    notActiveStudent,
-                },
-            });
-        } catch (error) {
-            console.error("Error while findNotEqualService:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         const services = await this.Service.find({
+    //             agencyId,
+    //             delete: false,
+    //         });
+    //         let notEqualServices = [];
+    //         let notEqualNum = [];
+    //         let notActiveStudent = [];
+    //         for (var i = 0; i < services.length; i++) {
+    //             const students = services[i].student;
+    //             const studentCost = services[i].studentCost;
+    //             if (students.length != studentCost.length) {
+    //                 notEqualServices.push(
+    //                     services[i].serviceNum + "-" + services[i].driverPhone
+    //                 );
+    //                 continue;
+    //             }
+    //             for (var j = 0; j < students.length; j++) {
+    //                 const student = await this.Student.findById(students[j]);
+    //                 if (!student) {
+    //                     notActiveStudent.push(students[j]);
+    //                     continue;
+    //                 }
+    //                 if (student.serviceId != services[i].serviceNum) {
+    //                     notEqualNum.push(
+    //                         services[i].serviceNum +
+    //                             "-" +
+    //                             services[i].driverPhone
+    //                     );
+    //                 }
+    //                 if (
+    //                     Math.abs(
+    //                         student.serviceCost - services[i].studentCost[j]
+    //                     ) > 10000
+    //                 ) {
+    //                     notEqualServices.push(
+    //                         services[i].serviceNum +
+    //                             "-" +
+    //                             services[i].driverPhone
+    //                     );
+    //                 }
+    //                 if (student.state != 4 || student.delete) {
+    //                     notActiveStudent.push(student.studentCode);
+    //                 }
+    //             }
+    //         }
+    //         let arrayWithoutDuplicates = [...new Set(notEqualServices)];
+    //         return this.response({
+    //             res,
+    //             data: {
+    //                 notEqualServices: arrayWithoutDuplicates,
+    //                 notEqualNum,
+    //                 notActiveStudent,
+    //             },
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while findNotEqualService:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 })();
