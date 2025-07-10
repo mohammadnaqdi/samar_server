@@ -72,7 +72,7 @@ function getDayOfYear() {
 
     const [year, month, day] = jalaliDate.split("/").map(Number);
 
-    const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+    const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, jMoment.jDaysInMonth(year, 11)];
 
     const daysBeforeCurrentMonth = monthsDays
         .slice(0, month - 1)
@@ -279,6 +279,7 @@ async function process() {
                             const students = stds.map((std) => ({
                                 id: std._id,
                                 cost: std.serviceCost,
+                                driverCost: std.driverCost,
                             }));
 
                             totalServiceCost += service.cost;

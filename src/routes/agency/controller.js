@@ -576,8 +576,6 @@ module.exports = new (class extends controller {
                     await agency.save({ session });
                     let invoice = new this.Invoice({
                         title: "هزینه ثبت نام",
-                        listAccCode: " ",
-                        listAccName: " ",
                         confirmInfo: true,
                         agencyId: agency._id,
                         setter: userId,
@@ -586,6 +584,15 @@ module.exports = new (class extends controller {
                     });
 
                     await invoice.save({ session });
+
+                    await new this.Invoice({
+                        title: "هزینه سرویس",
+                        confirmInfo: true,
+                        agencyId: agency._id,
+                        setter: userId,
+                        type: "serviceCost",
+                        amount: 0,
+                    }).save({ session });
 
                     const rules = textValues.map((text) => ({
                         agencyId: agency._id,
@@ -680,6 +687,20 @@ module.exports = new (class extends controller {
                     location: { type: "Point", coordinates: location },
                     cityId: cityCode,
                 });
+                const serviceCost = await this.Invoice.findOne({
+                    agencyId: agency._id,
+                    type: "serviceCost",
+                });
+                if (!serviceCost) {
+                    await new this.Invoice({
+                        title: "هزینه سرویس",
+                        confirmInfo: true,
+                        agencyId: agency._id,
+                        setter: userId,
+                        type: "serviceCost",
+                        amount: 0,
+                    }).save({ session });
+                }
                 let invoice = await this.Invoice.findOne({
                     agencyId: agency._id,
                     type: "registration",
@@ -695,7 +716,6 @@ module.exports = new (class extends controller {
                         type: "registration",
                         amount: registrationPrice,
                     });
-
                     await vv.save();
                 } else {
                     await this.Invoice.updateMany(
@@ -1167,6 +1187,7 @@ module.exports = new (class extends controller {
             }
             console.log("driversList", driversList);
             // const sanadCount=await this.DocSanad.countDocuments({agencyId})
+
             return this.response({
                 res,
                 data: { schools, services, drivers, reports, mandeh },
@@ -1281,6 +1302,99 @@ module.exports = new (class extends controller {
             //     });
             // }
             // const sanadCount=await this.DocSanad.countDocuments({agencyId})
+            const sanadCount0 = await this.Student.countDocuments({
+                state: 0,
+                agencyId,
+                delete: false,
+            });
+            const sanadCount1 = await this.Student.countDocuments({
+                state: 1,
+                agencyId,
+                delete: false,
+            });
+            const sanadCount2 = await this.Student.countDocuments({
+                state: 2,
+                agencyId,
+                delete: false,
+            });
+            const sanadCount3 = await this.Student.countDocuments({
+                state: 3,
+                agencyId,
+                delete: false,
+            });
+            const sanadCount4 = await this.Student.countDocuments({
+                state: 4,
+                agencyId,
+                delete: false,
+            });
+            const student0 = [];
+            for (let i = 0; i < 10; i++) {
+                const ss = await this.Student.countDocuments({
+                    state: { $in: [0, 1] },
+                    agencyId,
+                    delete: false,
+                    createdAt: {
+                        $gte: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(0, 0, 0, 0),
+                        $lt: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(23, 59, 59, 999),
+                    },
+                });
+                student0.push(ss);
+            }
+            const student2 = [];
+            for (let i = 0; i < 10; i++) {
+                const ss = await this.Student.countDocuments({
+                    state: 2,
+                    agencyId,
+                    delete: false,
+                    createdAt: {
+                        $gte: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(0, 0, 0, 0),
+                        $lt: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(23, 59, 59, 999),
+                    },
+                });
+                student2.push(ss);
+            }
+            const student3 = [];
+            for (let i = 0; i < 10; i++) {
+                const ss = await this.Student.countDocuments({
+                    state: 3,
+                    agencyId,
+                    delete: false,
+                    createdAt: {
+                        $gte: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(0, 0, 0, 0),
+                        $lt: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(23, 59, 59, 999),
+                    },
+                });
+                student3.push(ss);
+            }
+            const student4 = [];
+            for (let i = 0; i < 10; i++) {
+                const ss = await this.Student.countDocuments({
+                    state: 4,
+                    agencyId,
+                    delete: false,
+                    createdAt: {
+                        $gte: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(0, 0, 0, 0),
+                        $lt: new Date(
+                            new Date().setDate(new Date().getDate() - i)
+                        ).setHours(23, 59, 59, 999),
+                    },
+                });
+                student4.push(ss);
+            }
             return this.response({
                 res,
                 data: {
@@ -1290,6 +1404,15 @@ module.exports = new (class extends controller {
                     reports,
                     mandeh,
                     serviceCount,
+                    student0,
+                    student2,
+                    student3,
+                    student4,
+                    sanadCount0,
+                    sanadCount1,
+                    sanadCount2,
+                    sanadCount3,
+                    sanadCount4,
                 },
             });
         } catch (error) {
@@ -1522,17 +1645,52 @@ module.exports = new (class extends controller {
                 agencyId: ObjectId.createFromHexString(req.query.agencyId),
             });
             if (!agencySet) {
-                agencySet = {
-                    setter: null,
-                    showFirstCostToStudent: false,
-                    showCostToDriver: true,
-                    formula: "a-(a*(b/100))",
-                    formulaForStudent: false,
-                    updatedAt: null,
-                };
+                const showFirstCostToStudent = false;
+                const showCostToDriver = true;
+                const formula = "a-(a*(b/100))";
+                const formulaForStudent = false;
+                agencySet = new this.AgencySet({
+                    agencyId,
+                    setter,
+                    showFirstCostToStudent,
+                    showCostToDriver,
+                    formula,
+                    formulaForStudent,
+                    openOpinion: {
+                        1: false,
+                        2: false,
+                        3: false,
+                        4: false,
+                        5: false,
+                        6: false,
+                        7: false,
+                        8: false,
+                        9: false,
+                        10: false,
+                        11: false,
+                        12: false,
+                    },
+                });
+                await agencySet.save();
             }
             if (agencySet.formula === "") {
                 agencySet.formula = "a-(a*(b/100))";
+            }
+            if (!agencySet.openOpinion) {
+                agencySet.openOpinion = {
+                    1: false,
+                    2: false,
+                    3: false,
+                    4: false,
+                    5: false,
+                    6: false,
+                    7: false,
+                    8: false,
+                    9: false,
+                    10: false,
+                    11: false,
+                    12: false,
+                };
             }
 
             return this.response({
@@ -1594,6 +1752,39 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in setAgencySetting:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setAgencySettingOpinion(req, res) {
+        try {
+            let { agencyId, id, active } = req.body;
+
+            const setter = req.user._id;
+
+            let agencySet = await this.AgencySet.findOne({
+                agencyId: ObjectId.createFromHexString(agencyId),
+            });
+            if (!agencySet) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "agencySet not find",
+                    data: { fa_m: "پیدا نشد" },
+                });
+            }
+
+            await this.AgencySet.findOneAndUpdate(
+                { agencyId: ObjectId.createFromHexString(agencyId) },
+                { [`openOpinion.${id}`]: active },
+                { new: true }
+            );
+
+            return this.response({
+                res,
+                message:'ok',
+            });
+        } catch (error) {
+            console.error("Error in setAgencySettingOpinion:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

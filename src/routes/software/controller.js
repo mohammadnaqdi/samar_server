@@ -64,7 +64,7 @@ module.exports = new (class extends controller {
     }
 
     async getVersion(req, res) {
-        // try {
+        try {
         const { type } = req.query;
         if (!type) {
             return this.response({
@@ -74,25 +74,25 @@ module.exports = new (class extends controller {
             });
         }
 
-        // const version = await this.Versionsoft.findOne({
-        //     type,
-        //     active: true,
-        // }).sort({ versionCode: -1 });
-        let version = await this.redisClient.get(`software:${type}`);
-        version = JSON.parse(version);
+        const version = await this.Versionsoft.findOne({
+            type,
+            active: true,
+        }).sort({ versionCode: -1 });
+        // let version = await this.redisClient.get(`software:${type}`);
+        // version = JSON.parse(version);
 
         return this.response({
             res,
             data: version,
         });
-        // } catch (error) {
-        //     console.error("Error in getVersion:", error);
-        //     return this.response({
-        //         res,
-        //         code: 500,
-        //         message: error,
-        //     });
-        // }
+        } catch (error) {
+            console.error("Error in getVersion:", error);
+            return this.response({
+                res,
+                code: 500,
+                message: error,
+            });
+        }
     }
 
     async get10LastVersions(req, res) {

@@ -254,40 +254,40 @@ module.exports = new (class extends controller {
             schools = schools.map((s) => ({ ...s }));
             for (let i in schools) {
                 //dodo
-                // const schoolLoc = `${schools[i].location.coordinates[1]},${schools[i].location.coordinates[0]}`;
-                // const studentLoc = `${location[1]},${location[0]}`;
-                // const url = `${process.env.ROUTE_URL}/route/v1/driving/${studentLoc};${schoolLoc}?overview=full`;
-                // //  console.log("url", url);
-                // try {
-                //     const response = await axios.get(url);
-                //     if (response.status === 200) {
-                //         if (
-                //             response.data.code.toString().toLowerCase() === "ok"
-                //         ) {
-                //             schools[i].distance =
-                //                 response.data.routes[0].distance;
-                //             schools[i].duration =
-                //                 response.data.routes[0].duration;
-                //             schools[i].geometry =
-                //                 response.data.routes[0].geometry;
-                //                 console.log("distance", response.data.routes[0].distance);
-                //                 // const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${location}&destination=${schools[i].location.coordinates}`;
-                //                 // const options = {
-                //                 //     headers: { "Api-Key": neshan },
-                //                 //     timeout: 9500,
-                //                 // };
-                //                 // const directionResponse = await axios.get(
-                //                 //     directionUrl,
-                //                 //     options
-                //                 // );
-                //                 //  console.log("neshan distance=", directionResponse.data.routes[0].legs[0].distance.value);
-                //                 // console.log("overview_polyline",JSON.stringify(directionResponse.data));
+                const schoolLoc = `${schools[i].location.coordinates[1]},${schools[i].location.coordinates[0]}`;
+                const studentLoc = `${location[1]},${location[0]}`;
+                const url = `${process.env.ROUTE_URL}/route/v1/driving/${studentLoc};${schoolLoc}?overview=full`;
+                //  console.log("url", url);
+                try {
+                    const response = await axios.get(url);
+                    if (response.status === 200) {
+                        if (
+                            response.data.code.toString().toLowerCase() === "ok"
+                        ) {
+                            schools[i].distance =
+                                response.data.routes[0].distance;
+                            schools[i].duration =
+                                response.data.routes[0].duration;
+                            schools[i].geometry =
+                                response.data.routes[0].geometry;
+                                console.log("distance", response.data.routes[0].distance);
+                                // const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${location}&destination=${schools[i].location.coordinates}`;
+                                // const options = {
+                                //     headers: { "Api-Key": neshan },
+                                //     timeout: 9500,
+                                // };
+                                // const directionResponse = await axios.get(
+                                //     directionUrl,
+                                //     options
+                                // );
+                                //  console.log("neshan distance=", directionResponse.data.routes[0].legs[0].distance.value);
+                                // console.log("overview_polyline",JSON.stringify(directionResponse.data));
                             
-                //         }
-                //     }
-                // } catch (e) {
-                //     console.error("response", e);
-                // }
+                        }
+                    }
+                } catch (e) {
+                    console.error("response", e);
+                }
 
                 let gradeName = [];
                 for (const gradeId of schools[i].grade) {

@@ -889,7 +889,7 @@ module.exports = new (class extends controller {
                 });
                 await userX.save();
                 await this.updateRedisDocument(
-                    `user:${user._id}`,
+                    `user:${userX._id}`,
                     userX.toObject()
                 );
 

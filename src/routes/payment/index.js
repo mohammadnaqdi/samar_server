@@ -18,7 +18,7 @@ router.post(
     isEnyAdmin,
     validator.insertInvoiceValidator(),
     controller.validate.bind(controller),
-    controller.insertInvoice.bind(controller),
+    controller.insertInvoice.bind(controller)
 );
 
 router.get("/Payment", isLoggined, controller.payment.bind(controller));
@@ -27,12 +27,29 @@ router.get("/PaymentCo", isLoggined, controller.paymentCo.bind(controller));
 router.get(
     "/PaymentChargeAdmin",
     isLoggined,
-    controller.paymentChargeAdmin.bind(controller),
+    controller.paymentChargeAdmin.bind(controller)
 );
 router.get("/GetPayQueue", isLoggined, controller.getPayQueue.bind(controller));
 router.get("/GetInvoceId", isLoggined, controller.getInvoceId.bind(controller));
-router.get("/SetInstallments", isLoggined,isEnyAdmin, controller.setInstallments.bind(controller));
-router.post("/SetInstallmentForStudent", isLoggined,isEnyAdmin, controller.setInstallmentForStudent.bind(controller));
+router.get(
+    "/SetInstallments",
+    isLoggined,
+    isEnyAdmin,
+    controller.setInstallments.bind(controller)
+);
+router.post(
+    "/SetInstallmentForStudent",
+    isLoggined,
+    isEnyAdmin,
+    controller.setInstallmentForStudent.bind(controller)
+);
+router.post(
+    "/SetInstallmentByParent",
+    isLoggined,
+        validator.setInstallmentByParentValidator(),
+    controller.validate.bind(controller),
+    controller.setInstallmentByParent.bind(controller)
+);
 // router.post(
 //     "/SetActionPay",
 //     isLoggined,
@@ -46,7 +63,7 @@ router.post(
     isLoggined,
     validator.showMorePayValidator(),
     controller.validate.bind(controller),
-    controller.showMorePay.bind(controller),
+    controller.showMorePay.bind(controller)
 );
 // router.post(
 //     "/SetActionPayWithWallet",
@@ -62,29 +79,29 @@ router.post(
     isEnyAdmin,
     validator.payRegistrationWithWalletValidator(),
     controller.validate.bind(controller),
-    controller.payRegistrationWithWallet.bind(controller),
+    controller.payRegistrationWithWallet.bind(controller)
 );
 
 router.get(
     "/GetStudentPays",
     isLoggined,
-    controller.getStudentPays.bind(controller),
+    controller.getStudentPays.bind(controller)
 );
 router.get(
     "/GetPayHistory",
     isLoggined,
-    controller.getPayHistory.bind(controller),
+    controller.getPayHistory.bind(controller)
 );
 router.get(
     "/GetOnlinePayHistory",
     isLoggined,
-    controller.getOnlinePayHistory.bind(controller),
+    controller.getOnlinePayHistory.bind(controller)
 );
 router.get(
     "/GetWalletAmount",
     isLoggined,
     isEnyAdmin,
-    controller.getWalletAmount.bind(controller),
+    controller.getWalletAmount.bind(controller)
 );
 
 module.exports = router;

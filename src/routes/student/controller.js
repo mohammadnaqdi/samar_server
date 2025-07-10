@@ -10,162 +10,189 @@ const ObjectId = mongoose.Types.ObjectId;
 module.exports = new (class extends controller {
     //for we dont need to create a new object only export directly a class
 
-    // async insertStudent(req, res) {
-    //     // try {
-    //     const name = req.body.name;
-    //     const lastName = req.body.lastName;
-    //     //  let studentCode = req.body.studentCode;
-    //     const parent = req.user._id;
-    //     const school = req.body.school;
-    //     const gradeId = req.body.gradeId;
-    //     const gradeTitle = req.body.gradeTitle;
-    //     const time = req.body.time;
-    //     const fatherName = req.body.fatherName;
-    //     const parentReleation = req.body.parentReleation;
-    //     const addressText = req.body.addressText;
-    //     const details = req.body.details;
-    //     const location = req.body.location;
-    //     const isIranian = req.body.isIranian;
-    //     const gender = req.body.gender;
-    //     const checkDistance = req.body.checkDistance || false;
-    //     const nationalCode = req.body.nationalCode ?? "";
-    //     const studentCount = await this.Student.countDocuments({
-    //         parent,
-    //         name,
-    //         lastName,
-    //         delete: false,
-    //     });
-    //     if (studentCount > 0) {
-    //         return this.response({
-    //             res,
-    //             code: 403,
-    //             message: "student is duplicated",
-    //         });
-    //     }
-    //     let state = 0;
-    //     console.log("time", time);
-    //     // console.log("gradeId", gradeId);
-    //     // console.log("gradeTitle", gradeTitle);
-    //     // console.log("shift", shift);
-    //     let stateTitle = "ثبت شده";
-    //     if (req.body.state != undefined) state = req.body.state;
-    //     if (state > 1) {
-    //         state = 1;
-    //     }
-    //     if (state === 1) {
-    //         stateTitle = "در انتظار تایید اطلاعات";
-    //     }
-    //     const sch = await this.School.findById(school, "location.coordinates");
-    //     if (!sch) {
-    //         return this.response({
-    //             res,
-    //             code: 400,
-    //             message: "school not find",
-    //             data: { fa_m: "مدرسه پیدا نشد" },
-    //         });
-    //     }
-    //     let origin = location[0] + "," + location[1];
-    //     let dest =
-    //         sch.location.coordinates[0] + "," + sch.location.coordinates[1];
-    //     const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
+    async insertStudent(req, res) {
+        try {
+            const name = req.body.name;
+            const lastName = req.body.lastName;
+            //  let studentCode = req.body.studentCode;
+            const parent = req.user._id;
+            const school = req.body.school;
+            const gradeId = req.body.gradeId;
+            const gradeTitle = req.body.gradeTitle;
+            const time = req.body.time;
+            const fatherName = req.body.fatherName;
+            const parentReleation = req.body.parentReleation;
+            const addressText = req.body.addressText;
+            const details = req.body.details;
+            const location = req.body.location;
+            const isIranian = req.body.isIranian;
+            const gender = req.body.gender;
+            const checkDistance = req.body.checkDistance || false;
+            const nationalCode = req.body.nationalCode ?? "";
+            const studentCount = await this.Student.countDocuments({
+                parent,
+                name,
+                lastName,
+                delete: false,
+            });
+            if (studentCount > 0) {
+                return this.response({
+                    res,
+                    code: 403,
+                    message: "student is duplicated",
+                });
+            }
+            let state = 0;
+            console.log("time", time);
+            console.log("gradeId", gradeId);
+            console.log("gradeTitle", gradeTitle);
+            // console.log("shift", shift);
+            let stateTitle = "ثبت شده";
+            if (req.body.state != undefined) state = req.body.state;
+            if (state > 1) {
+                state = 1;
+            }
+            if (state === 1) {
+                stateTitle = "در انتظار تایید اطلاعات";
+            }
+            const sch = await this.School.findById(
+                school,
+                "location.coordinates agencyId"
+            );
+            if (!sch) {
+                return this.response({
+                    res,
+                    code: 400,
+                    message: "school not find",
+                    data: { fa_m: "مدرسه پیدا نشد" },
+                });
+            }
+            let origin = location[0] + "," + location[1];
+            let dest =
+                sch.location.coordinates[0] + "," + sch.location.coordinates[1];
+            const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
 
-    //     const options = {
-    //         headers: {
-    //             "Api-Key": neshan,
-    //         },
-    //         timeout: 5500,
-    //     };
+            const options = {
+                headers: {
+                    "Api-Key": neshan,
+                },
+                timeout: 5500,
+            };
 
-    //     let serviceDistance = 0;
-    //     try {
-    //         const response = await axios.get(url, options);
-    //         // console.log("neshan response=", response.data);
-    //         serviceDistance = response.data.routes[0].legs[0].distance.value;
-    //     } catch (error) {
-    //         console.log("Neshan error=", error);
-    //     }
+            let serviceDistance = 0;
+            try {
+                const response = await axios.get(url, options);
+                // console.log("neshan response=", response.data);
+                serviceDistance =
+                    response.data.routes[0].legs[0].distance.value;
+            } catch (error) {
+                console.log("Neshan error=", error);
+            }
+            console.log("sch.agencyId", sch.agencyId);
+            // Finding agency related to the school
+            const agency = await this.Agency.findById(sch.agencyId, "settings");
+            let agencyId = agency ? agency._id : null;
 
-    //     // Finding agency related to the school
-    //     const agency = await this.Agency.findById(sch.agencyId, "settings");
-    //     let agencyId = agency ? agency._id : null;
+            // let lastCode = 600000001;
+            // const stx = await this.Student.find({
+            //     studentCode: { $regex: "6000" + ".*" },
+            // })
+            //     .sort({ studentCode: -1 })
+            //     .limit(1);
 
-    //     let lastCode = 600000001;
-    //     const stx = await this.Student.find({
-    //         studentCode: { $regex: "6000" + ".*" },
-    //     })
-    //         .sort({ studentCode: -1 })
-    //         .limit(1);
+            // if (stx.length > 0) {
+            //     lastCode = parseInt(stx[0].studentCode) + 1;
+            // }
 
-    //     if (stx.length > 0) {
-    //         lastCode = parseInt(stx[0].studentCode) + 1;
-    //     }
+            // const studentCode = lastCode.toString();
 
-    //     const studentCode = lastCode.toString();
+            // await new this.LevelAccDetail({
+            //     agencyId,
+            //     levelNo: 3,
+            //     levelType: 1,
+            //     accCode: studentCode,
+            //     accName: `${name} ${lastName}`,
+            //     desc: sch.name,
+            //     editor: req.user._id,
+            // }).save();
 
-    //     await new this.LevelAccDetail({
-    //         agencyId,
-    //         levelNo: 3,
-    //         levelType: 1,
-    //         accCode: studentCode,
-    //         accName: `${name} ${lastName}`,
-    //         desc: sch.name,
-    //         editor: req.user._id,
-    //     }).save();
+            // console.log("Insert code:", studentCode);
 
-    //     console.log("Insert code:", studentCode);
+            let kol = "003";
+            let moeen = "005";
 
-    //     let kol = "003";
-    //     let moeen = "005";
+            // try {
+            // await new this.ListAcc({
+            //     agencyId,
+            //     code: `${kol}${moeen}${studentCode}`,
+            //     codeLev1: kol,
+            //     codeLev2: moeen,
+            //     codeLev3: studentCode,
+            //     groupId: 1,
+            //     type: 1,
+            //     nature: 1,
+            //     levelEnd: 3,
+            //     canEdit: false,
+            //     editor: req.user._id,
+            // }).save();
 
-    //     try {
-    //         await new this.ListAcc({
-    //             agencyId,
-    //             code: `${kol}${moeen}${studentCode}`,
-    //             codeLev1: kol,
-    //             codeLev2: moeen,
-    //             codeLev3: studentCode,
-    //             groupId: 1,
-    //             type: 1,
-    //             nature: 1,
-    //             levelEnd: 3,
-    //             canEdit: false,
-    //             editor: req.user._id,
-    //         }).save();
+            const student = new this.Student({
+                agencyId: agencyId,
+                // studentCode,
+                parent,
+                school,
+                time,
+                address: addressText,
+                addressDetails: details,
+                location: { type: "Point", coordinates: location },
+                gradeTitle,
+                gradeId,
+                name,
+                lastName,
+                fatherName,
+                gender,
+                parentReleation,
+                isIranian,
+                state,
+                stateTitle,
+                serviceDistance,
+                nationalCode,
+                setter: req.user._id,
+                setterISParent: req.user.isParent || false,
+            });
+            await student.save();
+            console.log("student", student.studentCode);
+            const invoice = await this.Invoice.findOne({
+                agencyId: agencyId,
+                type: "registration",
+                delete: false,
+            });
+            console.log("invoice", invoice);
+            if (invoice) {
+                let payQueue = new this.PayQueue({
+                    inVoiceId: invoice._id,
+                    code: invoice.code,
+                    agencyId: agencyId,
+                    studentId: student._id,
+                    setter: req.user._id,
+                    type: invoice.type,
+                    amount: invoice.amount,
+                    title: invoice.title,
+                    maxDate: invoice.maxDate,
+                    isPaid: false,
+                });
+                await payQueue.save();
+            }
 
-    //         const student = new this.Student({
-    //             studentCode,
-    //             parent,
-    //             school,
-    //             time,
-    //             address: addressText,
-    //             addressDetails: details,
-    //             location: { type: "Point", coordinates: location },
-    //             gradeTitle,
-    //             gradeId,
-    //             name,
-    //             lastName,
-    //             fatherName,
-    //             gender,
-    //             parentReleation,
-    //             isIranian,
-    //             state,
-    //             stateTitle,
-    //             serviceDistance,
-    //             nationalCode,
-    //             setter: req.user._id,
-    //             setterISParent: req.user.isParent || false,
-    //         });
-    //         await student.save();
-
-    //         return this.response({
-    //             res,
-    //             data: student._id,
-    //         });
-    //     } catch (error) {
-    //         console.error("Error while insertstudent:", error);
-    //         return res.status(500).json({ error: "insertstudent error" });
-    //     }
-    // }
+            return this.response({
+                res,
+                data: student._id,
+            });
+        } catch (error) {
+            console.error("Error while insertstudent:", error);
+            return res.status(500).json({ error: "insertstudent error" });
+        }
+    }
 
     async insertStudentByAgent(req, res) {
         // try {
@@ -641,7 +668,33 @@ module.exports = new (class extends controller {
                 }
             }
             console.log("setRequest", setType);
-            // console.log("studentId", studentId);
+            let student = await this.Student.findById(studentId);
+            if (!student) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "student not find",
+                    data: { fa_m: "دانش آموز پیدا نشد!" },
+                });
+            }
+            if (!student.active) {
+                return this.response({
+                    res,
+                    code: 402,
+                    message: "student is not Active",
+                    data: { fa_m: "دانش آموز  فعال نیست!" },
+                });
+            }
+            const schl = await this.School.findById(student.school).lean();
+            const agency = await this.Agency.findById(schl.agencyId);
+            if (!schl || !agency) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "school or agency not find",
+                    data: { fa_m: "مدرسه یا شرکت پیدا نشد" },
+                });
+            }
 
             if (
                 goCheck &&
@@ -650,25 +703,6 @@ module.exports = new (class extends controller {
                     req.user.isAgencyAdmin ||
                     req.user.isSupport)
             ) {
-                let student = await this.Student.findById(studentId);
-                if (!student) {
-                    return this.response({
-                        res,
-                        code: 404,
-                        message: "student not find",
-                        data: { fa_m: "دانش آموز پیدا نشد!" },
-                    });
-                }
-                if (!student.active) {
-                    return this.response({
-                        res,
-                        code: 402,
-                        message: "student is not Active",
-                        data: { fa_m: "دانش آموز  فعال نیست!" },
-                    });
-                }
-                const schl = await this.School.findById(student.school).lean();
-                const agency = await this.Agency.findById(schl.agencyId);
                 let stateTitle = "لغو شده";
                 let serviceState = 0;
                 if (setType === 1) {
@@ -694,46 +728,46 @@ module.exports = new (class extends controller {
                 student.save();
 
                 if (setType > 0) {
-                    let code = student.studentCode;
-                    const sch = await this.School.findById(
-                        student.school,
-                        "name"
-                    );
+                    // let code = student.studentCode;
+                    // const sch = await this.School.findById(
+                    //     student.school,
+                    //     "name agencyId"
+                    // );
                     // code = pad(9, code, "0");
-                    let levelDets = await this.LevelAccDetail.find({
-                        accCode: code,
-                    });
-                    if (levelDets.length == 0) {
-                        let agencyId = null;
-                        let kol = "003";
-                        let moeen = "005";
-                        if (agency) {
-                            agencyId = agency._id;
-                        }
-                        await new this.LevelAccDetail({
-                            agencyId,
-                            levelNo: 3,
-                            levelType: 1,
-                            accCode: code,
-                            accName: student.name + " " + student.lastName,
-                            desc: sch.name,
-                            editor: req.user._id,
-                        }).save();
-                        console.log("insert code", code);
-                        await new this.ListAcc({
-                            agencyId,
-                            code: `${kol}${moeen}${code}`,
-                            codeLev1: kol,
-                            codeLev2: moeen,
-                            codeLev3: code,
-                            groupId: 1,
-                            type: 1,
-                            nature: 1,
-                            levelEnd: 3,
-                            canEdit: false,
-                            editor: req.user._id,
-                        }).save();
-                    }
+                    // let levelDets = await this.LevelAccDetail.find({
+                    //     accCode: code,
+                    // });
+                    // if (levelDets.length == 0) {
+                    //     let agencyId = null;
+                    //     let kol = "003";
+                    //     let moeen = "005";
+                    //     if (agency) {
+                    //         agencyId = agency._id;
+                    //     }
+                    //     await new this.LevelAccDetail({
+                    //         agencyId,
+                    //         levelNo: 3,
+                    //         levelType: 1,
+                    //         accCode: code,
+                    //         accName: student.name + " " + student.lastName,
+                    //         desc: sch.name,
+                    //         editor: req.user._id,
+                    //     }).save();
+                    //     console.log("insert code", code);
+                    //     await new this.ListAcc({
+                    //         agencyId,
+                    //         code: `${kol}${moeen}${code}`,
+                    //         codeLev1: kol,
+                    //         codeLev2: moeen,
+                    //         codeLev3: code,
+                    //         groupId: 1,
+                    //         type: 1,
+                    //         nature: 1,
+                    //         levelEnd: 3,
+                    //         canEdit: false,
+                    //         editor: req.user._id,
+                    //     }).save();
+                    // }
                 }
                 if (agency)
                     await new this.OperationLog({
@@ -754,14 +788,16 @@ module.exports = new (class extends controller {
                 });
             } else {
                 console.log("queueCode", queueCode);
+
                 // console.log("stCode", stCode);
                 let newSet = -1;
                 if (queueCode != undefined && stCode != undefined) {
                     const qu = await this.PayQueue.findOne({ code: queueCode });
+                    const invoice = await this.Invoice.findById(qu.inVoiceId);
                     // console.log("qu", qu);
 
-                    if (qu) {
-                        if (qu.confirmInfo) {
+                    if (invoice) {
+                        if (invoice.confirmInfo) {
                             // const payAction = await this.PayAction.find({
                             //     queueCode,
                             //     studentCode: stCode,
@@ -806,97 +842,11 @@ module.exports = new (class extends controller {
                 if (newSet == 2) {
                     setType = 2;
                 }
-                // console.log("setType", setType);
-                let student = await this.Student.findById(studentId);
-                if (!student) {
-                    return this.response({
-                        res,
-                        code: 404,
-                        message: "student not find",
-                        data: { fa_m: "دانش آموز پیدا نشد!" },
-                    });
-                }
-                if (!student.active) {
-                    return this.response({
-                        res,
-                        code: 402,
-                        message: "student is not Active",
-                        data: { fa_m: "دانش آموز  فعال نیست!" },
-                    });
-                }
                 if (student.parent.toString() === req.user._id.toString()) {
                     let stateTitle = "لغو شده";
                     if (setType > 0) {
                         stateTitle = "در انتظار تایید اطلاعات";
                         if (setType == 2) stateTitle = "در انتظار پیش پرداخت";
-                        const schls = await this.School.findById(
-                            student.school
-                        ).lean();
-                        const agency = await this.Agency.findById(
-                            schls.agencyId
-                        );
-                        let agencyId = null;
-                        let kol = "003";
-                        let moeen = "005";
-                        if (agency) {
-                            agencyId = agency._id;
-                        }
-                        let code = student.studentCode;
-                        let level = await this.LevelAccDetail.findOne({
-                            levelNo: 3,
-                            levelType: 1,
-                            accCode: code,
-                        });
-                        if (!level) {
-                            await new this.LevelAccDetail({
-                                agencyId,
-                                levelNo: 3,
-                                levelType: 1,
-                                accCode: code,
-                                accName: student.name + " " + student.lastName,
-                                desc: sch.name,
-                                editor: req.user._id,
-                            }).save();
-                        } else {
-                            await this.LevelAccDetail.findByIdAndUpdate(
-                                level.id,
-                                {
-                                    agencyId: agencyId,
-                                    editor: req.user._id,
-                                }
-                            );
-                        }
-                        let listAcc = await this.ListAcc.findOne({
-                            code: `${kol}${moeen}${code}`,
-                            codeLev3: code,
-                            codeLev1: kol,
-                            codeLev2: moeen,
-                            groupId: 1,
-                            type: 1,
-                            nature: 1,
-                            levelEnd: 3,
-                            canEdit: false,
-                        });
-                        if (!listAcc) {
-                            await new this.ListAcc({
-                                agencyId,
-                                code: `${kol}${moeen}${code}`,
-                                codeLev1: kol,
-                                codeLev2: moeen,
-                                codeLev3: code,
-                                groupId: 1,
-                                type: 1,
-                                nature: 1,
-                                levelEnd: 3,
-                                canEdit: false,
-                                editor: req.user._id,
-                            }).save();
-                        } else {
-                            await this.ListAcc.findByIdAndUpdate(listAcc.id, {
-                                agencyId: agencyId,
-                                editor: req.user._id,
-                            });
-                        }
                     }
                     student.stateTitle = stateTitle;
                     student.state = setType;
@@ -1344,7 +1294,7 @@ module.exports = new (class extends controller {
             for (var i = 0; i < students.length; i++) {
                 const school = await this.School.findById(
                     students[i].school,
-                    "name code address location.coordinates districtTitle districtId schoolTime"
+                    "name code address location.coordinates districtTitle districtId schoolTime agencyId"
                 );
                 // const shift = await this.Shifts.findById(students[i].shift, "name type");
 
@@ -1356,15 +1306,14 @@ module.exports = new (class extends controller {
 
                 if (!parent) continue;
                 if (!school) continue;
-               let payOff, payment;
+                let payOff, payment;
 
                 let agencyName = "",
                     agencyCode = "",
                     agencyId;
-                    let payQueue = [];
-                if (agencyId === null) {
-                    const agency = await this.Agency.findOne(
-                        { schools: school.id },
+                let payQueue = [];
+                if (!agencyId) {
+                    const agency = await this.Agency.findById(school.agencyId,
                         "name code"
                     );
 
@@ -1373,13 +1322,17 @@ module.exports = new (class extends controller {
                         agencyCode = agency.code;
                         agencyId = agency.id;
                     }
-                }else{
-                  
-                 payQueue=await this.PayQueue.find({studentId:students[i]._id,delete:false
-                    ,
-                    type: { $in: ["prePayment", "installment"] },
-
-                 },'title isPaid maxDate type').sort({counter:1}).lean();
+                } else {
+                    payQueue = await this.PayQueue.find(
+                        {
+                            studentId: students[i]._id,
+                            delete: false,
+                            type: { $in: ["prePayment", "installment"] },
+                        },
+                        "title isPaid maxDate type"
+                    )
+                        .sort({ counter: 1 })
+                        .lean();
                 }
                 // console.log("ddddddddddddddd");
                 let serviceCost = 0,
@@ -1489,7 +1442,7 @@ module.exports = new (class extends controller {
                     device,
                     payOff: payOff,
                     payment: payment,
-                    payQueue:payQueue
+                    payQueue: payQueue,
                 };
                 myStudent.push({
                     student: students[i],
@@ -1621,7 +1574,7 @@ module.exports = new (class extends controller {
                 let agencyName = "",
                     agencyCode = "",
                     agencyId;
-                    let payQueue = [];
+                let payQueue = [];
                 if (agencyId === null) {
                     const agency = await this.Agency.findOne(
                         { schools: school.id },
@@ -1633,8 +1586,18 @@ module.exports = new (class extends controller {
                         agencyCode = agency.code;
                         agencyId = agency.id;
                     }
-                }else{
-                 payQueue=await this.PayQueue.find({studentId:students[i]._id,agencyId:agencyId,delete:false,type: { $in: ["prePayment", "installment"] },},'title isPaid maxDate type').sort({counter:1}).lean();
+                } else {
+                    payQueue = await this.PayQueue.find(
+                        {
+                            studentId: students[i]._id,
+                            agencyId: agencyId,
+                            delete: false,
+                            type: { $in: ["prePayment", "installment"] },
+                        },
+                        "title isPaid maxDate type"
+                    )
+                        .sort({ counter: 1 })
+                        .lean();
                 }
 
                 // console.log("ddddddddddddddd");
@@ -2297,7 +2260,7 @@ module.exports = new (class extends controller {
                 {
                     $and: qr,
                 },
-                "name lastName studentCode school time address pack neighbourhood"
+                "name lastName studentCode school time address pack neighbourhood location.coordinates"
             );
             let myStudent = [];
             for (var i = 0; i < students.length; i++) {
@@ -3397,31 +3360,7 @@ module.exports = new (class extends controller {
                     message: "ok",
                 });
             }
-            const payQueue = await this.PayQueue.findOne({ type: 3 });
-            if (!payQueue) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "payQueue not find",
-                });
-            }
 
-            if (payQueue.amount === 0) {
-                await this.Student.findByIdAndUpdate(student.id, {
-                    avanak: true,
-                    avanakNumber: phone,
-                });
-                return this.response({
-                    res,
-                    message: "ok",
-                });
-            }
-            // const payAction = await this.PayAction.find({
-            //     queueCode: payQueue.code,
-            //     studentCode: student.studentCode,
-            //     delete: false,
-            // });
-            // if (payAction.length > 0) {
             await this.Student.findByIdAndUpdate(student.id, {
                 avanak: true,
                 avanakNumber: phone,
@@ -3430,14 +3369,8 @@ module.exports = new (class extends controller {
                 res,
                 message: "ok",
             });
-            // }
-            // return this.response({
-            //     res,
-            //     code: 403,
-            //     message: "payAction need",
-            // });
         } catch (error) {
-            console.error("Error while 00051:", error);
+            console.error("Error while setAvanakStudent:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

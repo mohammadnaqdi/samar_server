@@ -132,4 +132,12 @@ module.exports = new (class {
             check("delete").not().isEmpty().withMessage("delete cant be empty"),
         ];
     }
+    setInstallmentByParentValidator() {
+        return [
+            check("agencyId").not().isEmpty().withMessage("agencyId cant be empty"),
+            check("studentId").not().isEmpty().withMessage("studentId cant be empty"),
+            check("prices").not().isEmpty().withMessage("prices cant be empty"),
+            check("codes").not().isEmpty().withMessage("codes cant be empty"),
+        ];
+    }
 })();

@@ -2,7 +2,7 @@ const controller = require("../controller");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const persianDate = require("persian-date");
-
+const jMoment = require("moment-jalaali");
 const neshan = process.env.NESHAN;
 const axios = require("axios");
 const { lte } = require("lodash");
@@ -809,8 +809,6 @@ module.exports = new (class extends controller {
         }
     }
 
-  
-
     async studentCount(req, res) {
         try {
             const agencyId = req.query.agencyId;
@@ -1207,67 +1205,40 @@ module.exports = new (class extends controller {
 
     async getDriverDDS(req, res) {
         try {
-            const { driverId, start, end } = req.query;
-
-            //mehr
-            let startDate = new Date("2024-09-21T20:29:59.209Z");
-            let endDate = new Date("2024-10-21T20:29:59.209Z");
-            const sts = new Date(start);
-            const month = sts.getMonth() + 1;
-
-            switch (month) {
-                case 10: //aban
-                    startDate = new Date("2024-10-21T20:29:59.209Z");
-                    endDate = new Date("2024-11-20T20:29:59.209Z");
-                    break;
-                case 11: //azar
-                    startDate = new Date("2024-11-20T20:29:59.209Z");
-                    endDate = new Date("2024-12-20T20:29:59.209Z");
-                    break;
-                case 12: //dey
-                    startDate = new Date("2024-12-20T20:29:59.209Z");
-                    endDate = new Date("2025-01-19T20:29:02.209Z");
-                    break;
-                case 1: //bahman
-                    startDate = new Date("2025-01-19T20:29:59.209Z");
-                    endDate = new Date("2025-02-18T20:29:02.209Z");
-                    break;
-                case 2: //esfand
-                    startDate = new Date("2025-02-18T20:29:59.209Z");
-                    endDate = new Date("2025-03-20T20:29:02.209Z");
-                    break;
-                case 3: //farvardin
-                    startDate = new Date("2025-03-20T20:29:59.209Z");
-                    endDate = new Date("2025-04-20T20:29:02.209Z");
-                    break;
-                case 4: //ordibehest
-                    startDate = new Date("2025-04-20T20:29:59.209Z");
-                    endDate = new Date("2025-05-21T20:29:02.209Z");
-                    break;
-                case 5: //khordad
-                    startDate = new Date("2025-05-21T20:29:59.209Z");
-                    endDate = new Date("2025-06-21T20:29:02.209Z");
-                    break;
-            }
-            console.log("gggg= startDate", startDate);
-            console.log("gggg=   endDate", endDate);
-
-            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            if (
+                req.query.driverId === undefined ||
+                req.query.driverId.trim() === "" ||
+                req.query.month === undefined ||
+                req.query.year === undefined
+            ) {
                 return this.response({
                     res,
-                    code: 400,
-                    message: "Invalid timestamp for start or end.",
+                    code: 214,
+                    message: "driverId month year need",
                 });
             }
+            const { driverId } = req.query;
+            let month = parseInt(req.query.month);
+            let year = parseInt(req.query.year);
+
+            let startDay = 0;
+            let endDay = 0;
+            for (var i = 0; i < month; i++) {
+                endDay = endDay + jMoment.jDaysInMonth(year, i);
+            }
+            startDay = endDay - jMoment.jDaysInMonth(year, month - 1) + 1;
+
+            console.log("startDay", startDay);
+            console.log("endDay", endDay);
             // console.log("startDate", startDate);
             // console.log("endDate", endDate);
             const report = await this.DDS.find(
                 {
                     driverId,
-                    createdAt: { $lte: endDate, $gte: startDate },
+                    day: { $lte: endDay, $gte: startDay },
                 },
                 "-agencyId -driverId -name -phone"
-            ).sort({ createdAt: 1 });
+            ).sort({ day: 1 });
             console.log("report report.len", report.length);
             const studentIds = [];
             report.forEach((data) => {
@@ -1344,88 +1315,38 @@ module.exports = new (class extends controller {
             if (
                 req.query.agencyId === undefined ||
                 req.query.agencyId.trim() === "" ||
-                req.query.start === undefined ||
-                req.query.end === undefined
+                req.query.month === undefined ||
+                req.query.year === undefined
             ) {
                 return this.response({
                     res,
                     code: 214,
-                    message: "agencyId end start need",
+                    message: "agencyId month year need",
                 });
             }
-            let { agencyId, start, end } = req.query;
+            let { agencyId } = req.query;
+            let month = parseInt(req.query.month);
+            let year = parseInt(req.query.year);
             const activeString = req.query.onlyActive || "true";
             let onlyActive = true;
             if (activeString === "false") {
                 onlyActive = false;
             }
-            //mehr
-            let startDate = new Date("2024-09-21T20:29:59.209Z");
-            let endDate = new Date("2024-10-21T20:29:59.209Z");
-            const st = new Date(start);
-            const month = st.getMonth() + 1;
+            let startDay = 0;
+            let endDay = 0;
+            for (var i = 0; i < month; i++) {
+                endDay = endDay + jMoment.jDaysInMonth(year, i);
+            }
+            startDay = endDay - jMoment.jDaysInMonth(year, month - 1) + 1;
 
-            switch (month) {
-                case 10: //aban
-                    startDate = new Date("2024-10-21T20:29:59.209Z");
-                    endDate = new Date("2024-11-20T20:29:59.209Z");
-                    break;
-                case 11: //azar
-                    startDate = new Date("2024-11-20T20:29:59.209Z");
-                    endDate = new Date("2024-12-20T20:29:59.209Z");
-                    break;
-                case 12: //dey
-                    startDate = new Date("2024-12-20T20:29:59.209Z");
-                    endDate = new Date("2025-01-19T20:29:02.209Z");
-                    break;
-                case 1: //bahman
-                    startDate = new Date("2025-01-19T20:29:59.209Z");
-                    endDate = new Date("2025-02-18T20:29:02.209Z");
-                    break;
-                case 2: //esfand
-                    startDate = new Date("2025-02-18T20:29:59.209Z");
-                    endDate = new Date("2025-03-20T20:29:02.209Z");
-                    break;
-                case 3: //farvardin
-                    startDate = new Date("2025-03-20T20:29:59.209Z");
-                    endDate = new Date("2025-04-20T20:29:02.209Z");
-                    break;
-                case 4: //ordibehest
-                    startDate = new Date("2025-04-20T20:29:59.209Z");
-                    endDate = new Date("2025-05-21T20:29:02.209Z");
-                    break;
-                case 5: //khordad
-                    startDate = new Date("2025-05-21T20:29:59.209Z");
-                    endDate = new Date("2025-06-21T20:29:02.209Z");
-                    break;
-            }
-            // let Difference_In_Time = endDate.getTime() - startDate.getTime();
-            console.log("startDatexx", startDate);
-            console.log("endDatexx", endDate);
-            // // Calculating the no. of days between
-            // // two dates
-            // const days =
-            //     Math.round(Difference_In_Time / (1000 * 3600 * 24)) + 1;
-            // console.log("Difference_In_Days", days);
-            // const pageS=req.query.page ||"0";
-            // const limitS=req.query.limitS ||"20";
-            // let limit=parseInt(limitS);
-            // if(limit<1)limit=1;
-            // let page=parseInt(pageS);
-            // if(page<0)page=0;
-            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                return this.response({
-                    res,
-                    code: 400,
-                    message: "Invalid timestamp for start or end.",
-                });
-            }
+            console.log("startDay", startDay);
+            console.log("endDay", endDay);
 
             agencyId = ObjectId.createFromHexString(agencyId);
 
             let qr = {
                 agencyId,
-                createdAt: { $lte: endDate, $gte: startDate },
+                day: { $lte: endDay, $gte: startDay },
             };
             if (onlyActive) {
                 qr.service = { $ne: [] };
@@ -1441,6 +1362,7 @@ module.exports = new (class extends controller {
                         name: { $first: "$name" },
                         lastName: { $first: "$lastName" },
                         phone: { $first: "$phone" },
+                        driverCode: { $first: "$driverCode" },
                         // totalServiceCount: { $first: { $size: "$service" } },
                         // studentCount: {
                         //     $first: {
@@ -1466,31 +1388,14 @@ module.exports = new (class extends controller {
                         _id: 1,
                         name: 1,
                         lastName: 1,
+                        driverCode: 1,
                         phone: 1,
                         totalCost: 1,
                         totalDDS: 1,
                         dayCount: 1,
-                        desc: 1,
                     },
                 },
             ]);
-            for (var rp of report) {
-                const driver = await this.Driver.findById(
-                    rp._id,
-                    "driverCode userId"
-                ).lean();
-                if (driver) {
-                    const user = await this.User.findById(
-                        driver.userId,
-                        "name lastName"
-                    ).lean();
-                    if (user) {
-                        rp.name = user.name + " " + user.lastName;
-                        rp.lastName = "";
-                    }
-                    rp.desc = driver.driverCode;
-                }
-            }
 
             return this.response({
                 res,
@@ -1628,7 +1533,7 @@ module.exports = new (class extends controller {
             let moeen = "006";
 
             const code = kol + moeen + driverCode;
-            
+
             let remaining = 0;
             const result = await this.DocListSanad.aggregate([
                 {
@@ -1711,11 +1616,11 @@ module.exports = new (class extends controller {
             let kol = "004";
             let moeen = "006";
             let remain = [];
-            console.log("month",month)
+            console.log("month", month);
             // console.log("drivers",drivers.length)
             for (var d of drivers) {
                 const code = kol + moeen + d.driverCode;
-                console.log("code",code)
+                console.log("code", code);
                 const sanads = await this.DocListSanad.find(
                     {
                         $and: [
@@ -1723,9 +1628,8 @@ module.exports = new (class extends controller {
                             { mId: month },
                             {
                                 $or: [
-                                    
-                                    { type: 'salary' },
-                                    { type: 'paySalary' },
+                                    { type: "salary" },
+                                    { type: "paySalary" },
                                 ],
                             },
                             { accCode: code },
@@ -1733,7 +1637,7 @@ module.exports = new (class extends controller {
                     },
                     "doclistId mId type days"
                 );
-                console.log("sanads",sanads.length)
+                console.log("sanads", sanads.length);
                 for (var sanad of sanads) {
                     remain.push({
                         driverId: d._id,
@@ -2026,7 +1930,10 @@ module.exports = new (class extends controller {
             if (driverObject.length > 0) {
                 qr2._id = { $in: driverObject };
             }
-            const drivers = await this.Driver.find(qr2, "userId agencyId");
+            const drivers = await this.Driver.find(
+                qr2,
+                "userId agencyId driverCode active"
+            );
             startDate = new Date(startDate.getTime() + 60 * 1000);
 
             await new this.OperationLog({
@@ -2501,152 +2408,140 @@ module.exports = new (class extends controller {
     }
 
     async createDDS3(drivers, daysDifference, startDate) {
-        const month = getMonth(startDate);
-        console.log("month", month);
-
-        for (var driver of drivers) {
-            const user = await this.User.findById(
-                driver.userId,
-                "name lastName phone"
-            ).lean();
-            const name = `${user.name} ${user.lastName}`;
-            const phone = user.phone;
-            console.log("resetDDS name", name);
-            const setting = await this.AgencySet.findOne({
-                agencyId: driver.agencyId,
-            });
-            let formula = "a-(a*(b/100))";
-            let formulaForStudent = false;
-            if (setting) {
-                formula = setting.formula;
-                formulaForStudent = setting.formulaForStudent;
-            }
-            const percent = await this.percent(driver.agencyId);
-            for (let i = 0; i <= daysDifference; i++) {
-                const day = getDateByOffset(startDate, i);
-                const startOfDay = new Date(
-                    day.getFullYear(),
-                    day.getMonth(),
-                    day.getDate(),
-                    0,
-                    0,
-                    0
-                );
-                const endOfDay = new Date(
-                    day.getFullYear(),
-                    day.getMonth(),
-                    day.getDate(),
-                    23,
-                    59,
-                    59
-                );
-                const services = await this.Service.find({
-                    driverId: driver._id,
-                    delete: false,
-                }).lean();
-                let dds = 0;
-                let sc = 0;
-                const status = "Edited";
-                const desc = "بازنویسی شده";
-                const snum = [];
-                let service = [];
-                if (services.length !== 0) {
-                    for (let serv of services) {
-                        let allStudents = serv.student.map((std, index) => ({
-                            id: std,
-                            cost: serv.studentCost[index],
-                        }));
-                        const studentIds = serv.student;
-                        const studentDocs = await this.Student.find(
-                            {
-                                $and: [
-                                    {
-                                        _id: { $in: studentIds },
-                                    },
-                                    { delete: false },
-                                    {
-                                        $or: [
-                                            { date: { $lte: day } },
-                                            { date: undefined },
-                                        ],
-                                    },
-                                ],
-                            },
-                            "serviceDistance serviceCost"
-                        ).lean();
-                        // console.log("studentDocs", studentDocs.length);
-                        if (studentDocs.length === 0) {
-                            allStudents = [];
-                            serv.cost = 0;
-                            serv.driverSharing = 0;
-                        } else if (studentIds.length === studentDocs.length) {
-                            sc += serv.cost;
-                            dds += serv.driverSharing;
-                        } else {
-                            allStudents = [];
-                            let serviceCost = 0;
-                            for (var st of studentDocs) {
-                                allStudents.push({
-                                    id: st._id.toString(),
-                                    cost: st.serviceCost,
-                                });
-                                serviceCost += st.serviceCost;
-                            }
-                            let driverShare = 0;
-                            if (formulaForStudent) {
-                                driverShare = reverseEvaluateFormula(
-                                    serviceCost,
-                                    percent,
-                                    formula
-                                );
-                            } else {
-                                driverShare = evaluateFormula(formula, {
-                                    a: serviceCost,
-                                    b: percent,
-                                });
-                            }
-                            sc += serviceCost;
-                            dds += driverShare;
-                            serv.cost = serviceCost;
-                            serv.driverSharing = driverShare;
-                        }
-
-                        snum.push(serv.serviceNum);
-                        service.push({
-                            num: serv.serviceNum,
-                            serviceCost: serv.cost,
-                            driverShare: serv.driverSharing,
-                            students: allStudents,
-                        });
+        for (let i = 0; i <= daysDifference; i++) {
+            const now = getDateByOffset(startDate, i);
+            console.log("now", now);
+            const startOfDay = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                0,
+                0,
+                0
+            );
+            const endOfDay = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                23,
+                59,
+                59
+            );
+            const today = getDayOfYear(now).toString();
+            const currentMonth = getMonthDayCount(today);
+            const jalaliDate = jMoment(now).format("jYYYY/jMM/jDD");
+            const year = jalaliDate.split("/").map(Number)[0];
+            const ddsPromises = drivers.map(async (driver) => {
+                try {
+                    const services = await this.Service.find({
+                        driverId: driver._id,
+                        delete: false,
+                    }).lean();
+                    if (services.length === 0) {
+                        return null;
                     }
-                }
-                dds = dds / month;
-                sc = sc / month;
+                    await this.DDS.findOneAndDelete({
+                        driverId: driver._id,
+                        day: parseInt(today),
+                    });
 
-                const change = await this.DriverChange.findOne({
-                    delete: false,
-                    agencyId: driver.agencyId,
-                    serviceNum: { $in: snum },
-                    createdAt: { $gte: startOfDay, $lte: endOfDay },
-                });
-                if (change) {
-                    status = "Absent";
-                }
+                    let serviceDetails = [];
+                    let totalDds = 0;
+                    let totalServiceCost = 0;
+                    let status = "Normal";
+                    const serviceNums = [];
 
-                const dd = new this.DDS({
-                    agencyId: driver.agencyId,
-                    driverId: driver._id,
-                    name,
-                    phone,
-                    service,
-                    dds,
-                    sc,
-                    status,
-                    desc,
-                    createdAt: day,
-                });
-                await dd.save();
-            }
+                    let driverName = "";
+                    let driverLastName = "";
+                    let driverPhone = "";
+
+                    if (services.length !== 0) {
+                        serviceDetails = await Promise.all(
+                            services.map(async (service) => {
+                                const stds = await this.Student.find({
+                                    delete: false,
+                                    service: service._id,
+                                }).lean();
+                                const students = stds.map((std) => ({
+                                    id: std._id,
+                                    cost: std.serviceCost,
+                                    driverCost: std.driverCost,
+                                }));
+
+                                totalServiceCost += service.cost;
+                                totalDds += service.driverSharing;
+                                serviceNums.push(service.serviceNum);
+
+                                return {
+                                    num: service.serviceNum,
+                                    serviceCost: service.cost,
+                                    driverShare: service.driverSharing,
+                                    students,
+                                };
+                            })
+                        );
+
+                        let name = services[0].driverName.split(" ");
+                        driverName = name[0];
+                        driverLastName = name[1];
+                        driverPhone = services[0].driverPhone;
+                    } else {
+                        const user = await this.User.findById(
+                            driver.userId
+                        ).lean();
+                        driverName = user.name;
+                        driverLastName = user.lastName;
+                        driverPhone = user.phone;
+                    }
+
+                    if (driver.active) {
+                        totalDds = totalDds / currentMonth;
+                        totalServiceCost = totalServiceCost / currentMonth;
+
+                        const change = await this.DriverChange.findOne({
+                            delete: false,
+                            agencyId: driver.agencyId,
+                            serviceNum: { $in: serviceNums },
+                            createdAt: { $gte: startOfDay, $lte: endOfDay },
+                        });
+
+                        if (change) {
+                            status = "Absent";
+                        }
+                    } else {
+                        totalDds = 0;
+                        status = "NT";
+                    }
+                    return new this.DDS({
+                        agencyId: driver.agencyId,
+                        driverId: driver._id,
+                        driverCode: driver.driverCode,
+                        name: driverName,
+                        lastName: driverLastName,
+                        phone: driverPhone,
+                        service: serviceDetails,
+                        dds: totalDds,
+                        day: parseInt(today),
+                        year: parseInt(year),
+                        sc: totalServiceCost,
+                        status,
+                    });
+                } catch (error) {
+                    logWithTime(
+                        `Error processing driver ${driver._id}: ${error.message}`
+                    );
+                    // return null;
+                }
+            });
+
+            const ddsInstances = await Promise.all(ddsPromises);
+            const validDDSInstances = ddsInstances.filter(
+                (dds) => dds !== null
+            );
+
+            await Promise.all(validDDSInstances.map((newDDS) => newDDS.save()));
+
+            logWithTime("DDS saved for all drivers.");
         }
         return;
     }
@@ -2943,18 +2838,8 @@ module.exports = new (class extends controller {
             const { ddsId, serviceNum, studentId } = req.query;
             let date = new Date(req.query.date);
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
-            const monthLen = getMonth(date);
-            // console.log("ddsId", ddsId);
-            // console.log("serviceNum", serviceNum);
-            // console.log("studentId", studentId);
-
-            if (isNaN(date.getTime())) {
-                return this.response({
-                    res,
-                    code: 400,
-                    message: "Invalid timestamp for date.",
-                });
-            }
+            const monthLen = getMonthByGregorianDate(date);
+            console.log("monthLen", monthLen);
             let dds = await this.DDS.findById(ddsId);
             if (!dds) {
                 return this.response({
@@ -2963,76 +2848,48 @@ module.exports = new (class extends controller {
                     message: "dds not find.",
                 });
             }
-
+            console.log("ddsxxxx=", JSON.stringify(dds));
             for (var i in dds.service) {
                 var serv = dds.service[i];
                 if (serv.num.toString() === serviceNum) {
-                    dds.sc -= serv.serviceCost / monthLen;
-                    dds.dds -= serv.driverShare / monthLen;
-                    let allStudents = [];
-                    console.log("serv.students", serv.students.length);
-                    serv.serviceCost = 0;
                     for (var st of serv.students) {
-                        if (st.id != studentId) {
-                            allStudents.push({
-                                id: st.id,
-                                cost: st.cost,
-                            });
-                            serv.serviceCost += st.cost;
+                        if (st.id.toString() === studentId) {
+                            const stCost = st.cost / monthLen;
+                            const stDriverCost = st.driverCost / monthLen;
+                            dds.sc = dds.sc - stCost;
+                            dds.dds = dds.dds - stDriverCost;
+                            if (serv.students.length === 1) {
+                                dds.service.splice(i, 1);
+                                 i--;
+                            } else {
+                                dds.service[i].students = dds.service[
+                                    i
+                                ].students.filter(
+                                    (student) =>
+                                        student.id.toString() !==
+                                        st.id.toString()
+                                );
+                                dds.service[i].serviceCost =
+                                    dds.service[i].serviceCost - stCost;
+                                dds.service[i].driverShare =
+                                    dds.service[i].driverShare - stDriverCost;
+                            }
+
+                            break;
                         }
                     }
-                    console.log("allStudents", allStudents.length);
-                    if (allStudents.length === 0) {
-                        dds.service[i].serviceCost = 0;
-                        dds.service[i].driverShare = 0;
-                        dds.service[i].students = allStudents;
-                        break;
-                    } else {
-                        const setting = await this.AgencySet.findOne({
-                            agencyId: agencyId,
-                        });
-                        let formula = "a-(a*(b/100))";
-                        let formulaForStudent = false;
-                        if (setting) {
-                            formula = setting.formula;
-                            formulaForStudent = setting.formulaForStudent;
-                        }
-                        const percent = await this.percent(agencyId);
-                        if (formulaForStudent) {
-                            serv.driverShare = reverseEvaluateFormula(
-                                serv.serviceCost,
-                                percent,
-                                formula
-                            );
-                        } else {
-                            serv.driverShare = evaluateFormula(formula, {
-                                a: serv.serviceCost,
-                                b: percent,
-                            });
-                        }
-                        if (serv.driverShare == null) {
-                            serv.driverShare = 0;
-                        }
-                        dds.service[i].serviceCost = serv.serviceCost;
-                        dds.service[i].driverShare = serv.driverShare;
-                        dds.service[i].students = allStudents;
-                        dds.sc += serv.serviceCost / monthLen;
-                        dds.dds += serv.driverShare / monthLen;
-                        break;
-                    }
+                    break;
                 }
             }
+            console.log("ddszzzz=", JSON.stringify(dds));
+            dds.markModified("service");
+            try {
+                await dds.save();
+                console.log("DDS saved!");
+            } catch (err) {
+                console.error("Failed to save DDS:", err);
+            }
 
-            // console.log("service", dds.service);
-            const a = await this.DDS.findByIdAndUpdate(
-                ddsId,
-                {
-                    service: dds.service,
-                    sc: dds.sc,
-                    dds: dds.dds,
-                },
-                { new: true }
-            );
             // console.log("a", a);
             await new this.OperationLog({
                 userId: req.user._id,
@@ -3045,9 +2902,9 @@ module.exports = new (class extends controller {
                 actionNameFa: "حذف دانش آموز از کارکرد یک روز",
                 desc: `حذف دانش آموز از تاریخ ${new persianDate(date).format(
                     "YY/MM/DD"
-                )} راننده ${a.name} ${a.phone}`,
+                )} راننده ${dds.name} ${dds.lastName} ${dds.phone}`,
             }).save();
-            return this.response({ res, message: `DONE`, data: a });
+            return this.response({ res, message: `DONE`, data: dds });
         } catch (error) {
             console.error("Error while removeStudentFromDayDDS:", error);
             return res.status(500).json({ error: "Internal Server Error." });
@@ -3158,4 +3015,42 @@ function getMonth(now) {
     } else {
         return 31;
     }
+}
+function getMonthByGregorianDate(gregorianDate) {
+    // const jMoment = jMoment(gregorianDate).locale("fa").format("jYYYY/jMM/jDD");
+
+    // Extract Jalaali year and month
+    const jYear = jMoment(gregorianDate).jYear();
+    const jMonth = jMoment(gregorianDate).jMonth() + 1; // jMonth is zero-based
+
+    // Determine the number of days in that Jalaali month
+    return jMoment.jDaysInMonth(jYear, jMonth - 1); // input is zero-based
+}
+
+function getMonthDayCount(dayOfYear) {
+    if (dayOfYear >= 1 && dayOfYear <= 186) {
+        return 31;
+    } else if (dayOfYear >= 187 && dayOfYear <= 336) {
+        return 30;
+    } else if (dayOfYear >= 337 && dayOfYear <= 366) {
+        return 29;
+    } else {
+        return null;
+    }
+}
+
+function getDayOfYear(currentDate) {
+    const jalaliDate = jMoment(currentDate).format("jYYYY/jMM/jDD");
+
+    const [year, month, day] = jalaliDate.split("/").map(Number);
+
+    const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+
+    const daysBeforeCurrentMonth = monthsDays
+        .slice(0, month - 1)
+        .reduce((acc, days) => acc + days, 0);
+
+    const dayOfYear = daysBeforeCurrentMonth + day;
+
+    return dayOfYear;
 }

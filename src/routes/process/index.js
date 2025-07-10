@@ -27,28 +27,23 @@ router.post(
     controller.studentPayState2.bind(controller)
 );
 
-
 router.post(
     "/StudentListByIds",
     isEnyAdmin,
     validator.studentListByIdsValidator(),
     controller.validate.bind(controller),
-    controller.studentListByIds.bind(controller),
+    controller.studentListByIds.bind(controller)
 );
-router.get(
-    "/SetCheck",
-    isEnyAdmin,
-    controller.setCheck.bind(controller),
-);
+router.get("/SetCheck", isEnyAdmin, controller.setCheck.bind(controller));
 router.get(
     "/StudentCount",
     isEnyAdmin,
-    controller.studentCount.bind(controller),
+    controller.studentCount.bind(controller)
 );
 router.post(
     "/StudentCountSchool",
     isEnyAdmin,
-    controller.studentCountSchool.bind(controller),
+    controller.studentCountSchool.bind(controller)
 );
 router.get("/SchoolReport", controller.schoolReport.bind(controller));
 
@@ -80,7 +75,6 @@ router.post(
 
 router.get("/ResetPrices", controller.resetPrices.bind(controller));
 
-
 router.get(
     "/GetAgencyDDS",
     isEnyAdmin,
@@ -95,10 +89,25 @@ router.get(
     isEnyAdmin,
     controller.getAgencyDriverRemaining.bind(controller)
 );
-router.get("/GetDriverMonthSalary", isEnyAdmin, controller.getDriverMonthSalary.bind(controller));
-router.get("/ResetDDSByServiceNum", isEnyAdmin, controller.resetDDSByServiceNum.bind(controller));
-router.get("/RemoveStudentFromDayDDS", isEnyAdmin, controller.removeStudentFromDayDDS.bind(controller));
+router.get(
+    "/GetDriverMonthSalary",
+    isEnyAdmin,
+    controller.getDriverMonthSalary.bind(controller)
+);
+router.get(
+    "/ResetDDSByServiceNum",
+    isEnyAdmin,
+    controller.resetDDSByServiceNum.bind(controller)
+);
+router.delete(
+    "/RemoveStudentFromDayDDS",
+    isEnyAdmin,
+    controller.removeStudentFromDayDDS.bind(controller)
+);
 
-router.get("/GetDriverRemainAndSalary", controller.getDriverRemainAndSalary.bind(controller));
+router.get(
+    "/GetDriverRemainAndSalary",
+    controller.getDriverRemainAndSalary.bind(controller)
+);
 
 module.exports = router;

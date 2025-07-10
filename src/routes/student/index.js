@@ -53,12 +53,12 @@ router.post(
     controller.studentsByIdsList.bind(controller),
 );
 
-// router.post(
-//     "/InsertStudent",
-//     validator.insertStudentValidator(),
-//     controller.validate.bind(controller),
-//     controller.insertStudent.bind(controller),
-// );
+router.post(
+    "/InsertStudent",
+    validator.insertStudentValidator(),
+    controller.validate.bind(controller),
+    controller.insertStudent.bind(controller),
+);
 router.post(
     "/InsertStudentByAgent",
     validator.insertStudentByAgentValidator(),

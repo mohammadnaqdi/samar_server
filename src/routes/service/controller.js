@@ -45,7 +45,24 @@ module.exports = new (class extends controller {
                     },
                 });
             }
-            const driver = await this.Driver.findOne({ _id: driverId, delete: false },'driverCode').lean();
+            let invoice = await this.Invoice.findOne({
+                agencyId,
+                type: "serviceCost",
+            });
+            if (!invoice) {
+                invoice = await new this.Invoice({
+                    title: "هزینه سرویس",
+                    confirmInfo: true,
+                    agencyId: agency._id,
+                    setter: req.user._id,
+                    type: "serviceCost",
+                    amount: 0,
+                }).save();
+            }
+            const driver = await this.Driver.findOne(
+                { _id: driverId, delete: false },
+                "driverCode"
+            ).lean();
             if (!driver) {
                 return this.response({
                     res,
@@ -63,7 +80,7 @@ module.exports = new (class extends controller {
                 driverSharing,
                 agencyId,
                 driverId,
-                
+
                 schoolIds: schoolId,
                 time,
                 routeSave,
@@ -79,13 +96,31 @@ module.exports = new (class extends controller {
                 await this.Student.findByIdAndUpdate(student[i], {
                     service: service._id,
                     serviceNum: service.serviceNum,
-                    driverCode:driver.driverCode,
+                    driverCode: driver.driverCode,
                     agencyId,
                     serviceCost: studentCost[i],
                     driverCost: driverCost[i],
                     state: 4,
                     stateTitle: "دارای سرویس",
                 });
+                const payQueue = await this.PayQueue.findOne({
+                    inVoiceId: invoice._id,
+                    studentId: student[i],
+                });
+                if (!payQueue) {
+                    await new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        agencyId,
+                        studentId: student[i],
+                        code: invoice.code,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: false,
+                    }).save();
+                }
             }
 
             return this.response({
@@ -128,7 +163,10 @@ module.exports = new (class extends controller {
                     message: "service not find",
                 });
             }
-             const driver = await this.Driver.findOne({ _id: driverId, delete: false },'driverCode').lean();
+            const driver = await this.Driver.findOne(
+                { _id: driverId, delete: false },
+                "driverCode"
+            ).lean();
             if (!driver) {
                 return this.response({
                     res,
@@ -139,7 +177,20 @@ module.exports = new (class extends controller {
                     },
                 });
             }
-
+            let invoice = await this.Invoice.findOne({
+                agencyId,
+                type: "serviceCost",
+            });
+            if (!invoice) {
+                invoice = await new this.Invoice({
+                    title: "هزینه سرویس",
+                    confirmInfo: true,
+                    agencyId: agency._id,
+                    setter: req.user._id,
+                    type: "serviceCost",
+                    amount: 0,
+                }).save();
+            }
             for (let i = 0; i < studentPast.length; i++) {
                 let exist = false;
                 for (var stt of student) {
@@ -154,7 +205,7 @@ module.exports = new (class extends controller {
                     serviceNum: -1,
                     serviceCost: 0,
                     driverCost: 0,
-                    driverCode:'',
+                    driverCode: "",
                     agencyId: null,
                     state: 5,
                     stateTitle: `حذف از سرویس ${service.serviceNum}`,
@@ -200,12 +251,30 @@ module.exports = new (class extends controller {
                     service: service._id,
                     agencyId,
                     serviceNum: service.serviceNum,
-                    driverCode:driver.driverCode,
+                    driverCode: driver.driverCode,
                     serviceCost: studentCost[i],
                     driverCost: driverCost[i],
                     state: 4,
                     stateTitle: "دارای سرویس",
                 });
+                const payQueue = await this.PayQueue.findOne({
+                    inVoiceId: invoice._id,
+                    studentId: student[i],
+                });
+                if (!payQueue) {
+                    await new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        agencyId,
+                        studentId: student[i],
+                        code: invoice.code,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: false,
+                    }).save();
+                }
                 before.push({
                     name: st.name,
                     lastName: st.lastName,
@@ -257,7 +326,10 @@ module.exports = new (class extends controller {
             const driverPhone = req.body.driverPhone;
             const driverCarPelak = req.body.driverCarPelak;
             const stChange = req.body.stChange || [];
-             const driver = await this.Driver.findOne({ _id: driverId, delete: false },'driverCode').lean();
+            const driver = await this.Driver.findOne(
+                { _id: driverId, delete: false },
+                "driverCode"
+            ).lean();
             if (!driver) {
                 return this.response({
                     res,
@@ -267,6 +339,23 @@ module.exports = new (class extends controller {
                         fa_m: "راننده پیدا نشد یا حذف شده است!",
                     },
                 });
+            }
+            console.log("agencyId", agencyId);
+
+            let invoice = await this.Invoice.findOne({
+                agencyId,
+                type: "serviceCost",
+            });
+            console.log("invoice", invoice);
+            if (!invoice) {
+                invoice = await new this.Invoice({
+                    title: "هزینه سرویس",
+                    confirmInfo: true,
+                    agencyId: agency._id,
+                    setter: req.user._id,
+                    type: "serviceCost",
+                    amount: 0,
+                }).save();
             }
             let service = await this.Service.findById(id);
             if (!service) {
@@ -283,10 +372,29 @@ module.exports = new (class extends controller {
                     agencyId: stu.serviceNum < 1 ? null : agencyId,
                     serviceCost: stu.serviceFee,
                     driverCost: stu.driverFee,
-                    driverCode:driver.driverCode,
+                    driverCode: driver.driverCode,
                     state: stu.newState,
                     stateTitle: stu.stateDesc,
                 });
+                const payQueue = await this.PayQueue.findOne({
+                    inVoiceId: invoice._id,
+                    studentId: stu.id,
+                });
+                console.log("payQueue", payQueue);
+                if (!payQueue) {
+                    await new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        agencyId,
+                        studentId: stu.id,
+                        code: invoice.code,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: false,
+                    }).save();
+                }
                 await new this.OperationLog({
                     userId: req.user._id,
                     name: req.user.name + " " + req.user.lastName,
@@ -483,7 +591,7 @@ module.exports = new (class extends controller {
             service = await this.Service.find({ $and: qr })
                 .skip(page * size)
                 .limit(size);
-            console.log("service len=", service.length);
+            // console.log("service len=", service.length);
             const serviceCount = await this.Service.countDocuments({
                 $and: qr,
             });
@@ -494,7 +602,7 @@ module.exports = new (class extends controller {
                     { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
-                console.log("service school=", school.name);
+                // console.log("service school=", school.name);
                 const studentService = await this.Student.find(
                     { delete: false, service: service[i]._id },
                     "state stateTitle service serviceNum serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract"
@@ -1050,8 +1158,8 @@ module.exports = new (class extends controller {
             for (let i = 0; i < service.student.length; i++) {
                 await this.Student.findByIdAndUpdate(service.student[i], {
                     service: null,
-                    serviceNum:-1,
-                    driverCode:'',
+                    serviceNum: -1,
+                    driverCode: "",
                     serviceCost: 0,
                     state: 3,
                     stateTitle: "حذف سرویس درانتظار",
@@ -1478,9 +1586,9 @@ module.exports = new (class extends controller {
                     { lastName: { $regex: ".*" + search + ".*" } },
                     { studentCode: { $regex: ".*" + search + ".*" } },
                 ],
-            }).distinct('service');
-            console.log("serviceId",serviceId)
-            qr.push({_id:serviceId});
+            }).distinct("service");
+            console.log("serviceId", serviceId);
+            qr.push({ _id: serviceId });
 
             const findItem =
                 "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone driverId schoolIds active time";
@@ -1488,7 +1596,7 @@ module.exports = new (class extends controller {
             const service = await this.Service.find({ $and: qr }, findItem)
                 .skip(page * size)
                 .limit(size);
-                
+
             const serviceCount = await this.Service.countDocuments({
                 $and: qr,
             });
@@ -1498,10 +1606,12 @@ module.exports = new (class extends controller {
                     { _id: { $in: service[i].schoolIds } },
                     "name location.coordinates schoolTime"
                 );
-                
-                const studentX=await this.Student.find({service:service[i]._id}).lean();
+
+                const studentX = await this.Student.find({
+                    service: service[i]._id,
+                }).lean();
                 //  console.log("students",students.length)
-                let students=[];
+                let students = [];
                 for (const st of studentX) {
                     //  console.log("st.school",st.school)
                     let sch = await this.School.findById(
@@ -1516,7 +1626,7 @@ module.exports = new (class extends controller {
                         address: st.address + " " + st.addressDetails,
                     });
                 }
-                 console.log("students",students.length)
+                console.log("students", students.length);
                 if (students.length === 0) continue;
                 let moreInfo = {};
                 //  console.log("school",school)
@@ -1533,7 +1643,7 @@ module.exports = new (class extends controller {
                             " " +
                             school.schoolTime[service[i].time].end;
                         var stt = "";
-                         console.log("school.schoolTime",school.schoolTime)
+                        console.log("school.schoolTime", school.schoolTime);
                         for (var t in school.schoolTime) {
                             if (t == service[i].time) continue;
                             if (shiftName === school.schoolTime[t].name) {
@@ -1546,7 +1656,7 @@ module.exports = new (class extends controller {
                                     school.schoolTime[t].shiftdayTitle;
                             }
                         }
-                        console.log("school.schoolTimeXX",school.schoolTime)
+                        console.log("school.schoolTimeXX", school.schoolTime);
                         if (stt != "") {
                             shiftType +=
                                 school.schoolTime[service[i].time]
@@ -1561,7 +1671,7 @@ module.exports = new (class extends controller {
                     }
                     moreInfo.shiftName = shiftName;
                     moreInfo.shiftType = shiftType;
-                    console.log("shiftType",shiftType)
+                    console.log("shiftType", shiftType);
                 } else {
                     moreInfo.schoolName = "پیدا نشد";
                     moreInfo.schoolLat = 0;
@@ -1569,14 +1679,14 @@ module.exports = new (class extends controller {
                     moreInfo.shiftName = "";
                     moreInfo.shiftType = "";
                 }
-                console.log("moreInfo",moreInfo)
+                console.log("moreInfo", moreInfo);
                 myServices.push({
                     service: service[i],
                     moreInfo: moreInfo,
                     students: students,
                 });
             }
-            console.log("myServices",myServices.length)
+            console.log("myServices", myServices.length);
             return this.response({
                 res,
                 message: serviceCount,

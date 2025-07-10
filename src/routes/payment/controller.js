@@ -1854,6 +1854,171 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async setInstallmentByParent(req, res) {
+        try {
+            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+            const studentId = ObjectId.createFromHexString(req.body.studentId);
+            const prices = req.body.prices;
+            const codes = req.body.codes;
+            const installments = await this.Invoice.find({
+                agencyId,
+                type: "installment",
+                delete: false,
+            });
+            if (installments.length === 0) {
+                return this.response({
+                    res,
+                    code: 203,
+                    message: "installments not set",
+                });
+            }
+            console.log("installments.length",installments.length)
+            console.log("prices",prices.length)
+            if (installments.length != prices.length) {
+                return this.response({
+                    res,
+                    code: 202,
+                    message: "installments.length != prices.length",
+                });
+            }
+
+            const student = await this.Student.findOne(
+                {
+                    _id: studentId,
+                    state: 4,
+                    delete: false,
+                },
+                "studentCode"
+            ).lean();
+            if (!student) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "student not find",
+                });
+            }
+            const studentCode = student.studentCode;
+            let remaining = 0;
+            console.log("studentCode", studentCode);
+            const result = await this.DocListSanad.aggregate([
+                {
+                    $match: {
+                        accCode: "003005" + studentCode,
+                        agencyId,
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        // totalbed: { $sum: '$bed' },
+                        // totalbes: { $sum: '$bes' }
+                        total: {
+                            $sum: {
+                                $subtract: ["$bed", "$bes"],
+                            },
+                        },
+                    },
+                },
+            ]);
+            console.log("result", result);
+            remaining = result[0] === undefined ? 0 : result[0].total;
+            if (remaining > 100000) {
+                const oldPq = await this.PayQueue.find({
+                    studentId: student._id,
+                    type: "installment",
+                });
+                let counterPay = [];
+                if (oldPq.length > 0) {
+                    // if (!oldPq[0].isSetAuto) {
+                    //     continue;
+                    // }
+                    for (var op of oldPq) {
+                        if (!op.isPaid) {
+                            await this.PayQueue.findByIdAndDelete(op._id);
+                        } else {
+                            counterPay.push(op.counter);
+                        }
+                    }
+                }
+                let invoices = installments;
+                for (var i = 0; i < invoices.length; i++) {
+                    for (var cp of counterPay) {
+                        if (cp === invoices[i].counter) {
+                            invoices.splice(i, 1);
+                            i--;
+                            break;
+                        }
+                    }
+                }
+                if (invoices.length === 0) {
+                    invoices.push(installments[installments.length - 1]);
+                }
+                if (invoices[0].fixPrice) {
+                    const everyPrice = Math.round(remaining / invoices.length);
+                    for (var invoice of invoices) {
+                        await new this.PayQueue({
+                            inVoiceId: invoice._id,
+                            code: invoice.code,
+                            agencyId: agencyId,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice.type,
+                            counter: invoice.counter,
+                            amount: everyPrice,
+                            title: invoice.title,
+                            maxDate: invoice.maxDate,
+                            isPaid: false,
+                        }).save();
+                    }
+                } else {
+                    let allPrice = 0;
+                    for (var p of prices) {
+                        allPrice = allPrice + p;
+                    }
+                    if (allPrice != remaining) {
+                        return this.response({
+                            res,
+                            code: 202,
+                            message: "allPrice != remaining",
+                        });
+                    }
+
+                    for (var m = 0; m < invoices.length; m++) {
+                        var invoice = invoices[m];
+                        let prc = prices[m] || 0;
+                        for (var i = 0; i < codes.length; i++) {
+                            if (codes[i] == invoice.code) {
+                                prc = prices[i];
+                                break;
+                            }
+                        }
+                        await new this.PayQueue({
+                            inVoiceId: invoice._id,
+                            code: invoice.code,
+                            agencyId: agencyId,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice.type,
+                            counter: invoice.counter,
+                            amount: prc,
+                            title: invoice.title,
+                            maxDate: invoice.maxDate,
+                            isPaid: false,
+                            delete: prc === 0 ? true : false,
+                        }).save();
+                    }
+                }
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error while setInstallmentsByParent:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
     async setInstallmentForStudent(req, res) {
         try {
             const { id, codes, amounts, deletes, agencyId } = req.body;
@@ -1897,8 +2062,8 @@ module.exports = new (class extends controller {
                             payQueue.delete = deletes[i];
                             payQueue.isSetAuto = false;
                             await payQueue.save();
-                        }else{
-                             payQueue.isSetAuto = false;
+                        } else {
+                            payQueue.isSetAuto = false;
                             await payQueue.save();
                         }
                     } else {
@@ -1915,7 +2080,7 @@ module.exports = new (class extends controller {
                                 title: invoice.title,
                                 maxDate: invoice.maxDate,
                                 isPaid: false,
-                                isSetAuto:false
+                                isSetAuto: false,
                             }).save();
                         }
                     }
@@ -2027,9 +2192,11 @@ module.exports = new (class extends controller {
             let qr = [];
             qr.push({ delete: false });
             let payQueues = await this.PayQueue.find({
-                studentId,delete:false
+                studentId,
+                delete: false,
             }).sort({
-                maxDate:1
+                counter: 1,
+                maxDate: 1,
             });
 
             var pays = [];

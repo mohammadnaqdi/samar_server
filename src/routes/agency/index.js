@@ -116,6 +116,12 @@ router.post(
     controller.validate.bind(controller),
     controller.setAgencySetting.bind(controller)
 );
+router.post(
+    "/SetAgencySettingOpinion",
+    validator.setAgencySettingOpinionValidator(),
+    controller.validate.bind(controller),
+    controller.setAgencySettingOpinion.bind(controller)
+);
 
 router.post(
     "/UpdateConfirmAgency",

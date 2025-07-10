@@ -56,7 +56,10 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("districtId cant be empty"),
-            check("location").not().isEmpty().withMessage("location cant be empty"),
+            check("location")
+                .not()
+                .isEmpty()
+                .withMessage("location cant be empty"),
             check("districtTitle")
                 .not()
                 .isEmpty()
@@ -168,14 +171,8 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("agencyId cant be empty"),
-            check("text")
-                .not()
-                .isEmpty()
-                .withMessage("text cant be empty"),
-            check("active")
-                .not()
-                .isEmpty()
-                .withMessage("active cant be empty"),
+            check("text").not().isEmpty().withMessage("text cant be empty"),
+            check("active").not().isEmpty().withMessage("active cant be empty"),
         ];
     }
     setDefHeaderLineValidator() {
@@ -184,14 +181,20 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("agencyId cant be empty"),
-            check("title")
+            check("title").not().isEmpty().withMessage("title cant be empty"),
+            check("code").not().isEmpty().withMessage("code cant be empty"),
+        ];
+    }
+    setAgencySettingOpinionValidator() {
+        return [
+            check("agencyId")
                 .not()
                 .isEmpty()
-                .withMessage("title cant be empty"),
-            check("code")
-                .not()
-                .isEmpty()
-                .withMessage("code cant be empty"),
+                .withMessage("agencyId cant be empty"),
+            check("id").not().isEmpty().withMessage("id cant be empty"),
+            check("active").not().isEmpty().withMessage("active cant be empty"),
+            check("active").isBoolean().withMessage("active is boolean"),
+            check("id").isInt().withMessage("id is int"),
         ];
     }
 })();

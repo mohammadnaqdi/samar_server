@@ -1465,6 +1465,7 @@ module.exports = new (class extends controller {
                         isPaid: true,
                         setter: req.user._id,
                         payDate: new Date(),
+                        amount:doc.bes
                     }
                 );
                 if (payQueue && payQueue.type === "prePayment") {
