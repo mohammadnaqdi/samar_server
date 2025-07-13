@@ -51,7 +51,9 @@ module.exports = new (class {
         return [
             check("search").isString().withMessage("search cant be number"),
             check("page").isInt().withMessage("page isNumber"),
+            check("gradeId").isInt().withMessage("gradeId isNumber"),
             check("page").not().isEmpty().withMessage("page cant be empty"),
+            check("gradeId").not().isEmpty().withMessage("gradeId cant be empty"),
             check("location").not().isEmpty().withMessage("location cant be empty"),
             check("maxDistance")
                 .optional()

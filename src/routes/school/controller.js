@@ -209,12 +209,50 @@ module.exports = new (class extends controller {
             // console.log("limit",limit);
             const search = req.body.search.trim();
             const location = req.body.location;
+            let gradeId = req.body.gradeId ;
+            console.log("req.body.gradeId=",req.body.gradeId)
+            console.log("gradeId=",gradeId)
+           
+            const gradePreSchool=await this.Keys.findOne({titleEn:'Preschool'},'keyId').lean();
+            const kindergarten=await this.Keys.findOne({titleEn:'kindergarten'},'keyId').lean();
+             if (!gradePreSchool || !kindergarten) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "gradePreSchool or kindergarten  is not find",
+                });
+            }
+            gradeId=gradeId-gradePreSchool.keyId;
+             if (gradeId < 0) {
+                return this.response({
+                    res,
+                    code: 204,
+                    message: "gradeId is not correct",
+                });
+            }
+            
+            const grade =
+                gradeId === 0
+                    ? kindergarten.keyId
+                    : gradeId < 4
+                    ? kindergarten.keyId+1
+                    : gradeId < 7
+                    ? kindergarten.keyId+2
+                    : gradeId < 10
+                    ? kindergarten.keyId+3
+                    : kindergarten.keyId+4;
             let page = req.body.page || 0;
             const districtId = req.body.districtId || 0;
             if (limit < 1) limit = 1;
             if (page < 0) page = 0;
 
             const qr = [{ delete: false }];
+            console.log("grade=",grade)
+            if(grade<kindergarten.keyId+3){
+                qr.push({grade});
+            }else{
+                 qr.push({grade:{$in:[kindergarten.keyId+3,kindergarten.keyId+4]}});
+            }
             if (ObjectId.isValid(agencyId)) {
                 // Check if agencyId is a valid ObjectId before using it
                 qr.push({ agencyId: ObjectId.createFromHexString(agencyId) });
@@ -270,19 +308,21 @@ module.exports = new (class extends controller {
                                 response.data.routes[0].duration;
                             schools[i].geometry =
                                 response.data.routes[0].geometry;
-                                console.log("distance", response.data.routes[0].distance);
-                                // const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${location}&destination=${schools[i].location.coordinates}`;
-                                // const options = {
-                                //     headers: { "Api-Key": neshan },
-                                //     timeout: 9500,
-                                // };
-                                // const directionResponse = await axios.get(
-                                //     directionUrl,
-                                //     options
-                                // );
-                                //  console.log("neshan distance=", directionResponse.data.routes[0].legs[0].distance.value);
-                                // console.log("overview_polyline",JSON.stringify(directionResponse.data));
-                            
+                            console.log(
+                                "distance",
+                                response.data.routes[0].distance
+                            );
+                            // const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${location}&destination=${schools[i].location.coordinates}`;
+                            // const options = {
+                            //     headers: { "Api-Key": neshan },
+                            //     timeout: 9500,
+                            // };
+                            // const directionResponse = await axios.get(
+                            //     directionUrl,
+                            //     options
+                            // );
+                            //  console.log("neshan distance=", directionResponse.data.routes[0].legs[0].distance.value);
+                            // console.log("overview_polyline",JSON.stringify(directionResponse.data));
                         }
                     }
                 } catch (e) {
