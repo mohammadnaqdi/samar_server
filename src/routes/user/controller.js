@@ -51,8 +51,10 @@ module.exports = new (class extends controller {
     async setName(req, res) {
         try {
             let id = req.user._id;
-            const isParent=req.body.isParent || req.user.isParent;
-            let user =isParent?await this.Parent.findById(id): await this.User.findById(id);
+            const isParent = req.body.isParent || req.user.isParent;
+            let user = isParent
+                ? await this.Parent.findById(id)
+                : await this.User.findById(id);
             if (!user) {
                 return res.status(214).json({ msg: "user not find" });
             }
@@ -75,7 +77,10 @@ module.exports = new (class extends controller {
                 user.userName = userName;
             }
             await user.save();
-            await this.updateRedisDocument(isParent?`parent:${user._id}`:`user:${user._id}`, user.toObject());
+            await this.updateRedisDocument(
+                isParent ? `parent:${user._id}` : `user:${user._id}`,
+                user.toObject()
+            );
 
             return this.response({
                 res,
@@ -96,7 +101,10 @@ module.exports = new (class extends controller {
                 await this.User.findByIdAndUpdate(idUser, {
                     nationalCode: nt,
                 });
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    user.toObject()
+                );
                 return this.response({
                     res,
                     message: "update successfully",
@@ -142,7 +150,7 @@ module.exports = new (class extends controller {
     async setNameAsAdmin(req, res) {
         try {
             let id = req.body.id;
-            const isParent=req.body.isParent || false;
+            const isParent = req.body.isParent || false;
             let user;
             console.log("id=", id);
             if (id.toString().trim() === "") {
@@ -151,20 +159,26 @@ module.exports = new (class extends controller {
                         .status(215)
                         .json({ msg: "phone for new user need" });
                 }
-                user =isParent?await this.Parent.findOne({ phone: req.body.phone }): await this.User.findOne({ phone: req.body.phone });
+                user = isParent
+                    ? await this.Parent.findOne({ phone: req.body.phone })
+                    : await this.User.findOne({ phone: req.body.phone });
                 if (user) {
                     // return res.status(216).json({ msg: "this phone is repeat" });
                 } else {
-                    user =isParent?new this.Parent({
-                        phone: req.body.phone,
-                        userName: req.body.phone,
-                    }): new this.User({
-                        phone: req.body.phone,
-                        userName: req.body.phone,
-                    });
+                    user = isParent
+                        ? new this.Parent({
+                              phone: req.body.phone,
+                              userName: req.body.phone,
+                          })
+                        : new this.User({
+                              phone: req.body.phone,
+                              userName: req.body.phone,
+                          });
                 }
             } else {
-                user =isParent?await this.Parent.findById(id): await this.User.findById(id);
+                user = isParent
+                    ? await this.Parent.findById(id)
+                    : await this.User.findById(id);
                 if (!user) {
                     return res.status(214).json({ msg: "user not find" });
                 }
@@ -389,8 +403,10 @@ module.exports = new (class extends controller {
     async userCheckLogin(req, res) {
         try {
             const userId = req.user._id;
-            const isParent=req.user.isParent;
-            let user =isParent? await this.Parent.findById(userId): await this.User.findById(userId);
+            const isParent = req.user.isParent;
+            let user = isParent
+                ? await this.Parent.findById(userId)
+                : await this.User.findById(userId);
             const token = req.header("x-auth-token");
             var ip =
                 req.headers["x-forwarded-for"] || req.connection.remoteAddress;
@@ -415,7 +431,10 @@ module.exports = new (class extends controller {
                     tk: token,
                 });
                 await user.save();
-                await this.updateRedisDocument(isParent? `parent:${user._id}`:`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    isParent ? `parent:${user._id}` : `user:${user._id}`,
+                    user.toObject()
+                );
             }
 
             if (exist) {
@@ -470,7 +489,10 @@ module.exports = new (class extends controller {
                     tk: token,
                 });
                 await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    user.toObject()
+                );
             }
 
             if (exist) {
@@ -663,7 +685,10 @@ module.exports = new (class extends controller {
                 user.userName = userName;
                 if (changePass) user.password = password;
                 await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    user.toObject()
+                );
 
                 return this.response({
                     res,
@@ -781,7 +806,10 @@ module.exports = new (class extends controller {
                 }
 
                 await user.save();
-                await this.updateRedisDocument(`user:${user._id}`, user.toObject());
+                await this.updateRedisDocument(
+                    `user:${user._id}`,
+                    user.toObject()
+                );
 
                 return this.response({
                     res,
@@ -850,6 +878,7 @@ module.exports = new (class extends controller {
     async getRule(req, res) {
         try {
             const { type, id } = req.query;
+            const grade = req.query.grade || "-1";
             if (type === undefined || id === undefined) {
                 return this.response({
                     res,
@@ -858,7 +887,21 @@ module.exports = new (class extends controller {
                 });
             }
             const agencyId = ObjectId.createFromHexString(id);
-            const rules = await this.Rule.find({ type, agencyId, show: true });
+
+            const rules =
+                grade === "-1"
+                    ? await this.Rule.find({
+                          type,
+                          agencyId,
+                          show: true,
+                          grade: { $in: [-1, null] },
+                      })
+                    : await this.Rule.find({
+                          type,
+                          agencyId,
+                          show: true,
+                          grade: parseInt(grade),
+                      });
 
             return this.response({
                 res,

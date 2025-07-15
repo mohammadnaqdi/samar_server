@@ -14,6 +14,7 @@ const ruleSchema = new mongoose.Schema(
         },
         rule: { type: String, required: true },
         show: { type: Boolean, default: true },
+        grade:{type:Number,default:-1}
     },
     {
         timestamps: true,

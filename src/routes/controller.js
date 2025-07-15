@@ -30,7 +30,7 @@ const {
     StReport,
     SchReport,
     RatingDriver,
-    InspectorRp,
+    InspectorRp,Opinion
 } = require("./../models/report");
 const { Holiday } = require("./../models/calendar");
 const { Versionsoft } = require("./../models/versionsoft");
@@ -68,6 +68,7 @@ const { redisClient } = require("../../startup/redis");
 
 module.exports = class {
     constructor() {
+        this.Opinion = Opinion;
         this.redisClient = redisClient;
         this.Invoice = Invoice;
         this.SearchLog = SearchLog;

@@ -149,11 +149,16 @@ module.exports = new (class extends controller {
                     fcm.push({ device: device, token: firebaseToken });
                 }
                 req.user.fcm = fcm;
-                req.user.save();const locationSchema = new mongoose.Schema(
+                req.user.save();
+                const locationSchema = new mongoose.Schema(
                     {
                         userCode: { type: Number, required: true },
                         location: {
-                            type: { type: String, enum: ["Point"], default: "Point" },
+                            type: {
+                                type: String,
+                                enum: ["Point"],
+                                default: "Point",
+                            },
                             coordinates: {
                                 type: [Number],
                                 index: "2dsphere",
@@ -168,16 +173,20 @@ module.exports = new (class extends controller {
                     },
                     {
                         timestamps: true,
-                    },
+                    }
                 );
-                locationSchema.index({ location: '2dsphere' });
+                locationSchema.index({ location: "2dsphere" });
                 var Location = mongoose.model("Location", locationSchema);
-                
+
                 const driverActSchema = new mongoose.Schema(
                     {
                         driverCode: { type: String, required: true },
-                         location: {
-                            type: { type: String, enum: ["Point"], default: "Point" },
+                        location: {
+                            type: {
+                                type: String,
+                                enum: ["Point"],
+                                default: "Point",
+                            },
                             coordinates: {
                                 type: [Number],
                                 index: "2dsphere",
@@ -191,11 +200,10 @@ module.exports = new (class extends controller {
                     },
                     {
                         timestamps: true,
-                    },
+                    }
                 );
-                driverActSchema.index({ location: '2dsphere' });
+                driverActSchema.index({ location: "2dsphere" });
                 var DriverAct = mongoose.model("DriverAct", driverActSchema);
-                
             }
             const agency = await this.Agency.findOne(
                 { admin: user.id, delete: false },
@@ -1110,7 +1118,7 @@ module.exports = new (class extends controller {
         try {
             const agencyId = req.query.agencyId;
             let rules = null;
-            if (agencyId == undefined) {
+            if (!agencyId) {
                 rules = await this.Rule.find();
             } else {
                 rules = await this.Rule.find({ agencyId });
@@ -1131,6 +1139,7 @@ module.exports = new (class extends controller {
             const { agencyId, show, text, type } = req.body;
 
             let id = req.body.id == "0" ? null : req.body.id;
+            const grade = req.body.grade || -1;
 
             if (id === null) {
                 let newRule = new this.Rule({
@@ -1138,6 +1147,7 @@ module.exports = new (class extends controller {
                     rule: text,
                     show,
                     type,
+                    grade,
                 });
                 await newRule.save();
                 return this.response({
@@ -1150,6 +1160,7 @@ module.exports = new (class extends controller {
                 show,
                 rule: text,
                 type,
+                grade,
             });
 
             return this.response({

@@ -582,6 +582,7 @@ console.log("doc", doc.length);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    
 })();
 
 function getMonth(now) {

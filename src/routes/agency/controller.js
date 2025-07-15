@@ -1275,7 +1275,7 @@ module.exports = new (class extends controller {
             // );
             const reports = await this.StReport.find(
                 { agencyId, state: 0, delete: false },
-                "createdAt desc grade"
+                "createdAt text grade"
             )
                 .limit(8)
                 .sort({ _id: -1 });

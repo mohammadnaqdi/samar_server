@@ -11,7 +11,7 @@ module.exports = new (class extends controller {
                 studentId,
                 agencyId,
                 schoolId,
-                desc,
+                text,
                 grade,
             } = req.body;
 
@@ -22,8 +22,80 @@ module.exports = new (class extends controller {
                 studentId,
                 agencyId,
                 schoolId,
-                desc,
+                text,
                 grade,
+            });
+            await stReport.save();
+
+            return this.response({
+                res,
+                message: "ok",
+                data: stReport.code,
+            });
+        } catch (error) {
+            console.error("Error in insertStudentReport:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async insertStudentOpinion(req, res) {
+        try {
+            const {
+                driverId,
+                serviceId,
+                studentId,
+                agencyId,
+                schoolId,
+                content,
+                grade,
+                month,
+            } = req.body;
+            const agSet = await this.AgencySet.findOne(
+                { agencyId },
+                "openOpinion"
+            );
+            if (!agSet) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "not find agency",
+                });
+            }
+            let sum = 0;
+            for (var cn of content) {
+                sum = sum + cn.point;
+            }
+
+            let isOpen = false;
+            console.log("agSet.openOpinion", agSet.openOpinion);
+            const n = month.toString();
+            if (agSet.openOpinion[n]) {
+                const myOp = await this.Opinion.findOne({
+                    month,
+                    studentId,
+                    agencyId,
+                });
+                if (!myOp) {
+                    isOpen = true;
+                }
+            }
+            if (!isOpen) {
+                return this.response({
+                    res,
+                    code: 405,
+                    message: "this opinion not open",
+                });
+            }
+            let stReport = new this.Opinion({
+                userId: req.user._id,
+                driverId,
+                serviceId,
+                studentId,
+                agencyId,
+                schoolId,
+                content,
+                grade,
+                month,
+                sum,
             });
             await stReport.save();
 
@@ -33,7 +105,7 @@ module.exports = new (class extends controller {
                 data: stReport.id,
             });
         } catch (error) {
-            console.error("Error in insertStudentReport:", error);
+            console.error("Error in insertStudentOpinion:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -97,35 +169,35 @@ module.exports = new (class extends controller {
         }
     }
 
-    async getMyRating(req, res) {
-        try {
-            const { driverId, studentId } = req.query;
+    // async getMyRating(req, res) {
+    //     try {
+    //         const { driverId, studentId } = req.query;
 
-            if (!driverId || !studentId) {
-                return this.response({
-                    res,
-                    code: 214,
-                    message: "driverId and studentId need",
-                });
-            }
+    //         if (!driverId || !studentId) {
+    //             return this.response({
+    //                 res,
+    //                 code: 214,
+    //                 message: "driverId and studentId need",
+    //             });
+    //         }
 
-            const userId = req.user._id;
-            const myRt = await this.RatingDriver.findOne({
-                driverId,
-                studentId,
-                userId,
-            }).sort({ _id: -1 });
+    //         const userId = req.user._id;
+    //         const myRt = await this.RatingDriver.findOne({
+    //             driverId,
+    //             studentId,
+    //             userId,
+    //         }).sort({ _id: -1 });
 
-            return this.response({
-                res,
-                message: "ok",
-                data: myRt,
-            });
-        } catch (error) {
-            console.error("Error in getMyRating:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             message: "ok",
+    //             data: myRt,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error in getMyRating:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 
     async getMyReport(req, res) {
         try {
@@ -139,15 +211,13 @@ module.exports = new (class extends controller {
                 });
             }
 
-            const userId = req.user._id;
             const myRt = await this.StReport.find(
                 {
                     driverId,
                     studentId,
-                    userId,
                     delete: false,
                 },
-                "desc state grade createdAt updatedAt"
+                "text comment1 comment2 code state grade createdAt updatedAt"
             );
 
             return this.response({
@@ -157,6 +227,54 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in getMyReport:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getOpenOpinion(req, res) {
+        try {
+            const { agencyId, studentId, driverId } = req.query;
+
+            if (!agencyId || !studentId || !driverId) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId , driverId and studentId need",
+                });
+            }
+
+            const agSet = await this.AgencySet.findOne(
+                { agencyId },
+                "openOpinion"
+            );
+            if (!agSet) {
+                return this.response({
+                    res,
+                    data: [],
+                });
+            }
+            let myRt = [];
+            console.log("agSet.openOpinion", agSet.openOpinion);
+            for (var i = 1; i <= 12; i++) {
+                const n = i.toString();
+                if (agSet.openOpinion[n]) {
+                    const myOp = await this.Opinion.findOne({
+                        month: i,
+                        studentId,
+                        agencyId,
+                    });
+                    if (!myOp) {
+                        myRt.push(i);
+                    }
+                }
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+                data: myRt,
+            });
+        } catch (error) {
+            console.error("Error in getOpenOpinion:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -179,7 +297,7 @@ module.exports = new (class extends controller {
             });
             if (st) {
                 if (st.state == 0) {
-                    await this.StReport.findByIdAndRemove(id);
+                    await this.StReport.findByIdAndDelete(id);
                     return this.response({
                         res,
                         message: "delete",
@@ -236,7 +354,7 @@ module.exports = new (class extends controller {
                     studentName: "",
                     studentCode: "",
                 };
-                const user = await this.User.findById(
+                const user = await this.Parent.findById(
                     report.userId,
                     "phone name lastName"
                 );
@@ -285,6 +403,76 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async getDriverOpinions(req, res) {
+        try {
+            const { driverId } = req.query;
+            const pagest = req.query.page || "0";
+            const page = parseInt(pagest);
+
+            if (!driverId) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "driverId need",
+                });
+            }
+
+            const reports = await this.Opinion.find({
+                driverId,
+                delete: false,
+            })
+                .limit(20)
+                .skip(page * 20)
+                .sort({ month: 1 });
+
+            let rps = [];
+            for (const report of reports) {
+                let info = {
+                    userName: "",
+                    userPhone: "",
+                    userRel: "",
+                    schoolName: "",
+                    schoolCode: "",
+                    serviceNum: 0,
+                    driverName: "",
+                    driverCar: "",
+                    driverPhone: "",
+                    studentName: "",
+                    studentCode: "",
+                };
+                const user = await this.Parent.findById(
+                    report.userId,
+                    "phone name lastName"
+                );
+
+                const student = await this.Student.findById(
+                    report.studentId,
+                    "studentCode name lastName parentReleation"
+                );
+                if (user) {
+                    info.userName = user.name + " " + user.lastName;
+                    info.userPhone = user.phone;
+                }
+
+                if (student) {
+                    info.studentName = student.name + " " + student.lastName;
+                    info.studentCode = student.studentCode;
+                    info.userRel = student.parentReleation;
+                }
+
+                rps.push({ report, info });
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+                data: rps,
+            });
+        } catch (error) {
+            console.error("Error in getAgencyOpinions:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async getDriverReportById(req, res) {
         try {
@@ -297,6 +485,30 @@ module.exports = new (class extends controller {
                     code: 214,
                     message: "id need",
                 });
+            }
+            let points = [];
+            for (var i = 1; i <= 12; i++) {
+                const result = await this.Opinion.aggregate([
+                    {
+                        $match: {
+                            delete: false,
+                            driverId: ObjectId.createFromHexString(id),
+                            month: i,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            total: {
+                                $sum: "$sum",
+                            },
+                            count: { $sum: 1 }, // <- counts the number of documents
+                        },
+                    },
+                ]);
+                const point = !result || !result[0] ? 0 : result[0].total;
+                const count = !result || !result[0] ? 0 : result[0].count;
+                points.push({month:i,point,count})
             }
 
             const ratingDriver = await this.RatingDriver.find(
@@ -311,7 +523,7 @@ module.exports = new (class extends controller {
                     driverId: ObjectId.createFromHexString(id),
                     delete: false,
                 },
-                "userId studentId schoolId desc state grade updatedAt"
+                "userId studentId schoolId text state grade updatedAt"
             );
             const inspectorRp = await this.InspectorRp.find({
                 driverId: ObjectId.createFromHexString(id),
@@ -330,7 +542,7 @@ module.exports = new (class extends controller {
                         studentName: "",
                         studentCode: "",
                     };
-                    const user = await this.User.findById(
+                    const user = await this.Parent.findById(
                         report.userId,
                         "phone name lastName"
                     );
@@ -384,7 +596,7 @@ module.exports = new (class extends controller {
             return this.response({
                 res,
                 message: "ok",
-                data: { reports: rps, rating: ratingDriver, rps2 },
+                data: { reports: rps, rating: ratingDriver, rps2, points },
             });
         } catch (error) {
             console.error("Error in getDriverReportById:", error);
@@ -454,8 +666,19 @@ module.exports = new (class extends controller {
 
     async updateStudentReport(req, res) {
         try {
-            const { id, state } = req.body;
-            await this.StReport.findByIdAndUpdate(id, { state });
+            const { id, state, comment } = req.body;
+            if (state === 1) {
+                await this.StReport.findByIdAndUpdate(id, {
+                    state,
+                    comment1: comment,
+                });
+            } else {
+                await this.StReport.findByIdAndUpdate(id, {
+                    state,
+                    comment2: comment,
+                });
+            }
+
             return this.response({
                 res,
                 message: "ok",
