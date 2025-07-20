@@ -6,13 +6,14 @@ const axios = require("axios");
 const neshan = process.env.NESHAN;
 
 module.exports = new (class extends controller {
+
     async setSchool(req, res) {
         try {
             const id = req.body.id;
             const name = req.body.name;
             const grade = req.body.grade;
-            const districtId = req.body.districtId;
-            const districtTitle = req.body.districtTitle;
+            // const districtId = req.body.districtId;
+            // const districtTitle = req.body.districtTitle;
             const address = req.body.address;
             const location = req.body.location;
             const typeId = req.body.typeId;
@@ -77,8 +78,8 @@ module.exports = new (class extends controller {
                     gender,
                     genderTitle,
                     grade,
-                    districtId,
-                    districtTitle,
+                    districtId:0,
+                    districtTitle:'',
                     address,
                     location: { type: "Point", coordinates: location },
                     schoolTime,
@@ -97,8 +98,8 @@ module.exports = new (class extends controller {
                     gender,
                     genderTitle,
                     grade,
-                    districtId,
-                    districtTitle,
+                    districtId:0,
+                    districtTitle:'',
                     address,
                     location: { type: "Point", coordinates: location },
                     schoolTime,
@@ -514,44 +515,47 @@ module.exports = new (class extends controller {
             const {
                 search = "",
                 page = 0,
-                districtId = 0,
-                showSelected = false,
+                agencyLocation
             } = req.body;
-            const skip = Math.max(page, 0) * 40;
-
-            // Get IDs of selected schools if not showing selected
-            const selectedList = showSelected
-                ? []
-                : await this.School.find({ agencyId: { $ne: null } }).distinct(
-                      "_id"
-                  );
 
             // Build query conditions
             const conditions = {
-                _id: { $nin: selectedList },
                 delete: false,
+                agencyId:null,
             };
 
             // Add search conditions if provided
-            if (search) {
-                conditions.$or = [
-                    { code: { $regex: search, $options: "i" } },
-                    { name: { $regex: search, $options: "i" } },
-                ];
+            if (search && search.trim() !== "") {
+                conditions.name= { $regex: ".*" + search + ".*" } ;
             }
-
-            // Add district filter if specified
-            if (districtId !== 0) {
-                conditions.districtId = districtId;
-            }
-
-            // Fetch schools
-            const schools = await this.School.find(conditions)
-                .select(
-                    "_id code name typeTitle address location.coordinates districtId districtTitle gender"
-                )
-                .skip(skip)
-                .limit(40);
+            const maxDistance = req.body.maxDistance || 50000;
+            let schools = await this.School.aggregate([
+                {
+                    $geoNear: {
+                        near: {
+                            type: "Point",
+                            coordinates: agencyLocation,
+                        },
+                        key: "location",
+                        distanceField: "dist.calculated",
+                        maxDistance: maxDistance,
+                        spherical: true,
+                    },
+                },
+                {
+                    $match:  conditions ,
+                },
+                { $sort: { "dist.calculated": 1 } },
+                { $skip: (page * 40) },
+                { $limit: 40 },
+            ]).exec();
+            // // Fetch schools
+            // const schools = await this.School.find(conditions)
+            //     .select(
+            //         "_id code name typeTitle address location.coordinates districtId districtTitle gender"
+            //     )
+            //     .skip(page * 40)
+            //     .limit(40);
 
             return this.response({
                 res,

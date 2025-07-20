@@ -87,14 +87,8 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("agencyId cant be empty"),
-            check("schoolId")
-                .not()
-                .isEmpty()
-                .withMessage("schoolId cant be empty"),
-            check("isRemove")
-                .not()
-                .isEmpty()
-                .withMessage("isRemove cant be empty"),
+            check("schoolIds").isArray()
+                .withMessage("schoolIds is array"),
         ];
     }
     addSchoolToMyAgencyValidator() {

@@ -18,14 +18,6 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("genderTitle cant be empty"),
-            check("districtId")
-                .not()
-                .isEmpty()
-                .withMessage("districtId cant be empty"),
-            check("districtTitle")
-                .not()
-                .isEmpty()
-                .withMessage("districtTitle cant be empty"),
             check("address")
                 .not()
                 .isEmpty()
@@ -98,10 +90,10 @@ module.exports = new (class {
     }
     unselectedSchoolsValidator() {
         return [
-            check("districtId")
+            check("agencyLocation")
                 .not()
                 .isEmpty()
-                .withMessage("districtId cant be empty"),
+                .withMessage("agencyLocation cant be empty"),
             check("search").not().isEmpty().withMessage("search cant be empty"),
             check("page").not().isEmpty().withMessage("page cant be empty"),
             check("showSelected")

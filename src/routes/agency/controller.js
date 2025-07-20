@@ -944,26 +944,7 @@ module.exports = new (class extends controller {
     async addSchoolToAgency(req, res) {
         try {
             const agencyId = req.body.agencyId;
-            const schoolId = req.body.schoolId;
-            const isRemove = req.body.isRemove;
-            let school = await this.School.findById(schoolId);
-            if (!school) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "school not find",
-                    data: { fa_m: "پیدا نشد" },
-                });
-            }
-
-            if (isRemove) {
-                school.agencyId = null;
-                await school.save();
-                return this.response({
-                    res,
-                    message: "removed",
-                });
-            }
+            const schoolIds = req.body.schoolIds;
             const agency = await this.Agency.findById(agencyId);
             if (!agency) {
                 return this.response({
@@ -973,8 +954,12 @@ module.exports = new (class extends controller {
                     data: { fa_m: "پیدا نشد" },
                 });
             }
-            school.agencyId = agency._id;
-            await school.save();
+            await this.School.updateMany({
+                _id: { $in: schoolIds },
+                delete: false,
+            }, {
+                $set: { agencyId: agency._id },
+            });
             return this.response({
                 res,
                 message: "added",
@@ -1034,7 +1019,7 @@ module.exports = new (class extends controller {
             );
             // const service=await this.Service.find({schoolId,delete:false,agencyId},'id');
 
-            if (student) {
+            if (!student) {
                 let school = await this.School.findById(schoolId);
                 if (!school) {
                     return this.response({
@@ -1781,7 +1766,7 @@ module.exports = new (class extends controller {
 
             return this.response({
                 res,
-                message:'ok',
+                message: "ok",
             });
         } catch (error) {
             console.error("Error in setAgencySettingOpinion:", error);
@@ -1993,12 +1978,17 @@ module.exports = new (class extends controller {
                 if (invoice) {
                     registrationPrice = invoice.amount;
                 }
-
-                const schoolsX = await this.School.find({
+                const schoolCount = await this.School.countDocuments({
                     agencyId: agencies[i]._id,
                     delete: false,
-                }).lean();
-                let schoolData = [];
+                });
+                agencies[i].schoolsCount = schoolCount;
+
+                // const schoolsX = await this.School.find({
+                //     agencyId: agencies[i]._id,
+                //     delete: false,
+                // }).lean();
+                // let schoolData = [];
                 // for (var j = 0; j < schoolsX.length; j++) {
                 //     // const school = await this.School.findById(
                 //     //     schools[j]
@@ -2012,11 +2002,10 @@ module.exports = new (class extends controller {
                 //         address: school.address,
                 //         districtTitle: school.districtTitle,
                 //         gender: school.gender,
-                //         lat: school.location.coordinates[0],
-                //         lng: school.location.coordinates[1],
+                //         coordinates: school.location.coordinates,
                 //     });
                 // }
-                agencies[i].schools = schoolData;
+                // agencies[i].schools = schoolData;
                 agencies[i].registrationPrice = registrationPrice;
             }
             return this.response({
@@ -2025,6 +2014,47 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in agencyList:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async agecnySchoolList(req, res) {
+        try {
+            if (
+                req.query.agencyId === undefined ||
+                req.query.agencyId.trim() === ""
+            ) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId need",
+                });
+            }
+            const schoolsX = await this.School.find({
+                agencyId: req.query.agencyId,
+                delete: false,
+            }).lean();
+            let schoolData = [];
+            for (var j = 0; j < schoolsX.length; j++) {
+                // const school = await this.School.findById(
+                //     schools[j]
+                // );
+                // if (!school) break;
+                const school = schoolsX[j];
+                schoolData.push({
+                    _id: school._id,
+                    code: school.code,
+                    name: school.name,
+                    address: school.address,
+                    gender: school.gender,
+                    coordinates: school.location.coordinates,
+                });
+            }
+            return this.response({
+                res,
+                data: schoolData,
+            });
+        } catch (error) {
+            console.error("Error in agecnySchoolList:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -2233,6 +2263,59 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in getDefHeaderLine:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getRegistrationAmount(req, res) {
+        try {
+            if (
+                req.query.agencyId === undefined ||
+                req.query.agencyId.trim() === ""
+            ) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId need",
+                });
+            }
+
+            const agencyId = req.query.agencyId;
+            let invoice = await this.Invoice.findOne(
+                {
+                    agencyId: agencyId,
+                    type: "registration",
+                    active: true,
+                },
+                "amount title desc"
+            ).lean();
+            let amount = 0;
+            if (invoice) {
+                amount = invoice.amount;
+            }
+            let invoice2 = await this.Invoice.findOne(
+                {
+                    agencyId: agencyId,
+                    type: "prePayment",
+                    active: true,
+                },
+                "amount title desc"
+            ).lean();
+            let amount2 = 0;
+            if (invoice2) {
+                amount2 = invoice2.amount;
+            }
+
+            return this.response({
+                res,
+                data: {
+                    registration: amount,
+                    prePayment: amount2,
+                    invoice,
+                    invoice2,
+                },
+            });
+        } catch (error) {
+            console.error("Error in getRegistrationAmount:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

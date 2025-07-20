@@ -105,7 +105,7 @@ module.exports = new (class extends controller {
                 school,
                 listCode,
             };
-            console.log("ss", ss);
+            // console.log("ss", ss);
 
             return this.response({
                 res,

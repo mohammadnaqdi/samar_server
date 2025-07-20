@@ -51,6 +51,10 @@ router.get(
     isAgencyAdmin,
     controller.getKolMoeenAgency.bind(controller)
 );
+router.get(
+    "/AgecnySchoolList",
+    controller.agecnySchoolList.bind(controller)
+);
 router.post(
     "/AddSchoolToMyAgency",
     isAgencyAdmin,
@@ -148,5 +152,6 @@ router.post(
 );
 router.get("/GetDefHeaderLine", controller.getDefHeaderLine.bind(controller));
 router.get("/SimpleAgencyById", controller.simpleAgencyById.bind(controller));
+router.get("/GetRegistrationAmount", controller.getRegistrationAmount.bind(controller));
 
 module.exports = router;

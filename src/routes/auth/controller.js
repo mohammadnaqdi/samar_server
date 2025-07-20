@@ -790,7 +790,7 @@ module.exports = new (class extends controller {
             }
             const userSalt = crypto.randomBytes(16).toString("hex"); // Generate per-user salt
             const dynamicKey = JWT_KEY + userSalt;
-            const token = jwt.sign(
+            let token = jwt.sign(
                 { _id: user.id, date: Date.now() },
                 dynamicKey,
                 {
@@ -818,8 +818,86 @@ module.exports = new (class extends controller {
                             },
                         ],
                     },
-                    "code name cityId code location.coordinates active "
-                );
+                    "code name cityId code location.coordinates active settings"
+                ).lean();
+                for (var i in agency) {
+                    const wallet = agency[i].settings.find(
+                        (obj) => obj.wallet != undefined
+                    ).wallet;
+                    // console.log("setting", agency.settings);
+                    const costCode = agency[i].settings.find(
+                        (obj) => obj.cost != undefined
+                    ).cost;
+                    if (costCode && wallet) {
+                        let mandeh = 0;
+                        const result = await this.DocListSanad.aggregate([
+                            {
+                                $match: {
+                                    accCode: wallet,
+                                    agencyId: agency[i]._id,
+                                },
+                            },
+                            {
+                                $group: {
+                                    _id: null,
+                                    total: {
+                                        $sum: {
+                                            $subtract: ["$bed", "$bes"],
+                                        },
+                                    },
+                                },
+                            },
+                        ]);
+
+                        mandeh = result[0]?.total || 0;
+                        agency[i].mandeh = mandeh;
+                        if (mandeh < 0) {
+                            
+                            let sarafsl = [];
+                            const agencyId = agency[i]._id;
+                            var qr4 = [];
+                            qr4.push({ agencyId });
+                            qr4.push({ enable: true });
+                            qr4.push({ $or: [{ type: 5 }, { type: 3 }] });
+
+                            const hesabs = await this.ListAcc.find(
+                                { $and: qr4 },
+                                "code codeLev1 codeLev2 codeLev3 groupId type nature levelEnd"
+                            );
+                            if (hesabs.length != 0) {
+                                
+                                for (var hs of hesabs) {
+                                    const tafsily=await this.LevelAccDetail.findOne(
+                                            { agencyId, accCode: hs.codeLev3 },
+                                            "accName"
+                                        );
+                                    const moeen =
+                                        await this.LevelAccDetail.findOne(
+                                            { agencyId, accCode: hs.codeLev2 },
+                                            "accName"
+                                        );
+                                    const kol =
+                                        await this.LevelAccDetail.findOne(
+                                            { agencyId, accCode: hs.codeLev1 },
+                                            "accName"
+                                        );
+                                        if(!tafsily || !moeen || !kol)continue;
+                                    sarafsl.push({
+                                        accName: tafsily.accName,
+                                        hs,
+                                        moeen: moeen.accName,
+                                        kol: kol.accName,
+                                    });
+                                }
+                            }
+                            agency[i].sarafsl=sarafsl;
+                            if(sarafsl.length>0){
+                                token = "";
+                            }
+                        }
+                        console.log("mandeh", mandeh);
+                    }
+                }
             }
 
             if (user.isSchoolAdmin) {

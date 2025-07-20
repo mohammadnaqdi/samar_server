@@ -1313,7 +1313,8 @@ module.exports = new (class extends controller {
                     agencyId;
                 let payQueue = [];
                 if (!agencyId) {
-                    const agency = await this.Agency.findById(school.agencyId,
+                    const agency = await this.Agency.findById(
+                        school.agencyId,
                         "name code"
                     );
 
@@ -2541,6 +2542,8 @@ module.exports = new (class extends controller {
     }
 
     async deleteStudent(req, res) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
         try {
             if (!req.query.id || req.query.id.trim() === "") {
                 return this.response({
@@ -2554,8 +2557,9 @@ module.exports = new (class extends controller {
             let student;
             if (mongoose.isValidObjectId(req.query.id)) {
                 id = ObjectId.createFromHexString(req.query.id);
-                student = await this.Student.findById(id);
+                student = await this.Student.findById(id).session(session);
                 if (!student) {
+                    await session.abortTransaction();
                     return this.response({
                         res,
                         message: "couldn't find student",
@@ -2564,210 +2568,151 @@ module.exports = new (class extends controller {
             } else {
                 student = await this.Student.findOne({
                     studentCode: req.query.id,
-                });
+                }).session(session);
                 if (!student) {
+                    await session.abortTransaction();
                     return this.response({
                         res,
                         message: "couldn't find student",
                     });
                 }
             }
+
             const agency = await this.Agency.findOne(
                 {
-                    $and: [
-                        {
-                            $or: [
-                                { admin: req.user._id },
-                                { users: { $in: req.user._id } },
-                            ],
-                        },
+                    $or: [
+                        { admin: req.user._id },
+                        { users: { $in: req.user._id } },
                     ],
                 },
                 ""
-            );
-            await new this.OperationLog({
-                userId: req.user._id,
-                name: req.user.name + " " + req.user.lastName,
-                agencyId: agency._id,
-                targetIds: [student._id],
-                targetTable: "student",
-                sanadId: 0,
-                actionName: "deleteStudent",
-                actionNameFa: "حذف کامل دانش آموز",
-                desc: `دانش آموز ${student.name} ${student.school} از مدرسه با آی دی ${student.lastName}`,
-            }).save();
-            const checkIfDocumentExists = async (model, query) => {
-                const document = await model.findOne(query);
-                return document !== null;
-            };
+            ).session(session);
+
+            if (agency) {
+                await new this.OperationLog({
+                    userId: req.user._id,
+                    name: req.user.name + " " + req.user.lastName,
+                    agencyId: agency._id,
+                    targetIds: [student._id],
+                    targetTable: "student",
+                    sanadId: 0,
+                    actionName: "deleteStudent",
+                    actionNameFa: "حذف کامل دانش آموز",
+                    desc: `دانش آموز ${student.name} ${student.school} از مدرسه با آی دی ${student.lastName}`,
+                }).save({ session });
+            }else if(req.user._id!=student.parent){
+                await session.abortTransaction();
+                    return this.response({
+                        res,
+                        message: "couldn't delete this student",
+                    });
+            }else if(student.state!=0){
+                await session.abortTransaction();
+                    return this.response({
+                        res,
+                        message: "couldn't delete this student",
+                    });
+            }
 
             await Promise.all([
-                this.StReport.deleteMany({ studentId: student.id }),
-                this.RatingDriver.deleteMany({ studentId: student.id }),
-                // this.PayAction.deleteMany({
-                //     studentCode: student.studentCode,
-                // }),
-                this.Exception.deleteMany({ "points.studentId": student.id }),
+                this.StReport.deleteMany({ studentId: student.id }).session(
+                    session
+                ),
+                this.RatingDriver.deleteMany({ studentId: student.id }).session(
+                    session
+                ),
+                this.Exception.deleteMany({
+                    "points.studentId": student.id,
+                }).session(session),
             ]);
 
-            const stReportExists = await checkIfDocumentExists(this.StReport, {
-                studentId: student.id,
-            });
-            const ratingDriverExists = await checkIfDocumentExists(
-                this.RatingDriver,
-                {
-                    studentId: student.id,
-                }
-            );
-            // const payActionExists = await checkIfDocumentExists(
-            //     this.PayAction,
-            //     {
-            //         studentCode: student.studentCode,
-            //     }
-            // );
-            const exceptionExists = await checkIfDocumentExists(
-                this.Exception,
-                {
-                    "points.studentId": student.id,
-                }
+            await this.Pack.updateMany(
+                { "points.studentId": student.id },
+                { $pull: { points: { studentId: student.id } } },
+                { session }
             );
 
-            if (
-                addressExists ||
-                stReportExists ||
-                ratingDriverExists ||
-                // payActionExists ||
-                pointExists ||
-                exceptionExists
-            ) {
-                console.log("addressExists", addressExists);
-                console.log("stReportExists", stReportExists);
-                console.log("ratingDriverExists", ratingDriverExists);
-                // console.log("payActionExists", payActionExists);
-                console.log("pointExists", pointExists);
-                console.log("exceptionExists", exceptionExists);
-                return this.response({
-                    res,
-                    message: "Not all associated documents were deleted",
-                    code: 500,
-                });
-            }
-
-            let packF = await this.Pack.findOne({
-                "points.studentId": student.id,
-            });
-            if (packF) {
-                const pack = await this.Pack.findByIdAndUpdate(
-                    packF.id,
-                    { $pull: { points: { studentId: student.id } } },
-                    { new: true }
-                );
-                if (pack.points.length === 0) {
-                    await this.Pack.findByIdAndRemove(packF.id);
-                }
-            }
-
-            const packExists = await checkIfDocumentExists(this.Pack, {
-                "points.studentId": student.id,
-            });
-            if (packExists) {
-                return this.response({
-                    res,
-                    message:
-                        "Pack document still exists after deletion attempt",
-                    code: 500,
-                });
-            }
+            await this.Pack.deleteMany({ points: { $size: 0 } }).session(
+                session
+            );
 
             await Promise.all([
                 this.LevelAccDetail.deleteMany({
                     accCode: student.studentCode,
-                }),
-                this.Holiday.deleteMany({ studentId: student.studentCode }),
-                this.DriverAct.deleteMany({ studentId: student.studentCode }),
+                }).session(session),
+                this.Holiday.deleteMany({
+                    studentId: student.studentCode,
+                }).session(session),
+                this.DriverAct.deleteMany({
+                    studentId: student.studentCode,
+                }).session(session),
             ]);
 
-            const levelAccDetailExists = await checkIfDocumentExists(
-                this.LevelAccDetail,
-                { accCode: student.studentCode }
-            );
-            const holidayExists = await checkIfDocumentExists(this.Holiday, {
-                studentId: student.studentCode,
-            });
-            const driverActExists = await checkIfDocumentExists(
-                this.DriverAct,
-                {
-                    studentId: student.studentCode,
-                }
-            );
+            const doclist = await this.DocListSanad.find({
+                accCode: "003005" + student.studentCode,
+            }).session(session);
 
-            if (levelAccDetailExists || holidayExists || driverActExists) {
-                return this.response({
-                    res,
-                    message: "Not all related documents were deleted",
-                    code: 500,
-                });
+            for (const doc of doclist) {
+                await this.DocSanad.findByIdAndDelete(doc.titleId).session(
+                    session
+                );
+                await this.DocListSanad.deleteMany({
+                    titleId: doc.titleId,
+                }).session(session);
             }
 
-            const listAcc = await this.ListAcc.find({
-                codeLev3: student.studentCode,
-            });
-            for (const ls of listAcc) {
-                const doclist = await this.DocListSanad.find({
-                    accCode: ls.code,
-                });
-                for (const doc of doclist) {
-                    await this.DocSanad.findByIdAndDelete(doc.titleId);
-                    await this.DocListSanad.deleteMany({
-                        titleId: doc.titleId,
-                    });
-                }
+            const checkHis = await this.CheckHistory.find({
+                $or: [
+                    { toAccCode: "003005" + student.studentCode },
+                    { fromAccCode: "003005" + student.studentCode },
+                ],
+            }).session(session);
 
-                const checkHis = await this.CheckHistory.find({
-                    $or: [{ toAccCode: ls.code }, { fromAccCode: ls.code }],
-                });
-                for (const check of checkHis) {
-                    await this.CheckInfo.findByIdAndDelete(check.infoId);
-                    await this.CheckHistory.deleteMany({
-                        infoId: check.infoId,
-                    });
-                }
+            for (const check of checkHis) {
+                await this.CheckInfo.findByIdAndDelete(check.infoId).session(
+                    session
+                );
+                await this.CheckHistory.deleteMany({
+                    infoId: check.infoId,
+                }).session(session);
             }
 
-            let service = await this.Service.findOne({ student: req.query.id });
+            let service = await this.Service.findOne({
+                student: req.query.id,
+            }).session(session);
             if (service) {
                 const index = service.student.indexOf(req.query.id);
                 if (index !== -1) {
-                    service.student = service.student.filter(
-                        (id) => id !== req.query.id
-                    );
-                    service.studentCost = service.studentCost.filter(
-                        (_, i) => i !== index
-                    );
+                    service.student.splice(index, 1);
+                    service.studentCost.splice(index, 1);
 
                     if (service.routeSave.length > 1) {
                         if (index === 0) {
                             service.routeSave[0].routes =
                                 service.routeSave[1].routes;
-                            service.routeSave = service.routeSave.slice(1);
+                            service.routeSave.splice(1, 1);
                         } else {
-                            service.routeSave = service.routeSave.filter(
-                                (_, i) => i !== index
-                            );
+                            service.routeSave.splice(index, 1);
                         }
-                        await service.save();
+                        await service.save({ session });
                     } else if (service.routeSave.length === 1) {
-                        await this.Service.findByIdAndDelete(service._id);
+                        await this.Service.findByIdAndDelete(
+                            service._id
+                        ).session(session);
                     } else {
-                        await service.save();
+                        await service.save({ session });
                     }
                 }
             }
 
-            await this.Student.findByIdAndDelete(student.id);
+            await this.Student.findByIdAndDelete(student.id).session(session);
 
-            const stillExists = await this.Student.findById(student.id);
+            // Final check (optional but safe)
+            const stillExists = await this.Student.findById(student.id).session(
+                session
+            );
             if (stillExists) {
+                await session.abortTransaction();
                 return this.response({
                     res,
                     message: "Student still exists after deletion attempt",
@@ -2775,13 +2720,14 @@ module.exports = new (class extends controller {
                 });
             }
 
-            return this.response({
-                res,
-                message: "delete",
-            });
+            await session.commitTransaction();
+            return this.response({ res, message: "delete" });
         } catch (error) {
-            console.error("Error while 00046:", error);
+            await session.abortTransaction();
+            console.error("Transaction error:", error);
             return res.status(500).json({ error: "Internal Server Error." });
+        } finally {
+            session.endSession();
         }
     }
 
