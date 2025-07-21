@@ -1169,11 +1169,13 @@ module.exports = new (class extends controller {
 
                 const studentIDs = orgStudents.map((item) => item.id);
 
-                for (const serv of studentIDs) {
-                    const service = await this.Service.findOne({
-                        student: serv,
-                        delete: false,
-                    });
+                for (const serv of orgStudents) {
+                    const service = await this.Service.findById(
+                        serv.service,
+                        "driverId serviceNum"
+                    ).lean();
+                    console.log("service", service.serviceNum);
+                    console.log("service", service.serviceNum);
                     if (!service) {
                         await this.Student.findByIdAndUpdate(serv, {
                             state: 3,
@@ -2860,7 +2862,7 @@ module.exports = new (class extends controller {
                             dds.dds = dds.dds - stDriverCost;
                             if (serv.students.length === 1) {
                                 dds.service.splice(i, 1);
-                                 i--;
+                                i--;
                             } else {
                                 dds.service[i].students = dds.service[
                                     i

@@ -14,19 +14,16 @@ function generateInvoice(min = 11111111, max = 99999999) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function generateToken(amount, invoice) {
+async function generateToken(amount, invoice, link = "verify2") {
     try {
-        if (!amount || (amount > 100000 && amount < 1000)) {
+        if (!amount || amount < 10000) {
             amount = 10000;
-        }
-        if (!invoice || (invoice < 100000 && invoice > 10000000000)) {
-            invoice = generateRandom6Digit();
         }
         const URL = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/GetToken";
 
         const data = {
             Amount: amount,
-            callbackUrl: `https://socket.${process.env.URL}/api/pay/verify2`,
+            callbackUrl: `https://server.${process.env.URL}/api/pay/${link}`,
             invoiceID: invoice,
             terminalID: TERMINAL,
             payload: "",
@@ -50,6 +47,170 @@ async function generateToken(amount, invoice) {
 }
 
 module.exports = new (class extends controller {
+    async prePaymentLink(req, res) {
+        if (
+            req.query.agencyId === undefined ||
+            req.query.studentId === undefined
+        ) {
+            return this.response({
+                res,
+                code: 214,
+                message: "agencyId , studentId  need",
+            });
+        }
+        const agencyId = req.query.agencyId;
+
+        let invoice = await this.Invoice.findOne(
+            {
+                agencyId: agencyId,
+                type: "registration",
+                active: true,
+            },
+            "amount title desc"
+        ).lean();
+        let amount = 0;
+        let title = "";
+        if (invoice) {
+            amount = invoice.amount;
+            title = invoice.title;
+        }
+        let invoice2 = await this.Invoice.findOne(
+            {
+                agencyId: agencyId,
+                type: "prePayment",
+                active: true,
+            },
+            "amount title desc"
+        ).lean();
+        let amount2 = 0;
+        if (invoice2) {
+            amount2 = invoice2.amount;
+            if (title === "") {
+                title = invoice2.title;
+            }
+        }
+        if (amount === 0 && amount2 === 0) {
+            return this.response({
+                res,
+                code: 404,
+                message: "invoice not find",
+            });
+        }
+        const studentId = req.query.studentId;
+        let desc = req.query.desc;
+
+        const student = await this.Student.findById(studentId);
+
+        if (!student) {
+            return this.response({
+                res,
+                code: 404,
+                message: "student not find",
+            });
+        }
+        if (student) {
+            desc = title + " " + student.name + " " + student.lastName;
+        }
+
+        let agency = await this.Agency.findById(agencyId, "settings name");
+        if (agency) {
+            desc = desc + " شرکت " + agency.name;
+        } else {
+            return this.response({
+                res,
+                code: 400,
+                message: "agency not find",
+            });
+        }
+        let agencySet = await this.AgencySet.findOne(
+            { agencyId },
+            "tId defHeadLine"
+        );
+        if (!agencySet || !agencySet.tId || agencySet.tId === "") {
+            return this.response({
+                res,
+                code: 400,
+                message: "agencySet not find",
+            });
+        }
+        let bankCode = "";
+        if (
+            agencySet &&
+            agencySet.defHeadLine &&
+            agencySet.defHeadLine.length > 0
+        ) {
+            for (const item of agencySet.defHeadLine) {
+                if (item.title === "payGatewayHesab") {
+                    bankCode = item.code;
+                    break;
+                }
+            }
+        }
+        if (bankCode === "") {
+            return this.response({
+                res,
+                code: 400,
+                message: "agencySet not find",
+            });
+        }
+        if (amount + amount2 < 10000) {
+            console.log("amount < 10000", amount);
+            return this.response({
+                res,
+                code: 203,
+                message: "amount not enough",
+            });
+        }
+
+        console.log("amount", amount);
+        console.log("amount2", amount2);
+        console.log("desc", desc);
+        try {
+            let newTr = new this.Transactions({
+                userId: req.user._id,
+                amount: amount + amount2,
+                desc,
+                queueCode: 0,
+                stCode: student.studentCode,
+                agencyId,
+            });
+            await newTr.save();
+
+            let token = await generateToken(
+                amount + amount2,
+                newTr.authority,
+                "VerifyPrePayment"
+            );
+            if (!token) {
+                token = await generateToken(
+                    amount + amount2,
+                    newTr.authority,
+                    "VerifyPrePayment"
+                );
+            }
+            if (!token) {
+                return res.status(201).json({
+                    message: "خطای بانک",
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: `https://mysamar.ir/downloads/index.html?TerminalID=${agencySet.tId}&token=${token}`,
+            });
+        } catch (e) {
+            console.log("sepehr bank error", e);
+            res.status(201).json({
+                status: "Error",
+                message: "خطای بانک",
+            });
+            return;
+        }
+        // } catch (error) {
+        //     console.error("Error while 00020:", error);
+        //     return res.status(500).json({ error: "Internal Server Error." });
+        // }
+    }
     async payment2(req, res) {
         if (
             req.query.amount === undefined ||
@@ -286,7 +447,7 @@ module.exports = new (class extends controller {
 
             return res.json({
                 success: true,
-                message: `https://pay.samar-rad.ir?TerminalID=99018831&token=${token}`,
+                message: `https://mysamar.ir/downloads/index.html?TerminalID=99018831&token=${token}`,
             });
 
             // return res.send(`
@@ -1872,8 +2033,8 @@ module.exports = new (class extends controller {
                     message: "installments not set",
                 });
             }
-            console.log("installments.length",installments.length)
-            console.log("prices",prices.length)
+            console.log("installments.length", installments.length);
+            console.log("prices", prices.length);
             if (installments.length != prices.length) {
                 return this.response({
                     res,

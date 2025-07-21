@@ -1,4 +1,4 @@
-const { Keys, City } = require("../src/models/keys");
+const { Keys, CounterKey } = require("../src/models/keys");
 const Day = require("../src/models/days");
 const School = require("../src/models/school");
 const Student = require("../src/models/student");
@@ -27,7 +27,7 @@ const textValues = [
 ];
 
 module.exports = async function (mongoose) {
-    const DB = process.env.DB_ADDRESS_LOCAL;
+    const DB = process.env.DB_ADDRESS7;
     console.log("Database connected to :", DB);
     await mongoose
         .connect(DB)
@@ -36,6 +36,23 @@ module.exports = async function (mongoose) {
         })
         .catch(() => console.log("mongodb dont Connected!!"));
 
+    if (true) {
+        const authority=await CounterKey.findOne({ name: "authority" });
+        if (!authority) {
+            await new CounterKey({
+                name: "authority",
+                seq: 11111111,
+            }).save();
+            console.log("CounterKey for authority created");
+        } else if(authority.seq < 11111111) {
+            authority.seq = 11111111;
+            await authority.save();
+            console.log("CounterKey for authority updated");
+        }
+         else {
+            console.log("CounterKey for authority already exists");
+        }
+    }
     if (false) {
         const s = await Holiday.updateMany(
             { serviceNum: -1 },

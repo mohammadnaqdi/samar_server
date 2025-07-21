@@ -16,19 +16,34 @@ redisClient.connect().catch(console.error);
 
 async function checkSchools() {
     try {
-        const checkSchools = await redisClient.keys("school:*");
+        const redisKeys = await redisClient.keys("school:*");
+        const redisCount = redisKeys.length;
+
         const agencies = await Agency.find({
             delete: false,
             active: true,
         }).lean();
-        const agenciesId = agencies.map((agency) => agency._id);
-        const schoolC = await School.countDocuments({
-            agencyId: { $in: agenciesId },
+        const agencyIds = agencies.map((a) => a._id);
+
+        const mongoCount = await School.countDocuments({
+            agencyId: { $in: agencyIds },
             delete: false,
             active: true,
         });
-        console.log(schoolC, "schools in mongodb");
-        if (checkSchools.length != schoolC) {
+
+        console.log(`${mongoCount} schools in MongoDB`);
+
+        if (redisCount !== mongoCount) {
+            console.log(
+                `Mismatch: Redis(${redisCount}) vs Mongo(${mongoCount}) → Reloading...`
+            );
+
+            // Clear old cache
+            if (redisKeys.length > 0) {
+                await redisClient.del(redisKeys);
+            }
+
+            // Reload schools per agency
             for (const agency of agencies) {
                 const schools = await School.find({
                     agencyId: agency._id,
@@ -37,6 +52,7 @@ async function checkSchools() {
                 }).lean();
 
                 if (schools.length === 0) continue;
+
                 const multi = redisClient.multi();
                 schools.forEach((school) => {
                     multi.set(
@@ -45,52 +61,110 @@ async function checkSchools() {
                     );
                 });
                 await multi.exec();
-                console.log(`${schools.length} Schools added to Redis cache.`);
+                console.log(
+                    `${schools.length} Schools for agency ${agency._id} cached.`
+                );
             }
+            return;
         }
-        console.log(checkSchools.length, "schools in redis cache");
+
+        console.log(`${redisCount} schools in Redis cache (in sync)`);
     } catch (error) {
         console.error("Error checking schools:", error);
     }
 }
+
 async function checkParents() {
     try {
-        const checkParents = await redisClient.keys("parent:*");
-        const ParentLen = await Parent.countDocuments();
-        console.log(ParentLen, "parents in mongodb");
-        if (checkParents.length != ParentLen) {
+        const redisKeys = await redisClient.keys("parent:*");
+        const redisCount = redisKeys.length;
+
+        const mongoCount = await Parent.countDocuments();
+        console.log(`${mongoCount} parents in MongoDB`);
+
+        if (redisCount !== mongoCount) {
+            console.log(
+                `Mismatch: Redis(${redisCount}) vs Mongo(${mongoCount}) → Reloading...`
+            );
+
+            // Clear old cache
+            if (redisKeys.length > 0) {
+                await redisClient.del(redisKeys);
+            }
+
             const parents = await Parent.find();
-            if (parents.length === 0) return;
-            const multi = redisClient.multi();
-            parents.forEach((parent) => {
-                multi.set(`parent:${parent._id}`, JSON.stringify(parent));
-            });
-            await multi.exec();
-            console.log(`${parents.length} Parents added to Redis cache.`);
+            if (parents.length > 0) {
+                const multi = redisClient.multi();
+                parents.forEach((parent) => {
+                    multi.set(`parent:${parent._id}`, JSON.stringify(parent));
+                });
+                await multi.exec();
+                console.log(
+                    `${parents.length} Parents loaded into Redis cache.`
+                );
+            }
             return;
         }
-        console.log(checkParents.length, "users in redis cache");
+
+        console.log(`${redisCount} parents in Redis cache (in sync)`);
     } catch (error) {
-        console.error("Error checking users:", error);
+        console.error("Error checking parents:", error);
     }
 }
+
 async function checkUsers() {
     try {
-        const checkUsers = await redisClient.keys("user:*");
-        const userLen = await User.countDocuments();
-        console.log(userLen, "users in mongodb");
-        if (checkUsers.length != userLen) {
+        const redisUserKeys = await redisClient.keys("user:*");
+        const redisCount = redisUserKeys.length;
+
+        const mongoCount = await User.countDocuments();
+        console.log(`${mongoCount} users in MongoDB`);
+
+        if (redisCount > mongoCount) {
+            console.log(
+                "Redis has more users than MongoDB. Resetting cache..."
+            );
+
+            if (redisUserKeys.length > 0) {
+                await redisClient.del(redisUserKeys);
+            }
+
             const users = await User.find();
             if (users.length === 0) return;
+
             const multi = redisClient.multi();
             users.forEach((user) => {
                 multi.set(`user:${user._id}`, JSON.stringify(user));
             });
             await multi.exec();
+
+            console.log(`${users.length} Users reloaded into Redis cache.`);
+            return;
+        }
+
+        if (redisCount < mongoCount) {
+            console.log(
+                "Redis is missing some users. Reloading all from MongoDB..."
+            );
+
+            if (redisUserKeys.length > 0) {
+                await redisClient.del(redisUserKeys);
+            }
+
+            const users = await User.find();
+            if (users.length === 0) return;
+
+            const multi = redisClient.multi();
+            users.forEach((user) => {
+                multi.set(`user:${user._id}`, JSON.stringify(user));
+            });
+            await multi.exec();
+
             console.log(`${users.length} Users added to Redis cache.`);
             return;
         }
-        console.log(checkUsers.length, "users in redis cache");
+
+        console.log(`${redisCount} users in Redis cache (in sync).`);
     } catch (error) {
         console.error("Error checking users:", error);
     }
@@ -98,19 +172,35 @@ async function checkUsers() {
 
 async function checkBanks() {
     try {
-        const checkBanks = await redisClient.keys("bank:*");
+        const redisKeys = await redisClient.keys("bank:*");
+        const redisCount = redisKeys.length;
+
         const banks = await Bank.find();
-        if (checkBanks.length != banks.length) {
-            if (banks.length === 0) return;
-            const multi = redisClient.multi();
-            banks.forEach((bank) => {
-                multi.set(`bank:${bank._id}`, JSON.stringify(bank));
-            });
-            await multi.exec();
-            console.log(`${banks.length} Banks added to Redis cache.`);
+        const mongoCount = banks.length;
+
+        console.log(`${mongoCount} banks in MongoDB`);
+
+        if (redisCount !== mongoCount) {
+            console.log(
+                `Mismatch: Redis(${redisCount}) vs Mongo(${mongoCount}) → Reloading...`
+            );
+
+            if (redisKeys.length > 0) {
+                await redisClient.del(redisKeys);
+            }
+
+            if (banks.length > 0) {
+                const multi = redisClient.multi();
+                banks.forEach((bank) => {
+                    multi.set(`bank:${bank._id}`, JSON.stringify(bank));
+                });
+                await multi.exec();
+                console.log(`${banks.length} Banks loaded into Redis cache.`);
+            }
             return;
         }
-        console.log(checkBanks.length, "banks in redis cache");
+
+        console.log(`${redisCount} banks in Redis cache (in sync)`);
     } catch (error) {
         console.error("Error checking banks:", error);
     }
@@ -118,24 +208,61 @@ async function checkBanks() {
 
 async function checkKeys() {
     try {
-        const checkKeys = await redisClient.keys("keys:*");
-        let keys = await Keys.find({ delete: false, active: true });
-        console.log(keys.length, "keys in mongodb");
+        const redisKeys = await redisClient.keys("keys:*");
+        const redisCount = redisKeys.length;
 
-        if (checkKeys.length != keys.length) {
-            if (keys.length === 0) return;
-          
-            const multi = redisClient.multi();
-            keys.forEach((key) => {
-                multi.set(`keys:${key.type}:${key._id}`, JSON.stringify(key));
-            });
+        const mongoKeys = await Keys.find({ delete: false, active: true });
+        const mongoCount = mongoKeys.length;
 
-            await multi.exec();
-            console.log(`${keys.length} Keys added to Redis cache.`);
+        console.log(`${mongoCount} keys in MongoDB`);
+
+        if (redisCount > mongoCount) {
+            console.log("Redis has more keys than MongoDB. Resetting cache...");
+
+            if (redisKeys.length > 0) {
+                await redisClient.del(redisKeys);
+            }
+
+            if (mongoKeys.length > 0) {
+                const multi = redisClient.multi();
+                mongoKeys.forEach((key) => {
+                    multi.set(
+                        `keys:${key.type}:${key._id}`,
+                        JSON.stringify(key)
+                    );
+                });
+                await multi.exec();
+                console.log(
+                    `${mongoKeys.length} Keys reloaded into Redis cache.`
+                );
+            }
             return;
         }
 
-        console.log(checkKeys.length, "keys in redis cache");
+        if (redisCount < mongoCount) {
+            console.log(
+                "Redis is missing some keys. Reloading all from MongoDB..."
+            );
+
+            if (redisKeys.length > 0) {
+                await redisClient.del(redisKeys);
+            }
+
+            if (mongoKeys.length > 0) {
+                const multi = redisClient.multi();
+                mongoKeys.forEach((key) => {
+                    multi.set(
+                        `keys:${key.type}:${key._id}`,
+                        JSON.stringify(key)
+                    );
+                });
+                await multi.exec();
+                console.log(`${mongoKeys.length} Keys added to Redis cache.`);
+            }
+            return;
+        }
+
+        console.log(`${redisCount} keys in Redis cache (in sync).`);
     } catch (error) {
         console.error("Error checking keys:", error);
     }

@@ -20,7 +20,7 @@ const transSchema = new mongoose.Schema(
             ref: "Agency",
             default: null,
         },
-        authority: { type: String, unique: true, required: true },
+        authority: { type: String, unique: true,},
         rrn: { type: String, default: "" },
         tracenumber: { type: String, default: "" },
         issuerbank: { type: String, default: "" },
@@ -37,6 +37,13 @@ const transSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+transSchema.pre("save", async function (next) {
+  if (this.isNew) {
+    const cc = await getNextSequence('authority');
+      this.authority =cc.toString();
+  }
+  next();
+});
 const Transactions = mongoose.model("Transactions", transSchema);
 
 const payQueueSchema = new mongoose.Schema(

@@ -1269,9 +1269,7 @@ module.exports = new (class extends controller {
                 qr.push({ gradeId: gradeId });
             }
             if (gender != 0) {
-                qr.push({
-                    $or: [{ gender }, { gender: gender + 50 }],
-                });
+               qr.push({ gender });
             }
             console.log(JSON.stringify(qr));
             let sortBy = { studentCode: -1 };
@@ -1309,8 +1307,7 @@ module.exports = new (class extends controller {
                 let payOff, payment;
 
                 let agencyName = "",
-                    agencyCode = "",
-                    agencyId;
+                    agencyCode = "";
                 let payQueue = [];
                 if (!agencyId) {
                     const agency = await this.Agency.findById(
@@ -2600,17 +2597,17 @@ module.exports = new (class extends controller {
                     actionNameFa: "حذف کامل دانش آموز",
                     desc: `دانش آموز ${student.name} ${student.school} از مدرسه با آی دی ${student.lastName}`,
                 }).save({ session });
-            }else if(req.user._id!=student.parent){
+            }else if(req.user._id.toString()!=student.parent.toString()){
                 await session.abortTransaction();
                     return this.response({
-                        res,
-                        message: "couldn't delete this student",
+                        res,code: 203,
+                        message: "couldn't delete this student parnet not match",
                     });
             }else if(student.state!=0){
                 await session.abortTransaction();
                     return this.response({
-                        res,
-                        message: "couldn't delete this student",
+                        res,code: 203,
+                        message: "couldn't delete this student state not match",
                     });
             }
 

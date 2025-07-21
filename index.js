@@ -6,7 +6,14 @@ const mongoose = require("mongoose");
 const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    // origin: "https://mysamar.ir", // Replace with your actual frontend URL 
+    methods: ["GET", "POST", "DELETE"],         // Allowed HTTP methods for CORS 
+    credentials: true                 // Allow credentials (cookies, auth headers)
+  }
+});
+ 
 
 const helmet = require("helmet");
 const logger = require("./startup/logging");

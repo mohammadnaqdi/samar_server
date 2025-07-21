@@ -603,12 +603,20 @@ module.exports = new (class extends controller {
                     "name location.coordinates schoolTime"
                 );
                 // console.log("service school=", school.name);
-                const studentService = await this.Student.find(
+                let studentService = await this.Student.find(
                     { delete: false, service: service[i]._id },
                     "state stateTitle service serviceNum serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract"
                 ).lean();
                 let students = [];
                 for (let st of studentService) {
+                    if(st.state != 4) {
+                        st.state = 4;
+                        st.stateTitle = "دارای سرویس";
+                        await this.Student.findByIdAndUpdate(st._id, {
+                            state: 4,
+                            stateTitle: "دارای سرویس",
+                        });
+                    }
                     let sch = await this.School.findById(
                         st.school,
                         "name code districtTitle"

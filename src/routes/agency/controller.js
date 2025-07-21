@@ -2304,6 +2304,7 @@ module.exports = new (class extends controller {
             if (invoice2) {
                 amount2 = invoice2.amount;
             }
+            
 
             return this.response({
                 res,

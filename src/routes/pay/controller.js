@@ -402,8 +402,9 @@ module.exports = new (class extends controller {
                 // res.writeHead(200, { "Content-Type": "text/html" });
                 // var html = fs.readFileSync("src/routes/pay/success.html");
                 // res.end(html);
-                res.redirect(
-                    `https://pay.${process.env.URL}/pay.html?amount=${transAction.amount}&transaction=${transAction.invoiceid}&id=${transAction.stCode}`
+                //mysamar.ir/downloads/pay.html
+                https: res.redirect(
+                    `https://${process.env.URL}/downloads/pay.html?amount=${transAction.amount}&transaction=${transAction.invoiceid}&id=${transAction.stCode}`
                 );
                 return;
             }
@@ -444,7 +445,7 @@ module.exports = new (class extends controller {
 
                 if (responseData.Status === "Duplicate") {
                     return res.redirect(
-                        `https://pay.samar-rad.ir/duplicate.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}`
+                        `https://${process.env.URL}/downloads/duplicate.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}`
                     );
                 }
                 // const zarinpal = Zarin.create(merchent, false);
@@ -704,7 +705,7 @@ module.exports = new (class extends controller {
                     //   transAction,
                     // });
                     res.redirect(
-                        `https://pay.${process.env.URL}/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
+                        `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
                     );
                     // res.end(html);
                     return;
@@ -746,6 +747,461 @@ module.exports = new (class extends controller {
                 return;
             } catch (error) {
                 console.error("Error while 000212:", error);
+                return res
+                    .status(500)
+                    .json({ error: "Internal Server Error." });
+            }
+        }
+    }
+
+    async verifyPrePayment(req, res) {
+        console.log("req.query", JSON.stringify(req.query));
+        const {
+            amount,
+            invoiceid,
+            cardnumber,
+            rrn,
+            tracenumber,
+            digitalreceipt,
+            issuerbank,
+            respcode,
+        } = req.body;
+        console.log(req.body);
+
+        const transAction = await this.Transactions.findOne({
+            authority: invoiceid.toString(),
+        });
+        console.log("verify Authority=", invoiceid);
+        if (!transAction) {
+           
+            res.writeHead(404, { "Content-Type": "text/html" });
+            var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+            res.end(html);
+            return;
+        }
+        try {
+            if (transAction.done && transAction.state === 1) {
+                __ioSocket.emit(transAction.stCode, {
+                    queueCode: transAction.queueCode,
+                });
+                return res.redirect(
+                    `https://${process.env.URL}/downloads/pay.html?amount=${transAction.amount}&transaction=${transAction.invoiceid}&id=${transAction.stCode}`
+                );
+            }
+        } catch (error) {
+            res.json({
+                status: "Failure",
+                message: "The page you're looking for, doesn't exist!",
+            });
+            return;
+        }
+        console.log(respcode);
+        const checkResp = respcode == 0;
+        console.log("respcode", checkResp);
+        if (checkResp) {
+            
+            console.log("im here");
+
+            try {
+                const url =
+                    "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
+                const agencySet = await this.AgencySet.findOne(
+                    { agencyId: transAction.agencyId },
+                    "tId defHeadLine"
+                );
+                let tid = 99018831;
+                let bankCode = "";
+                if (agencySet && agencySet.tId) {
+                    tid = agencySet.tId;
+                }
+                if (
+                    agencySet &&
+                    agencySet.defHeadLine &&
+                    agencySet.defHeadLine.length > 0
+                ) {
+                    for (const item of agencySet.defHeadLine) {
+                        if (item.title === "payGatewayHesab") {
+                            bankCode = item.code;
+                            break;
+                        }
+                    }
+                }
+                const payload = {
+                    digitalreceipt: digitalreceipt,
+                    Tid: 99018831,
+                };
+
+                let response = await axios.post(url, payload, {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                console.log("response", response.data);
+
+                let responseData = response.data;
+
+                // if (responseData.Status === "Duplicate") {
+                //      await this.Transactions.findByIdAndUpdate(
+                //         transAction._id,
+                //         {
+                //             refID: digitalreceipt,
+                //             issuerbank,
+                //             cardnumber,
+                //             tracenumber,
+                //             rrn,
+                //             done: true,
+                //             state: 1,
+                //             amount: amount,
+                //         }
+                //     );
+                //     return res.redirect(
+                //         `https://${process.env.URL}/downloads/duplicate.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}`
+                //     );
+                // }
+
+                if (responseData.Status === "NOk") {
+                    response = await axios.post(url, payload, {
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    });
+                    responseData = response.data;
+                    console.log("nok", response.data);
+                    // console.log("response", response);
+                }
+                if (
+                    responseData.Status === "Ok" ||
+                    responseData.Status === "OK" ||
+                    responseData.Status === "Duplicate"
+                ) {
+                    // console.log("response", JSON.stringify(response));
+                    const tr = await this.Transactions.findByIdAndUpdate(
+                        transAction._id,
+                        {
+                            refID: digitalreceipt,
+                            issuerbank,
+                            cardnumber,
+                            tracenumber,
+                            rrn,
+                            done: true,
+                            state: 1,
+                            amount: amount,
+                        }
+                    );
+                    console.log("tr", tr);
+                    let amountpaid = tr.amount;
+                    const agencyId = tr.agencyId;
+                    const agency = await this.Agency.findById(
+                        agencyId,
+                        "settings"
+                    );
+                    if (!agency) {
+                        return res
+                            .status(404)
+                            .json({ error: "agency not found." });
+                    }
+                    let student = await this.Student.findOne({
+                        studentCode: tr.stCode,
+                    });
+                    if (!student) {
+                        return res
+                            .status(404)
+                            .json({ error: "Student not found." });
+                    }
+                    let invoice = await this.Invoice.findOne({
+                        agencyId: agencyId,
+                        type: "registration",
+                        active: true,
+                    }).lean();
+                    let amountReg = 0;
+                    let confirmInfo = true;
+                    if (invoice) {
+                        amountReg = invoice.amount;
+                        confirmInfo = invoice.confirmInfo;
+                    }
+                    let invoice2 = await this.Invoice.findOne({
+                        agencyId: agencyId,
+                        type: "prePayment",
+                        active: true,
+                    }).lean();
+                    let amount2 = 0;
+                    if (invoice2) {
+                        amount2 = invoice2.amount;
+                    }
+                    if (confirmInfo) {
+                        if (student.state < 2) {
+                            student.state = 2;
+                            student.stateTitle = "تایید اطلاعات";
+                            await student.save();
+                        }
+                    }
+                    if (student.state < 3) {
+                        student.state = 3;
+                        student.stateTitle = "تایید پیش پرداخت";
+                        await student.save();
+                    }
+                    if (amountReg > 0 && amountpaid >= amountReg ) {
+                        amountpaid = amountpaid - amountReg;
+                        let payQueue = await this.PayQueue.findOne({
+                            studentId: student._id,
+                            type: "registration",
+                        });
+                        if (!payQueue) {
+                            payQueue = new this.PayQueue({
+                                inVoiceId: invoice._id,
+                                code: invoice.code,
+                                agencyId: agencyId,
+                                studentId: student._id,
+                                setter: tr.userId,
+                                type: invoice.type,
+                                amount: invoice.amount,
+                                title: invoice.title,
+                                maxDate: invoice.maxDate,
+                                isPaid: false,
+                            });
+                            await payQueue.save();
+                        }
+
+                        payQueue.done = true;
+                        payQueue.state = 1;
+                        await payQueue.save();
+                        const wallet = agency.settings.find(
+                            (obj) => obj.wallet != undefined
+                        ).wallet;
+                        // console.log("setting", agency.settings);
+                        const costCode = agency.settings.find(
+                            (obj) => obj.cost != undefined
+                        ).cost;
+                        if (!costCode || !wallet) {
+                            return this.response({
+                                res,
+                                code: 404,
+                                message: "costCode || wallet not find",
+                            });
+                        }
+                        const desc = `پرداخت ${payQueue.title} از کیف پول بابت دانش آموز ${name}`;
+                        let doc = new this.DocSanad({
+                            agencyId,
+                            note: desc,
+                            sanadDate: new Date(),
+                            system: 3,
+                            definite: false,
+                            lock: true,
+                            editor: tr.userId,
+                        });
+                        await doc.save();
+                        let docPaid = new this.DocListSanad({
+                            agencyId,
+                            titleId: doc.id,
+                            doclistId: doc.sanadId,
+                            row: 1,
+                            bed: amountReg,
+                            bes: 0,
+                            note: desc,
+                            accCode: costCode,
+                            mId: doc.sanadId,
+                            peigiri: student.studentCode,
+                            sanadDate: new Date(),
+                        });
+                        await docPaid.save();
+                        await new this.DocListSanad({
+                            agencyId,
+                            titleId: doc.id,
+                            doclistId: doc.sanadId,
+                            row: 2,
+                            bed: 0,
+                            bes: amountReg,
+                            note: desc,
+                            accCode: wallet,
+                            mId: payQueue.code,
+                            type: "invoice",
+                            forCode: "003005" + student.studentCode,
+                            peigiri: student.studentCode,
+                            sanadDate: new Date(),
+                        }).save();
+                    }
+
+                    console.log("ddddd amountpaid", amountpaid);
+
+                    if (bankCode != "" && amountpaid > 0 && invoice2) {
+                        let prePayment = await this.PayQueue.findOne({
+                            agencyId: agency._id,
+                            studentId: student._id,
+                            type: "prePayment",
+                        });
+                        if (!prePayment || !prePayment.delete) {
+                            prePayment = new this.PayQueue({
+                                inVoiceId: invoice2._id,
+                                code: invoice2.code,
+                                agencyId: agency._id,
+                                studentId: student._id,
+                                setter: tr.userId,
+                                type: invoice2.type,
+                                amount: invoice2.amount,
+                                title: invoice2.title,
+                                maxDate: invoice2.maxDate,
+                                isPaid: false,
+                            });
+                            await payQueue.save();
+                        }
+                        prePayment.done = true;
+                        prePayment.state = 1;
+                        await prePayment.save();
+                        const bank = bankCode;
+                        const bankName = "بانک شرکت";
+                        let kol = "003";
+                        let moeen = "005";
+                        const auth = tr.authority;
+                        const checkExist = await this.CheckInfo.countDocuments({
+                            agencyId,
+                            type: 6,
+                            serial: auth,
+                        });
+
+                        if (checkExist > 0) {
+                            // return res.status(503).json({ error: "the serial is duplicated" });
+                            console.log("the serial is duplicated");
+                            return res.redirect(
+                                `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
+                            );
+                        }
+                        // const aa = bank.substring(6);
+
+                        persianDate.toLocale("en");
+                        var SalMali = new persianDate().format("YY");
+                        const checkMax = await this.CheckInfo.find(
+                            { agencyId },
+                            "infoId"
+                        )
+                            .sort({ infoId: -1 })
+                            .limit(1);
+                        let numCheck = 1;
+                        if (checkMax.length > 0) {
+                            numCheck = checkMax[0].infoId + 1;
+                        }
+                        const infoNum = `${SalMali}-${numCheck}`;
+                        let checkInfo = new this.CheckInfo({
+                            agencyId,
+                            editor: tr.userId,
+                            infoId: numCheck,
+                            infoNum,
+                            seCode: "0",
+                            branchCode: "",
+                            branchName: "",
+                            bankName: bankName,
+                            serial: auth,
+                            type: 6,
+                            rowCount: 2,
+                            infoDate: new Date(),
+                            infoMoney: tr.amount,
+                            accCode: bank,
+                            ownerHesab: "",
+                            desc: tr.desc,
+                        });
+                        await checkInfo.save();
+
+                        let doc = new this.DocSanad({
+                            agencyId,
+                            note: tr.desc,
+                            sanadDate: new Date(),
+                            system: 2,
+                            definite: false,
+                            lock: true,
+                            editor: tr.userId,
+                        });
+
+                        const code = kol + moeen + tr.stCode;
+                        await doc.save();
+                        num = doc.sanadId;
+                        id = doc.id;
+                        await new this.DocListSanad({
+                            agencyId,
+                            titleId: doc.id,
+                            doclistId: doc.sanadId,
+                            row: 1,
+                            bed: tr.amount,
+                            bes: 0,
+                            isOnline: true,
+                            mId: doc.sanadId,
+                            note: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
+                            accCode: bank,
+                            peigiri: infoNum,
+                        }).save();
+
+                        await new this.DocListSanad({
+                            agencyId,
+                            titleId: doc.id,
+                            doclistId: doc.sanadId,
+                            row: 2,
+                            bed: 0,
+                            bes: tr.amount,
+                            isOnline: true,
+                            mId: tr.queueCode,
+                            type: "invoice",
+                            note: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
+                            accCode: code,
+                            peigiri: infoNum,
+                        }).save();
+                        await new this.CheckHistory({
+                            agencyId,
+                            infoId: checkInfo.id,
+                            editor: tr.userId,
+                            row: 1,
+                            toAccCode: bank,
+                            fromAccCode: code,
+                            money: tr.amount,
+                            status: 6,
+                            desc: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
+                            sanadNum: doc.sanadId,
+                        }).save();
+                    }
+
+                    console.log("end pay");
+
+                    res.redirect(
+                        `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
+                    );
+                    // res.end(html);
+                    return;
+                }
+            } catch (error) {
+                console.error("Error while verifyPrePayment:", error);
+                return res
+                    .status(500)
+                    .json({ error: "Internal Server Error." });
+            }
+            try {
+                await this.Transactions.findByIdAndUpdate(transAction._id, {
+                    done: true,
+                    state: 2,
+                });
+                // res.json({
+                //     status: "Failure",
+                //     message: "The page you're looking for, doesn't exist!",
+                // });
+                res.writeHead(404, { "Content-Type": "text/html" });
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                res.end(html);
+                return;
+            } catch (error) {
+                console.error("Error while 000212:", error);
+                return res
+                    .status(500)
+                    .json({ error: "Internal Server Error." });
+            }
+        } else {
+            try {
+                // res.json({
+                //     status: "Canceled",
+                //     message: "Payment was canceled by the user.",
+                // });
+                res.writeHead(404, { "Content-Type": "text/html" });
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                res.end(html);
+                return;
+            } catch (error) {
+                console.error("Error while verifyPrePayment 22:", error);
                 return res
                     .status(500)
                     .json({ error: "Internal Server Error." });

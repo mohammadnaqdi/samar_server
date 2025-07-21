@@ -978,13 +978,13 @@ module.exports = new (class extends controller {
                 });
             }
 
-            const checkExist = await this.CheckInfo.countDocuments({
+            const checkExist = await this.CheckInfo.findOne({
                 agencyId,
                 type,
                 serial,
             }).session(session);
 
-            if (checkExist > 0) {
+            if (checkExist) {
                 await session.abortTransaction();
                 session.endSession();
                 return res
