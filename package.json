@@ -45,6 +45,7 @@
         "redis": "^5.0.1",
         "sharp": "^0.30.7",
         "socket.io": "^4.8.1",
+        "uuid": "^11.1.0",
         "winston": "^3.17.0",
         "zarinpal-checkout": "^0.2.8"
     }

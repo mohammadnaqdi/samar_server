@@ -30,6 +30,9 @@ const userSchema = new mongoose.Schema(
         jwtSalt: { type: String, default: "", required: false },
         fcm: { type: [], default: [], required: false },
         ban: { type: [], default: [], required: false },
+        fin_token: { type: String, default: "" },
+        fin_refresh_token: { type: String, default: "" },
+        fin_token_expiry: { type: Date, default: null }
     },
     {
         timestamps: true,

@@ -1515,6 +1515,7 @@ module.exports = new (class extends controller {
                     message: "agencyId driverCode month need",
                 });
             }
+            console.log("req.query",req.query);
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             let driverCode = req.query.driverCode;
             if (mongoose.isValidObjectId(driverCode)) {
@@ -1530,7 +1531,6 @@ module.exports = new (class extends controller {
             }
             const month = parseInt(req.query.month);
 
-            const month1000 = month + 10000;
             let kol = "004";
             let moeen = "006";
 
@@ -1564,16 +1564,17 @@ module.exports = new (class extends controller {
                 {
                     $and: [
                         { agencyId: agencyId },
+                        { mId: month },
                         {
                             $or: [
-                                { serviceNum: month },
-                                { serviceNum: month1000 },
+                                {type:'paySalary'},
+                                {type:'salary'},
                             ],
                         },
                         { accCode: code },
                     ],
                 },
-                "doclistId serviceNum"
+                "doclistId mId type"
             );
 
             return this.response({
@@ -1637,7 +1638,7 @@ module.exports = new (class extends controller {
                             { accCode: code },
                         ],
                     },
-                    "doclistId mId type days"
+                    "doclistId mId type"
                 );
                 console.log("sanads", sanads.length);
                 for (var sanad of sanads) {
@@ -2442,6 +2443,7 @@ module.exports = new (class extends controller {
                     if (services.length === 0) {
                         return null;
                     }
+
                     await this.DDS.findOneAndDelete({
                         driverId: driver._id,
                         day: parseInt(today),
@@ -2482,10 +2484,14 @@ module.exports = new (class extends controller {
                                 };
                             })
                         );
-
+                        const user=await this.User.findById(driver.userId,'name lastName').lean();
                         let name = services[0].driverName.split(" ");
                         driverName = name[0];
                         driverLastName = name[1];
+                        if(user){
+                            driverName = user.name;
+                            driverLastName = user.lastName;
+                        }
                         driverPhone = services[0].driverPhone;
                     } else {
                         const user = await this.User.findById(

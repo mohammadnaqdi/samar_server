@@ -2128,12 +2128,14 @@ module.exports = new (class extends controller {
                 });
             }
             const sanadId = parseInt(req.query.sanadId);
-            const driverCode = parseInt(req.query.driverCode);
+            const driverCode = req.query.driverCode;
             // const agency = await this.Agency.findById(agencyId);
 
             const kol = "004";
             const moeen = "006";
             const code = kol + moeen + driverCode;
+            console.log("code", code);
+            console.log("sanadId", sanadId);
             const docSanad = await this.DocSanad.findOne({ agencyId, sanadId });
 
             if (docSanad) {

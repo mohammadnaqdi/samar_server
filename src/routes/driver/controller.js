@@ -39,112 +39,94 @@ function escapeRegExp(string) {
 module.exports = new (class extends controller {
     //for we dont need to create a new object only export directly a class
 
-    async deleteDriver(req, res) {
-        try {
-            const id = new mongoose.Types.ObjectId(req.query.id);
-            const driver = await this.Driver.findById(id);
+   async deleteDriver(req, res) {
+    const session = await this.Driver.startSession();
+    session.startTransaction();
 
-            if (!driver) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "Couldn't find driver",
-                });
-            }
+    try {
+        const id = ObjectId.createFromHexString(req.query.id);
+        const driver = await this.Driver.findById(id).session(session);
 
-            const service = await this.Service.findOne({ driverId: id });
-
-            if (service) {
-                return this.response({
-                    res,
-                    code: 403,
-                    message: "Driver is not allowed to be removed!",
-                });
-            }
-
-            await Promise.all([
-                this.DriverAct.deleteMany({ driverCode: driver.driverCode }),
-                this.DriverChange.deleteMany({ driverCode: driver.driverCode }),
-                this.StReport.deleteMany({ driverId: id }),
-                this.RatingDriver.deleteMany({ driverId: id }),
-                this.LevelAccDetail.deleteMany({
-                    accCode: driver.driverCode,
-                }),
-                this.ServicePack.deleteMany({
-                    driverId: id,
-                }),
-            ]);
-
-            const relatedDocumentsExist = await Promise.all([
-                this.DriverAct.exists({ driverCode: driver.driverCode }),
-                this.DriverChange.exists({ driverCode: driver.driverCode }),
-                this.StReport.exists({ driverId: id }),
-                this.RatingDriver.exists({ driverId: id }),
-                this.Car.exists({ _id: driver.carId }),
-                this.LevelAccDetail.exists({ accCode: driver.driverCode }),
-                this.ServicePack.exists({ driverId: id }),
-            ]);
-
-            if (relatedDocumentsExist.some(Boolean)) {
-                return this.response({
-                    res,
-                    message: "Not all associated documents were deleted",
-                    code: 500,
-                });
-            }
-
-            const listAcc = await this.ListAcc.find({
-                codeLev3: driver.driverCode.toString(),
-            });
-
-            for (const ls of listAcc) {
-                const doclist = await this.DocListSanad.find({
-                    accCode: ls.code,
-                });
-
-                for (const doc of doclist) {
-                    await this.DocSanad.findByIdAndDelete(doc.titleId);
-                    await this.DocListSanad.deleteMany({
-                        titleId: doc.titleId,
-                    });
-                }
-
-                const checkHis = await this.CheckHistory.find({
-                    $or: [{ toAccCode: ls.code }, { fromAccCode: ls.code }],
-                });
-
-                for (const check of checkHis) {
-                    await this.CheckInfo.findByIdAndDelete(check.infoId);
-                    await this.CheckHistory.deleteMany({
-                        infoId: check.infoId,
-                    });
-                }
-            }
-
-            await this.Driver.findByIdAndDelete(driver.id);
-
-            const stillExists = await this.Driver.findById(driver.id);
-            if (stillExists) {
-                return this.response({
-                    res,
-                    message: "Driver still exists after deletion attempt",
-                    code: 500,
-                });
-            }
-
+        if (!driver) {
+            await session.abortTransaction();
+            session.endSession();
             return this.response({
                 res,
-                message: "Successfully deleted.",
-            });
-        } catch (error) {
-            console.error("Error deleting driver:", error);
-            return this.response({
-                res,
-                message: "An error occurred during deletion driver",
-                code: 500,
+                code: 404,
+                message: "Couldn't find driver",
             });
         }
+
+        const service = await this.Service.findOne({
+            driverId: id,
+            delete: false,
+        }).session(session);
+
+        if (service) {
+            await session.abortTransaction();
+            session.endSession();
+            return this.response({
+                res,
+                code: 403,
+                message: "Driver is not allowed to be removed!",
+            });
+        }
+
+        // Delete related documents
+        await Promise.all([
+            this.DriverAct.deleteMany({ driverCode: driver.driverCode }).session(session),
+            this.DriverChange.deleteMany({ driverId: driver._id }).session(session),
+            this.StReport.deleteMany({ driverId: id }).session(session),
+            this.RatingDriver.deleteMany({ driverId: id }).session(session),
+            this.Car.findByIdAndDelete(driver.carId).session(session),
+            this.ServicePack.deleteMany({ driverId: id }).session(session),
+        ]);
+
+        // Delete docs from DocListSanad & DocSanad
+        const doclist = await this.DocListSanad.find({
+            accCode: "004006" + driver.driverCode,
+        }).session(session);
+
+        for (const doc of doclist) {
+            await this.DocSanad.findByIdAndDelete(doc.titleId).session(session);
+            await this.DocListSanad.deleteMany({ titleId: doc.titleId }).session(session);
+        }
+
+        // Delete check history and related check info
+        const checkHis = await this.CheckHistory.find({
+            $or: [
+                { toAccCode: "004006" + driver.driverCode },
+                { fromAccCode: "004006" + driver.driverCode },
+            ],
+        }).session(session);
+
+        for (const check of checkHis) {
+            await this.CheckInfo.findByIdAndDelete(check.infoId).session(session);
+            await this.CheckHistory.deleteMany({ infoId: check.infoId }).session(session);
+        }
+
+        // Finally, delete the driver itself
+        await this.Driver.findByIdAndDelete(driver.id).session(session);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return this.response({
+            res,
+            message: "Successfully deleted.",
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Error deleting driver:", error);
+        return this.response({
+            res,
+            message: "An error occurred during deletion driver",
+            code: 500,
+        });
     }
+}
+
 
     async sendSMSRequest(req, res) {
         try {

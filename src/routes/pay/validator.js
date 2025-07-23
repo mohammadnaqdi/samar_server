@@ -20,6 +20,15 @@ module.exports = new (class {
             check("notifID").not().isEmpty().withMessage("notifID cant be empty"),
         ];
     }
+    sayadChequeInquiryValidator() {
+        return [
+            check("sayadId").not().isEmpty().withMessage("sayadId cant be empty"),
+            check("code").not().isEmpty().withMessage("code cant be empty"),
+            check("mobile").not().isEmpty().withMessage("mobile cant be empty"),
+            check("nid").not().isEmpty().withMessage("nid cant be empty"),
+            check("trackId").not().isEmpty().withMessage("trackId cant be empty"),
+        ];
+    }
     //queueCode,amount,desc,studentCode,sanadNum
    
   

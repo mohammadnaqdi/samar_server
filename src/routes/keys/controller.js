@@ -7,6 +7,54 @@ function escapeRegExp(string) {
 }
 
 module.exports = new (class extends controller {
+    async getCityProvinceByDistrict(req, res) {
+        try {
+            const type = "district";
+            const id = req.query.id;
+            if (req.query.id === undefined) {
+                return this.response({
+                    res,
+                    code: 204,
+                    message: "id need!",
+                });
+            }
+
+            const district = await this.Keys.findOne({
+                type,
+                active: true,
+                delete: false,
+                keyId: parseInt(req.query.id),
+            });
+            if (!district) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "district not find",
+                });
+            }
+            const city = await this.City.findOne({
+                active: true,
+                delete: false,
+                code: district.cityCode,
+            });
+            if (!city) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "city not find",
+                });
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+                data: { city },
+            });
+        } catch (error) {
+            console.error("Error in getCityProvinceByDistrict:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
     async getKeys(req, res) {
         try {
             const type = req.query.type || "district";
@@ -189,7 +237,7 @@ module.exports = new (class extends controller {
             const response = await axios.get(url, options);
 
             // const response2 = await axios.get(url2, options2);
-            
+
             // console.log("response2",response2);
             // const data2 = response2.data;
             const data = response.data;
@@ -235,7 +283,7 @@ module.exports = new (class extends controller {
             //     },
             // });
         } catch (error) {
-            console.log("isImportant",isImportant);
+            console.log("isImportant", isImportant);
             console.error("Error in getAddress:", "neshan error", error.data);
             if (isImportant) {
                 return res
@@ -513,15 +561,15 @@ module.exports = new (class extends controller {
             let destination = destLng + "," + destLat;
             const url = `${process.env.ROUTE_URL}/route/v1/driving/${origin};${destination}?overview=full`;
             //  console.log("url", url);
-            let distance=-1;
-            let duration=-1;
+            let distance = -1;
+            let duration = -1;
             let geometry;
             const response = await axios.get(url);
             if (response.status === 200) {
                 if (response.data.code.toString().toLowerCase() === "ok") {
                     distance = response.data.routes[0].distance;
                     duration = response.data.routes[0].duration;
-                   geometry = response.data.routes[0].geometry;
+                    geometry = response.data.routes[0].geometry;
                 }
             }
 
@@ -530,7 +578,8 @@ module.exports = new (class extends controller {
                 message: "ok",
                 data: {
                     distance,
-                    duration,geometry
+                    duration,
+                    geometry,
                 },
             });
         } catch (error) {

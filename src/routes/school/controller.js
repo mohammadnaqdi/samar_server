@@ -254,11 +254,12 @@ module.exports = new (class extends controller {
             }else{
                  qr.push({grade:{$in:[kindergarten.keyId+3,kindergarten.keyId+4]}});
             }
-            if (ObjectId.isValid(agencyId)) {
+            if (agencyId && ObjectId.isValid(agencyId)) {
                 // Check if agencyId is a valid ObjectId before using it
                 qr.push({ agencyId: ObjectId.createFromHexString(agencyId) });
             }else{
                 qr.push({ agencyId: {$ne:null} });
+                  console.log("agencyId=",agencyId)
             }
             if (districtId !== 0) qr.push({ districtId });
             if (search !== "")

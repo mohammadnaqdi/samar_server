@@ -954,12 +954,15 @@ module.exports = new (class extends controller {
                     data: { fa_m: "پیدا نشد" },
                 });
             }
-            await this.School.updateMany({
-                _id: { $in: schoolIds },
-                delete: false,
-            }, {
-                $set: { agencyId: agency._id },
-            });
+            await this.School.updateMany(
+                {
+                    _id: { $in: schoolIds },
+                    delete: false,
+                },
+                {
+                    $set: { agencyId: agency._id },
+                }
+            );
             return this.response({
                 res,
                 message: "added",
@@ -1626,6 +1629,7 @@ module.exports = new (class extends controller {
             if (req.query.agencyId === undefined) {
                 return res.status(214).json({ msg: "agencyId need" });
             }
+            const agencyId= ObjectId.createFromHexString(req.query.agencyId);
             let agencySet = await this.AgencySet.findOne({
                 agencyId: ObjectId.createFromHexString(req.query.agencyId),
             });
@@ -2304,7 +2308,27 @@ module.exports = new (class extends controller {
             if (invoice2) {
                 amount2 = invoice2.amount;
             }
-            
+            const agencySet = await this.AgencySet.findOne(
+                { agencyId: agencyId },
+                "tId defHeadLine"
+            );
+            let tid = 0;
+            let bankCode = "";
+            if (agencySet && agencySet.tId) {
+                tid = agencySet.tId;
+            }
+            if (
+                agencySet &&
+                agencySet.defHeadLine &&
+                agencySet.defHeadLine.length > 0
+            ) {
+                for (const item of agencySet.defHeadLine) {
+                    if (item.title === "payGatewayHesab") {
+                        bankCode = item.code;
+                        break;
+                    }
+                }
+            }
 
             return this.response({
                 res,
@@ -2313,6 +2337,7 @@ module.exports = new (class extends controller {
                     prePayment: amount2,
                     invoice,
                     invoice2,
+                    canPayOnline: tid != 0 && bankCode != "",
                 },
             });
         } catch (error) {
