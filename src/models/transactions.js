@@ -89,6 +89,7 @@ const payQueueSchema = new mongoose.Schema(
         isPaid: { type: Boolean, default: false },
         isSetAuto: { type: Boolean, default: true },
         delete: { type: Boolean, default: false },
+        authority: { type: String, default: '' },
     },
     {
         timestamps: true,

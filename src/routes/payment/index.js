@@ -25,6 +25,7 @@ router.get("/Payment", isLoggined, controller.payment.bind(controller));
 router.get("/Payment2", isLoggined, controller.payment2.bind(controller));
 router.get("/PrePaymentLink", isLoggined, controller.prePaymentLink.bind(controller));
 router.get("/PaymentCo", isLoggined, controller.paymentCo.bind(controller));
+router.get("/PaymentCoBank", isLoggined, controller.paymentCoBank.bind(controller));
 router.get(
     "/PaymentChargeAdmin",
     isLoggined,

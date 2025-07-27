@@ -14,7 +14,13 @@ function generateInvoice(min = 11111111, max = 99999999) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function generateToken(amount, invoice, link = "verify2") {
+async function generateToken(
+    amount,
+    invoice,
+    link = "verify2",
+    CellNumber,
+    terminalID
+) {
     try {
         if (!amount || amount < 10000) {
             amount = 10000;
@@ -25,8 +31,9 @@ async function generateToken(amount, invoice, link = "verify2") {
             Amount: amount,
             callbackUrl: `https://server.mysamar.ir/api/pay/${link}`,
             invoiceID: invoice,
-            terminalID: TERMINAL,
+            terminalID,
             payload: "",
+            CellNumber,
         };
 
         const response = await axios.post(URL, data, {
@@ -161,7 +168,7 @@ module.exports = new (class extends controller {
                 message: "amount not enough",
             });
         }
-       
+
         console.log("amount", amount);
         console.log("amount2", amount2);
         console.log("desc", desc);
@@ -179,7 +186,9 @@ module.exports = new (class extends controller {
             let token = await generateToken(
                 amount + amount2,
                 newTr.authority,
-                "VerifyPrePayment"
+                "VerifyPrePayment",
+                req.user.phone,
+                agencySet.tId
             );
             // if (!token) {
             //     token = await generateToken(
@@ -775,7 +784,7 @@ module.exports = new (class extends controller {
         const mobile = req.query.mobile;
         const bankListAcc = req.query.bankListAcc;
         const agency = await this.Agency.findById(agencyId);
-        if (amount < 1000) {
+        if (amount < 10000) {
             return this.response({
                 res,
                 code: 203,
@@ -801,12 +810,12 @@ module.exports = new (class extends controller {
             // console.log("desc",desc)https://panel.${process.env.URL}/finance
             console.log(
                 "ip",
-                `https://socket.${process.env.URL}/api/pay/verifyCo`
+                `https://server.${process.env.URL}/api/pay/verifyCo`
             );
             const response = await zarinpal.PaymentRequest({
                 Amount: amount / 10,
                 // CallbackURL: "http://localhost:63594/finance",
-                CallbackURL: `https://socket.${process.env.URL}/api/pay/verifyCo`,
+                CallbackURL: `https://server.${process.env.URL}/api/pay/verifyCo`,
                 Description: desc,
                 Email: "",
                 Mobile: mobile,
@@ -839,6 +848,90 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async paymentCoBank(req, res) {
+        // console.log("paymentCorrrrrr")
+        if (
+            req.query.amount === undefined ||
+            req.query.agencyId === undefined ||
+            req.query.mobile === undefined ||
+            req.query.bankListAcc === undefined
+        ) {
+            return this.response({
+                res,
+                code: 214,
+                message: "amount & agencyId & mobile & bankListAcc need",
+            });
+        }
+        const amount = parseInt(req.query.amount);
+        const agencyId = req.query.agencyId;
+        const mobile = req.query.mobile;
+        const bankListAcc = req.query.bankListAcc;
+        const agency = await this.Agency.findById(agencyId);
+        if (amount < 10000) {
+            return this.response({
+                res,
+                code: 203,
+                message: "amount not enough",
+            });
+        }
+        // console.log("amountXXX", amount);
+        if (!agency || agency.settings === null) {
+            return this.response({
+                res,
+                code: 404,
+                message: "company not find",
+            });
+        }
+        // console.log("ip",`https://panel.${process.env.URL}/finance`)
+        try {
+            const newTr = new this.Transactions({
+                userId: req.user._id,
+                amount: amount,
+                desc: desc,
+                queueCode: 0,
+                stCode: bankListAcc,
+                agencyId,
+            });
+            await newTr.save();
+            let token = await generateToken(
+                amount,
+                newTr.authority,
+                "VerifyCoBank",
+                mobile,
+                TERMINAL
+            );
+            if (!token) {
+                return res.status(201).json({
+                    message: "خطای بانک",
+                });
+            }
+            // console.log("zarinpal",zarinpal)
+            const desc = "شارژ کیف شرکت " + agency.name;
+            // console.log("desc",desc)https://panel.${process.env.URL}/finance
+            console.log(
+                "ip",
+                `https://server.${process.env.URL}/api/pay/verifyCo`
+            );
+            const response = await zarinpal.PaymentRequest({
+                Amount: amount / 10,
+                // CallbackURL: "http://localhost:63594/finance",
+                CallbackURL: `https://server.${process.env.URL}/api/pay/verifyCo`,
+                Description: desc,
+                Email: "",
+                Mobile: mobile,
+            });
+            // console.log("response",response)
+
+            return res.json({
+                success: true,
+                message: `https://pay.samar-rad.ir?TerminalID=${TERMINAL}&token=${token}`,
+            });
+        } catch (error) {
+            console.error("Error while paymentCoBank:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
     async paymentChargeAdmin(req, res) {
         // console.log("paymentCorrrrrr")
         if (
@@ -1832,15 +1925,23 @@ module.exports = new (class extends controller {
 
     async getPayHistory(req, res) {
         try {
-            if (req.query.queueCode === undefined) {
+            if (
+                req.query.queueCode === undefined ||
+                req.query.studentCode === undefined ||
+                req.query.studentId === undefined
+            ) {
                 return this.response({
                     res,
                     code: 214,
-                    message: "queueCode need",
+                    message: "queueCode studentId studentCode need",
                 });
             }
             const queueCode = parseInt(req.query.queueCode);
             const studentCode = req.query.studentCode;
+            const studentId = req.query.studentId;
+            // console.log("queueCode",queueCode);
+            // console.log("studentCode",studentCode);
+            // console.log("studentId",studentId);
             const docListSanad = await this.DocListSanad.findOne({
                 $and: [
                     {
@@ -1853,6 +1954,7 @@ module.exports = new (class extends controller {
                     { type: "invoice" },
                 ],
             }).lean();
+            //  console.log("docListSanad",docListSanad);
             if (!docListSanad) {
                 return this.response({
                     res,
@@ -1860,23 +1962,17 @@ module.exports = new (class extends controller {
                     message: "sanad not find",
                 });
             }
-            // const action = await this.PayAction.findOne({
-            //     queueCode,
-            //     studentCode,
-            //     delete: false,
-            // });
-            // if (!action) {
-            //     return this.response({
-            //         res,
-            //         code: 404,
-            //         message: "action not find",
-            //     });
-            // }
+            const payQueue = await this.PayQueue.findOne({
+                code: queueCode,
+                studentId,
+            });
+
             let transAction = null;
-            if (docListSanad.isOnline) {
-                transAction = await this.Transactions.findById(
-                    action.transaction
-                );
+            if (docListSanad.isOnline && payQueue) {
+                transAction = await this.Transactions.findOne({
+                    authority: payQueue.authority,
+                    done: true,
+                });
             }
             return this.response({
                 res,

@@ -8,6 +8,7 @@ const { isLoggined, isAgencyAdmin, isAdmin } = require("./../../middleware/auth"
 router.get("/Verify", controller.verify.bind(controller));
 router.post("/Verify2", controller.verify2.bind(controller));
 router.post("/VerifyPrePayment", controller.verifyPrePayment.bind(controller));
+router.post("/VerifyCoBank", controller.verifyCoBank.bind(controller));
 router.get("/VerifyCo", controller.verifyCo.bind(controller));
 router.get("/VerifyCoCharge", controller.verifyCoCharge.bind(controller));
 router.post(
