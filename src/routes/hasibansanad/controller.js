@@ -799,7 +799,7 @@ module.exports = new (class extends controller {
             const docList = await this.DocListSanad.find(
                 { $and: qr },
                 "titleId row bed bes note peigiri serviceNum days"
-            );
+            ).sort({doclistId:1,sanadDate:1,});;
 
             let gozaresh = [{ sanad: "", doc: "", mandeh }];
 

@@ -1336,6 +1336,7 @@ module.exports = new (class extends controller {
                             note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
                             accCode: bank,
                             peigiri: infoNum,
+                            
                         }).save();
 
                         await new this.DocListSanad({

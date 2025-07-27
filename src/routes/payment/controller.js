@@ -23,7 +23,7 @@ async function generateToken(amount, invoice, link = "verify2") {
 
         const data = {
             Amount: amount,
-            callbackUrl: `https://server.${process.env.URL}/api/pay/${link}`,
+            callbackUrl: `https://server.mysamar.ir/api/pay/${link}`,
             invoiceID: invoice,
             terminalID: TERMINAL,
             payload: "",
@@ -161,7 +161,7 @@ module.exports = new (class extends controller {
                 message: "amount not enough",
             });
         }
-
+       
         console.log("amount", amount);
         console.log("amount2", amount2);
         console.log("desc", desc);
@@ -181,13 +181,13 @@ module.exports = new (class extends controller {
                 newTr.authority,
                 "VerifyPrePayment"
             );
-            if (!token) {
-                token = await generateToken(
-                    amount + amount2,
-                    newTr.authority,
-                    "VerifyPrePayment"
-                );
-            }
+            // if (!token) {
+            //     token = await generateToken(
+            //         amount + amount2,
+            //         newTr.authority,
+            //         "VerifyPrePayment"
+            //     );
+            // }
             if (!token) {
                 return res.status(201).json({
                     message: "خطای بانک",
@@ -196,7 +196,7 @@ module.exports = new (class extends controller {
 
             return res.json({
                 success: true,
-                message: `https://mysamar.ir/downloads/index.html?TerminalID=${agencySet.tId}&token=${token}`,
+                message: `https://pay.samar-rad.ir?TerminalID=${agencySet.tId}&token=${token}`,
             });
         } catch (e) {
             console.log("sepehr bank error", e);

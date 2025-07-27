@@ -91,7 +91,6 @@ module.exports = new (class extends controller {
                 });
             } else {
                 school = await this.School.findByIdAndUpdate(id, {
-                    code,
                     name,
                     typeId,
                     typeTitle,

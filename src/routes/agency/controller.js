@@ -1633,6 +1633,7 @@ module.exports = new (class extends controller {
             let agencySet = await this.AgencySet.findOne({
                 agencyId: ObjectId.createFromHexString(req.query.agencyId),
             });
+            
             if (!agencySet) {
                 const showFirstCostToStudent = false;
                 const showCostToDriver = true;
@@ -1640,7 +1641,7 @@ module.exports = new (class extends controller {
                 const formulaForStudent = false;
                 agencySet = new this.AgencySet({
                     agencyId,
-                    setter,
+                    setter:req.user._id,
                     showFirstCostToStudent,
                     showCostToDriver,
                     formula,
