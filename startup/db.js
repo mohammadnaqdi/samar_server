@@ -27,7 +27,7 @@ const textValues = [
 ];
 
 module.exports = async function (mongoose) {
-    const DB = process.env.DB_ADDRESS7;
+    const DB = process.env.DB_ADDRESS_LOCAL;
     console.log("Database connected to :", DB);
     await mongoose
         .connect(DB)

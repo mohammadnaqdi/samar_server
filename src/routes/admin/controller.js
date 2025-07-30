@@ -607,8 +607,8 @@ module.exports = new (class extends controller {
     async studentFilters(req, res) {
         try {
             if (
-                req.query.agencyId === undefined ||
-                req.query.agencyId.trim() === ""
+                req.body.agencyId === undefined ||
+                req.body.agencyId.trim() === ""
             ) {
                 return this.response({
                     res,
@@ -616,15 +616,16 @@ module.exports = new (class extends controller {
                     message: "agencyId need",
                 });
             }
-            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
             let kol = "003";
             let moeen = "005";
-            const bed = req.query.bed ?? "";
-            const stateS = req.query.state ?? "-1";
-            const schoolS = req.query.school ?? "";
-            const gradeS = req.query.grade ?? "0";
-            const from = req.query.from ?? "";
-            const to = req.query.to ?? "";
+            const bed = req.body.bed ?? "";
+            const stateS = req.body.state ?? "-1";
+            const schoolS = req.body.school ?? "";
+            const gradeS = req.body.grade ?? "0";
+            const from = req.body.from ?? "";
+            const to = req.body.to ?? "";
+            const serviceNums = req.body.serviceNums ?? [];
 
             const state = parseInt(stateS);
             const gradeId = parseInt(gradeS);
@@ -640,6 +641,11 @@ module.exports = new (class extends controller {
             if (gradeId != 0) {
                 qr.push({
                     gradeId,
+                });
+            }
+            if (serviceNums.length > 0) {
+                qr.push({
+                    serviceNum:{$in:serviceNums},
                 });
             }
             if (school != null) {

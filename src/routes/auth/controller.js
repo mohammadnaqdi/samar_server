@@ -851,8 +851,7 @@ module.exports = new (class extends controller {
 
                         mandeh = result[0]?.total || 0;
                         agency[i].mandeh = mandeh;
-                        if (mandeh < 0) {
-                            
+                        if (mandeh < 1) {
                             let sarafsl = [];
                             const agencyId = agency[i]._id;
                             var qr4 = [];
@@ -865,9 +864,9 @@ module.exports = new (class extends controller {
                                 "code codeLev1 codeLev2 codeLev3 groupId type nature levelEnd"
                             );
                             if (hesabs.length != 0) {
-                                
                                 for (var hs of hesabs) {
-                                    const tafsily=await this.LevelAccDetail.findOne(
+                                    const tafsily =
+                                        await this.LevelAccDetail.findOne(
                                             { agencyId, accCode: hs.codeLev3 },
                                             "accName"
                                         );
@@ -881,7 +880,7 @@ module.exports = new (class extends controller {
                                             { agencyId, accCode: hs.codeLev1 },
                                             "accName"
                                         );
-                                        if(!tafsily || !moeen || !kol)continue;
+                                    if (!tafsily || !moeen || !kol) continue;
                                     sarafsl.push({
                                         accName: tafsily.accName,
                                         hs,
@@ -890,8 +889,8 @@ module.exports = new (class extends controller {
                                     });
                                 }
                             }
-                            agency[i].sarafsl=sarafsl;
-                            if(sarafsl.length>0){
+                            agency[i].sarafsl = sarafsl;
+                            if (sarafsl.length > 0) {
                                 token = "";
                             }
                         }
@@ -912,6 +911,7 @@ module.exports = new (class extends controller {
                 message: "welcome",
                 data: {
                     token,
+                    userId: user._id,
                     name: user.name,
                     lastName: user.lastName,
                     isAdmin: user.isadmin,
@@ -1336,7 +1336,6 @@ module.exports = new (class extends controller {
                             note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
                             accCode: bank,
                             peigiri: infoNum,
-                            
                         }).save();
 
                         await new this.DocListSanad({

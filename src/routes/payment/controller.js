@@ -41,15 +41,16 @@ async function generateToken(
                 "Content-Type": "application/json",
             },
         });
-        console.log("response", response);
+        // console.log("response", response);
 
         if (response.data.Status === 0) {
             return response.data.Accesstoken;
         }
-
+        console.log("response", response.data);
         return null;
     } catch (error) {
         console.error("Error while generating bank token:", error);
+         return null;
     }
 }
 
@@ -848,89 +849,7 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    async paymentCoBank(req, res) {
-        // console.log("paymentCorrrrrr")
-        if (
-            req.query.amount === undefined ||
-            req.query.agencyId === undefined ||
-            req.query.mobile === undefined ||
-            req.query.bankListAcc === undefined
-        ) {
-            return this.response({
-                res,
-                code: 214,
-                message: "amount & agencyId & mobile & bankListAcc need",
-            });
-        }
-        const amount = parseInt(req.query.amount);
-        const agencyId = req.query.agencyId;
-        const mobile = req.query.mobile;
-        const bankListAcc = req.query.bankListAcc;
-        const agency = await this.Agency.findById(agencyId);
-        if (amount < 10000) {
-            return this.response({
-                res,
-                code: 203,
-                message: "amount not enough",
-            });
-        }
-        // console.log("amountXXX", amount);
-        if (!agency || agency.settings === null) {
-            return this.response({
-                res,
-                code: 404,
-                message: "company not find",
-            });
-        }
-        // console.log("ip",`https://panel.${process.env.URL}/finance`)
-        try {
-            const newTr = new this.Transactions({
-                userId: req.user._id,
-                amount: amount,
-                desc: desc,
-                queueCode: 0,
-                stCode: bankListAcc,
-                agencyId,
-            });
-            await newTr.save();
-            let token = await generateToken(
-                amount,
-                newTr.authority,
-                "VerifyCoBank",
-                mobile,
-                TERMINAL
-            );
-            if (!token) {
-                return res.status(201).json({
-                    message: "خطای بانک",
-                });
-            }
-            // console.log("zarinpal",zarinpal)
-            const desc = "شارژ کیف شرکت " + agency.name;
-            // console.log("desc",desc)https://panel.${process.env.URL}/finance
-            console.log(
-                "ip",
-                `https://server.${process.env.URL}/api/pay/verifyCo`
-            );
-            const response = await zarinpal.PaymentRequest({
-                Amount: amount / 10,
-                // CallbackURL: "http://localhost:63594/finance",
-                CallbackURL: `https://server.${process.env.URL}/api/pay/verifyCo`,
-                Description: desc,
-                Email: "",
-                Mobile: mobile,
-            });
-            // console.log("response",response)
-
-            return res.json({
-                success: true,
-                message: `https://pay.samar-rad.ir?TerminalID=${TERMINAL}&token=${token}`,
-            });
-        } catch (error) {
-            console.error("Error while paymentCoBank:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    
 
     async paymentChargeAdmin(req, res) {
         // console.log("paymentCorrrrrr")
@@ -1057,15 +976,21 @@ module.exports = new (class extends controller {
     async showMorePay(req, res) {
         try {
             const { setter, transaction, sanad, agencyId } = req.body;
-            console.log(req.body);
-            const user = await this.User.findById(
+            console.log('showMorePay body=',req.body);
+            let user = await this.User.findById(
                 setter,
                 "name lastName phone"
             );
+            if(!user){
+                user=await this.Parent.findById(
+                setter,
+                "name lastName phone"
+            );
+            }
             let transAction = null;
             if (transaction != null && transaction != "") {
-                transAction = await this.Transactions.findById(
-                    transaction,
+                transAction = await this.Transactions.findOne(
+                    {authority:transaction},
                     "authority refID amount desc updatedAt"
                 );
             }
@@ -1138,7 +1063,7 @@ module.exports = new (class extends controller {
                 data: { user, transAction, docSanad, docList },
             });
         } catch (error) {
-            console.error("Error while 00024:", error);
+            console.error("Error while showMorePay:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

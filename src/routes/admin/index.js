@@ -39,7 +39,7 @@ router.get(
     isEnyAdmin,
     controller.driverFilters.bind(controller),
 );
-router.get(
+router.post(
     "/StudentFilters",
     isEnyAdmin,
     controller.studentFilters.bind(controller),

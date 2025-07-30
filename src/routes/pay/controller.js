@@ -14,6 +14,48 @@ const NID = "0934454299";
 const CLIENT = "samar";
 const ENCODED_TOKEN = "c2FtYXI6bG52VERSMnBlZDJMcTJORDZvRWg=";
 const REDIRECT_URL = "https://mysamar.ir/api/fin/getAuthorization";
+const TERMINAL = 99018831;
+
+async function generateToken(
+    amount,
+    invoice,
+    link = "verify2",
+    CellNumber,
+    terminalID
+) {
+    try {
+        if (!amount || amount < 10000) {
+            amount = 10000;
+        }
+        const URL = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/GetToken";
+
+        const data = {
+            Amount: amount,
+            callbackUrl: `https://server.mysamar.ir/api/pay/${link}`,
+            invoiceID: invoice,
+            terminalID,
+            payload: "",
+            CellNumber,
+        };
+
+        const response = await axios.post(URL, data, {
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        // console.log("response", response);
+
+        if (response.data.Status === 0) {
+            return response.data.Accesstoken;
+        }
+        console.log("response", response.data);
+        return null;
+    } catch (error) {
+        console.error("Error while generating bank token:", error);
+         return null;
+    }
+}
+
 const { v4: uuidv4 } = require("uuid");
 function addTokenTime() {
     const now = new Date();
@@ -955,13 +997,6 @@ module.exports = new (class extends controller {
 
         const session = await this.Transactions.startSession();
         let transAction;
-        // console.log("amount", amount);
-        // console.log("invoiceid", invoiceid);
-        // console.log("cardnumber", cardnumber);
-        // console.log("rrn", rrn);
-        // console.log("tracenumber", tracenumber);
-        // console.log("issuerbank", issuerbank);
-        // console.log("respcode", respcode);
         try {
             transAction = await this.Transactions.findOne({
                 authority: invoiceid.toString(),
@@ -1031,7 +1066,7 @@ module.exports = new (class extends controller {
                         amount: amount,
                     },
                     { new: true, session }
-                );
+                ).session(session);
 
                 let amountpaid = tr.amount;
                 const agencyId = tr.agencyId;
@@ -1147,7 +1182,7 @@ module.exports = new (class extends controller {
                         throw new Error("costCode || wallet not found");
                     }
                     console.log("wallet", wallet);
-                    const desc = `پرداخت ${payQueue.title} از کیف پول بابت دانش آموز ${student.name} ${student.lastName}`;
+                    const desc = `پرداخت ${payQueue.title} آنلاین بابت دانش آموز ${student.name} ${student.lastName}`;
                     let doc = new this.DocSanad({
                         agencyId,
                         note: desc,
@@ -1228,8 +1263,6 @@ module.exports = new (class extends controller {
                     console.log("prePayment==", prePayment.code);
                     const bank = bankCode;
                     const bankName = "بانک شرکت";
-                    let kol = "003";
-                    let moeen = "005";
                     const auth = tr.authority;
                     // const checkExist = await this.CheckInfo.countDocuments({
                     //   agencyId,
@@ -1268,13 +1301,14 @@ module.exports = new (class extends controller {
                         type: 6,
                         rowCount: 2,
                         infoDate: new Date(),
-                        infoMoney: tr.amount,
+                        infoMoney: amountpaid,
                         accCode: bank,
                         ownerHesab: "",
                         desc: tr.desc,
                     });
                     await checkInfo.save({ session });
                     console.log("tr.desc", tr.desc);
+                    console.log("ddddd amountpaid", amountpaid);
                     let doc = new this.DocSanad({
                         agencyId,
                         note: tr.desc,
@@ -1291,13 +1325,13 @@ module.exports = new (class extends controller {
                         titleId: doc.id,
                         doclistId: doc.sanadId,
                         row: 1,
-                        bed: tr.amount,
+                        bed: amountpaid,
                         bes: 0,
                         isOnline: true,
                         mId: doc.sanadId,
-                        note: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
+                        note: ` ${tr.desc} به شماره پیگیری ${invoiceid}`,
                         accCode: bank,
-                        peigiri: infoNum,
+                        peigiri: digitalreceipt,
                         isOnline: true,
                     }).save({ session });
 
@@ -1307,14 +1341,14 @@ module.exports = new (class extends controller {
                         doclistId: doc.sanadId,
                         row: 2,
                         bed: 0,
-                        bes: tr.amount,
+                        bes: amountpaid,
                         isOnline: true,
                         mId: prePayment.code,
                         type: "invoice",
                         forCode: "003005" + student.studentCode,
-                        note: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
+                        note: ` ${tr.desc} به شماره پیگیری ${invoiceid}`,
                         accCode: "003005" + student.studentCode,
-                        peigiri: infoNum,
+                        peigiri: digitalreceipt,
                     }).save({ session });
                     console.log("doc.sanadId", doc.sanadId);
                     console.log("checkInfo.id", checkInfo.id);
@@ -1325,9 +1359,9 @@ module.exports = new (class extends controller {
                         row: 1,
                         toAccCode: bank,
                         fromAccCode: "003005" + student.studentCode,
-                        money: tr.amount,
+                        money: amountpaid,
                         status: 6,
-                        desc: ` ${tr.desc} به شماره پیگیری ${digitalreceipt}`,
+                        desc: ` ${tr.desc} به شماره پیگیری ${invoiceid}`,
                         sanadNum: doc.sanadId,
                     }).save({ session });
                 }
@@ -1355,12 +1389,14 @@ module.exports = new (class extends controller {
                     });
                     responseData = response.data;
                     console.log("nok", response.data);
+                    throw new Error("response shaparak verification failed");
                 }
 
                 if (
-                    responseData.Status === "Ok" ||
-                    responseData.Status === "OK" ||
-                    responseData.Status === "Duplicate"
+                    (responseData.Status === "Ok" ||
+                        responseData.Status === "OK" ||
+                        responseData.Status === "Duplicate") &&
+                    responseData.ReturnId.toString() === amount.toString()
                 ) {
                     console.log("end pay");
                     res.redirect(
@@ -1750,86 +1786,6 @@ module.exports = new (class extends controller {
                     "settings name admin"
                 ).session(session);
 
-                //send sms
-                var tarikh = new persianDate().format("YY/M/D");
-                var saat = new persianDate().format("H:m");
-                const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
-                    ساعت ${saat}
-                    مبلغ ${transAction.amount} انجام گردید`;
-
-                const postData = {
-                    UserName: amootUser,
-                    Password: amootPass,
-                    SendDateTime: getFormattedDateTime(new Date()),
-                    SMSMessageText: text,
-                    LineNumber: "service",
-                    Mobiles: "09151156929",
-                };
-
-                let config = {
-                    method: "post",
-                    url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
-                    headers: {
-                        Authorization: amoot_t,
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                    data: postData,
-                };
-
-                // axios(config)
-                //     .then(function (response) {
-                //         console.log(JSON.stringify(response.data));
-                //     })
-                //     .catch(function (error) {
-                //         console.log(error);
-                //     });
-                await axios.request(config);
-                // axios(config)
-                //     .then(function (response) {
-                //         console.log("axios verifyCo", "then");
-                //     })
-                //     .catch(function (error) {
-                //         console.log("axios verifyCo error", error);
-                //     });
-                const user = await this.User.findById(
-                    agency.admin,
-                    "phone lastName"
-                );
-                if (user) {
-                    const text2 = `آقا/ خانم ${user.lastName} گرامی
-            پنل سرویس مدارس سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید
-            `;
-
-                    const postData = {
-                        UserName: amootUser,
-                        Password: amootPass,
-                        SendDateTime: getFormattedDateTime(new Date()),
-                        SMSMessageText: text2,
-                        LineNumber: "service",
-                        Mobiles: user.phone,
-                    };
-
-                    let config = {
-                        method: "post",
-                        url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
-                        headers: {
-                            Authorization: amoot_t,
-                            "Content-Type": "application/x-www-form-urlencoded",
-                        },
-                        data: postData,
-                    };
-                    await axios.request(config);
-                    // axios(config)
-                    //     .then(function (response) {
-                    //         console.log("axios 2 verifyCo", "then");
-                    //     })
-                    //     .catch(function (error) {
-                    //         console.log("axios 2 verifyCo error", error);
-                    //     });
-                }
-
-                //end send sms
-
                 const wallet = agency.settings.find(
                     (obj) => obj.wallet != undefined
                 ).wallet;
@@ -1841,7 +1797,7 @@ module.exports = new (class extends controller {
                 const level = await this.LevelAccDetail.findOne(
                     { accCode: aa, agencyId },
                     "accName"
-                );
+                ).session(session);
                 if (!level) {
                     return this.response({
                         res,
@@ -1856,7 +1812,8 @@ module.exports = new (class extends controller {
                     "infoId"
                 )
                     .sort({ infoId: -1 })
-                    .limit(1);
+                    .limit(1)
+                    .session(session);
                 let numCheck = 1;
                 if (checkMax.length > 0) {
                     numCheck = checkMax[0].infoId + 1;
@@ -1880,7 +1837,7 @@ module.exports = new (class extends controller {
                     ownerHesab: "",
                     desc: "هزینه شارژ کیف پول",
                 });
-                await checkInfo.save();
+                await checkInfo.save({ session });
 
                 let doc = new this.DocSanad({
                     agencyId,
@@ -1891,7 +1848,7 @@ module.exports = new (class extends controller {
                     lock: true,
                     editor: tr.userId,
                 });
-                await doc.save();
+                await doc.save({ session });
                 await new this.DocListSanad({
                     agencyId,
                     titleId: doc.id,
@@ -1901,11 +1858,11 @@ module.exports = new (class extends controller {
                     mId: doc.sanadId,
                     bes: tr.amount,
                     isOnline: true,
-                    note: `شارژ کیف پول به شماره پیگیری ${digitalreceipt}`,
+                    note: `شارژ کیف پول به شماره پیگیری ${invoiceid}`,
                     accCode: bank,
-                    peigiri: invoiceid,
+                    peigiri: digitalreceipt,
                     sanadDate: new Date(),
-                }).save();
+                }).save({ session });
 
                 await new this.DocListSanad({
                     agencyId,
@@ -1916,11 +1873,11 @@ module.exports = new (class extends controller {
                     bes: 0,
                     mId: doc.sanadId,
                     isOnline: true,
-                    note: `شارژ کیف پول به شماره پیگیری ${digitalreceipt}`,
+                    note: `شارژ کیف پول به شماره پیگیری ${invoiceid}`,
                     accCode: wallet,
-                    peigiri: invoiceid,
+                    peigiri: digitalreceipt,
                     sanadDate: new Date(),
-                }).save();
+                }).save({ session });
                 await new this.CheckHistory({
                     agencyId,
                     infoId: checkInfo.id,
@@ -1930,10 +1887,10 @@ module.exports = new (class extends controller {
                     fromAccCode: bank,
                     money: tr.amount,
                     status: 6,
-                    desc: `شارژ کیف پول به شماره پیگیری ${response.RefID}`,
+                    desc: `شارژ کیف پول به شماره پیگیری ${invoiceid}`,
                     sanadNum: doc.sanadId,
                     sanadDate: new Date(),
-                }).save();
+                }).save({ session });
 
                 // return this.response({
                 //     res,
@@ -1944,7 +1901,7 @@ module.exports = new (class extends controller {
                     "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
                 const payload = {
                     digitalreceipt: digitalreceipt,
-                    Tid: 99018831
+                    Tid: 99018831,
                 };
                 let response = await axios.post(url, payload, {
                     headers: {
@@ -1970,6 +1927,86 @@ module.exports = new (class extends controller {
                     responseData.Status === "OK" ||
                     responseData.Status === "Duplicate"
                 ) {
+                    //send sms
+                    var tarikh = new persianDate().format("YY/M/D");
+                    var saat = new persianDate().format("H:m");
+                    const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
+                    ساعت ${saat}
+                    مبلغ ${transAction.amount} انجام گردید`;
+
+                    const postData = {
+                        UserName: amootUser,
+                        Password: amootPass,
+                        SendDateTime: getFormattedDateTime(new Date()),
+                        SMSMessageText: text,
+                        LineNumber: "service",
+                        Mobiles: "09151156929",
+                    };
+
+                    let config = {
+                        method: "post",
+                        url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
+                        headers: {
+                            Authorization: amoot_t,
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                        data: postData,
+                    };
+
+                    // axios(config)
+                    //     .then(function (response) {
+                    //         console.log(JSON.stringify(response.data));
+                    //     })
+                    //     .catch(function (error) {
+                    //         console.log(error);
+                    //     });
+                    await axios.request(config);
+                    // axios(config)
+                    //     .then(function (response) {
+                    //         console.log("axios verifyCo", "then");
+                    //     })
+                    //     .catch(function (error) {
+                    //         console.log("axios verifyCo error", error);
+                    //     });
+                    const user = await this.User.findById(
+                        agency.admin,
+                        "phone lastName"
+                    ).session(session);
+                    if (user) {
+                        const text2 = `آقا/ خانم ${user.lastName} گرامی
+            پنل سرویس مدارس سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید
+            `;
+
+                        const postData = {
+                            UserName: amootUser,
+                            Password: amootPass,
+                            SendDateTime: getFormattedDateTime(new Date()),
+                            SMSMessageText: text2,
+                            LineNumber: "service",
+                            Mobiles: user.phone,
+                        };
+
+                        let config = {
+                            method: "post",
+                            url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
+                            headers: {
+                                Authorization: amoot_t,
+                                "Content-Type":
+                                    "application/x-www-form-urlencoded",
+                            },
+                            data: postData,
+                        };
+                        await axios.request(config);
+                        // axios(config)
+                        //     .then(function (response) {
+                        //         console.log("axios 2 verifyCo", "then");
+                        //     })
+                        //     .catch(function (error) {
+                        //         console.log("axios 2 verifyCo error", error);
+                        //     });
+                    }
+
+                    //end send sms
                     console.log("end pay");
                     return res.redirect(
                         `https://panel.${process.env.URL}/finance`
@@ -1987,6 +2024,76 @@ module.exports = new (class extends controller {
             session.endSession();
         }
     }
+async paymentCoBank(req, res) {
+        // console.log("paymentCorrrrrr")
+        if (
+            req.query.amount === undefined ||
+            req.query.agencyId === undefined ||
+            req.query.mobile === undefined ||
+            req.query.userId === undefined ||
+            req.query.bankListAcc === undefined 
+        ) {
+            return this.response({
+                res,
+                code: 214,
+                message: "amount & agencyId & mobile & userId & bankListAcc need",
+            });
+        }
+        const amount = parseInt(req.query.amount);
+        const agencyId = req.query.agencyId;
+        const mobile = req.query.mobile;
+        const bankListAcc = req.query.bankListAcc;
+        const agency = await this.Agency.findById(agencyId).lean();
+        if (amount < 10000) {
+            return this.response({
+                res,
+                code: 203,
+                message: "amount not enough",
+            });
+        }
+        // console.log("amountXXX", amount);
+        if (!agency || agency.settings === null) {
+            return this.response({
+                res,
+                code: 404,
+                message: "company not find",
+            });
+        }
+        // console.log("ip",`https://panel.${process.env.URL}/finance`)
+        try {
+            const desc = "شارژ آنلاین کیف شرکت " + agency.name;
+            const newTr = new this.Transactions({
+                userId: req.query.userId,
+                amount: amount,
+                desc: desc,
+                queueCode: 0,
+                stCode: bankListAcc,
+                agencyId,
+            });
+            await newTr.save();
+            let token = await generateToken(
+                amount,
+                newTr.authority,
+                "VerifyCoBank",
+                mobile,
+                TERMINAL
+            );
+            if (!token) {
+                return res.status(201).json({
+                    message: "خطای بانک",
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: `https://pay.samar-rad.ir?TerminalID=${TERMINAL}&token=${token}`,
+            });
+        } catch (error) {
+            console.error("Error while paymentCoBank:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
 
     async verifyCoCharge(req, res) {
         console.log("req.query", JSON.stringify(req.query));

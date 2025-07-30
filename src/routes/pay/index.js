@@ -19,7 +19,7 @@ router.post(
     controller.validate.bind(controller),
     controller.sendNotifSocket.bind(controller)
 );
-
+router.get("/PaymentCoBank", controller.paymentCoBank.bind(controller));
 router.get(
     "/sayadTransfersChainInquiry",
     isLoggined,
