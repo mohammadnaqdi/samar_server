@@ -50,7 +50,7 @@ async function generateToken(
         return null;
     } catch (error) {
         console.error("Error while generating bank token:", error);
-         return null;
+        return null;
     }
 }
 
@@ -849,7 +849,6 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    
 
     async paymentChargeAdmin(req, res) {
         // console.log("paymentCorrrrrr")
@@ -976,21 +975,18 @@ module.exports = new (class extends controller {
     async showMorePay(req, res) {
         try {
             const { setter, transaction, sanad, agencyId } = req.body;
-            console.log('showMorePay body=',req.body);
-            let user = await this.User.findById(
-                setter,
-                "name lastName phone"
-            );
-            if(!user){
-                user=await this.Parent.findById(
-                setter,
-                "name lastName phone"
-            );
+            console.log("showMorePay body=", req.body);
+            let user = await this.User.findById(setter, "name lastName phone");
+            if (!user) {
+                user = await this.Parent.findById(
+                    setter,
+                    "name lastName phone"
+                );
             }
             let transAction = null;
             if (transaction != null && transaction != "") {
                 transAction = await this.Transactions.findOne(
-                    {authority:transaction},
+                    { authority: transaction },
                     "authority refID amount desc updatedAt"
                 );
             }
@@ -1269,7 +1265,7 @@ module.exports = new (class extends controller {
             const agency = await this.Agency.findById(agencyId, "settings");
             const student = await this.Student.findById(
                 studentId,
-                "name lastName studentCode state stateTitle"
+                "name lastName studentCode state stateTitle serviceDistance"
             );
             let name = "دانش آموز";
 
@@ -1312,6 +1308,30 @@ module.exports = new (class extends controller {
                         delete: false,
                     });
                     if (invoice) {
+                        let amount2 = 0;
+                        if (
+                            invoice.distancePrice &&
+                            invoice.distancePrice.length > 0
+                        ) {
+                            const matchedPricing = invoice.distancePrice.find(
+                                function (priceItem) {
+                                    return (
+                                        priceItem.maxDistance * 1000 >= student.serviceDistance
+                                    );
+                                }
+                            );
+                            if (matchedPricing) {
+                                amount2 = matchedPricing.amount;
+                            } else {
+                                amount2 =
+                                    invoice.distancePrice[
+                                        invoice.distancePrice.length - 1
+                                    ].amount;
+                            }
+                        } else {
+                            amount2 = invoice.amount;
+                        }
+
                         let payQueue = new this.PayQueue({
                             inVoiceId: invoice._id,
                             code: invoice.code,
@@ -1319,7 +1339,7 @@ module.exports = new (class extends controller {
                             studentId: student._id,
                             setter: req.user._id,
                             type: invoice.type,
-                            amount: invoice.amount,
+                            amount: amount2,
                             title: invoice.title,
                             maxDate: invoice.maxDate,
                             isPaid: false,
@@ -1457,6 +1477,29 @@ module.exports = new (class extends controller {
                         delete: false,
                     });
                     if (invoice) {
+                          let amount2 = 0;
+                        if (
+                            invoice.distancePrice &&
+                            invoice.distancePrice.length > 0
+                        ) {
+                            const matchedPricing = invoice.distancePrice.find(
+                                function (priceItem) {
+                                    return (
+                                        priceItem.maxDistance * 1000 >= student.serviceDistance
+                                    );
+                                }
+                            );
+                            if (matchedPricing) {
+                                amount2 = matchedPricing.amount;
+                            } else {
+                                amount2 =
+                                    invoice.distancePrice[
+                                        invoice.distancePrice.length - 1
+                                    ].amount;
+                            }
+                        } else {
+                            amount2 = invoice.amount;
+                        }
                         let payQueue = new this.PayQueue({
                             inVoiceId: invoice._id,
                             code: invoice.code,
@@ -1464,7 +1507,7 @@ module.exports = new (class extends controller {
                             studentId: student._id,
                             setter: req.user._id,
                             type: invoice.type,
-                            amount: invoice.amount,
+                            amount: amount2,
                             title: invoice.title,
                             maxDate: invoice.maxDate,
                             isPaid: false,
@@ -1683,15 +1726,15 @@ module.exports = new (class extends controller {
                 desc,
                 schools,
                 maxDate,
-                distance,
                 confirmInfo,
                 confirmPrePaid,
                 type,
+                distancePrice,
             } = req.body;
             const isDelete = req.body.delete;
             const fixPrice = req.body.fixPrice;
 
-            console.log("fixPrice", fixPrice);
+            console.log("distancePrice", distancePrice);
             console.log("id", id);
             const agencyId =
                 req.body.agencyId.trim() === "" ? null : req.body.agencyId;
@@ -1708,7 +1751,6 @@ module.exports = new (class extends controller {
                     agencyId,
                     setter: req.user._id,
                     amount,
-                    distance,
                     maxDate,
                     title,
                     active,
@@ -1720,6 +1762,7 @@ module.exports = new (class extends controller {
                     type,
                     delete: isDelete,
                     fixPrice,
+                    distancePrice,
                 });
                 await payQueue.save();
                 return this.response({
@@ -1734,7 +1777,6 @@ module.exports = new (class extends controller {
                 {
                     setter: req.user._id,
                     amount,
-                    distance,
                     maxDate,
                     title,
                     active,
@@ -1744,6 +1786,7 @@ module.exports = new (class extends controller {
                     confirmPrePaid,
                     delete: isDelete,
                     fixPrice,
+                    distancePrice,
                 },
                 { new: true }
             );

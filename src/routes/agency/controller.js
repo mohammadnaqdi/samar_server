@@ -1629,11 +1629,11 @@ module.exports = new (class extends controller {
             if (req.query.agencyId === undefined) {
                 return res.status(214).json({ msg: "agencyId need" });
             }
-            const agencyId= ObjectId.createFromHexString(req.query.agencyId);
+            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             let agencySet = await this.AgencySet.findOne({
                 agencyId: ObjectId.createFromHexString(req.query.agencyId),
             });
-            
+
             if (!agencySet) {
                 const showFirstCostToStudent = false;
                 const showCostToDriver = true;
@@ -1641,7 +1641,7 @@ module.exports = new (class extends controller {
                 const formulaForStudent = false;
                 agencySet = new this.AgencySet({
                     agencyId,
-                    setter:req.user._id,
+                    setter: req.user._id,
                     showFirstCostToStudent,
                     showCostToDriver,
                     formula,
@@ -2280,11 +2280,23 @@ module.exports = new (class extends controller {
                 return this.response({
                     res,
                     code: 214,
-                    message: "agencyId need",
+                    message: "agencyId && distance need",
                 });
             }
 
             const agencyId = req.query.agencyId;
+            const distanceS = req.query.distance || "0";
+              const id = req.query.id;
+              let distance = parseInt(distanceS);
+            if (mongoose.isValidObjectId(id)) {
+              const student=await this.Student.findById(id,'serviceDistance').lean();
+                if(student){
+                    distance=student.serviceDistance;
+                }
+            }
+
+            
+
             let invoice = await this.Invoice.findOne(
                 {
                     agencyId: agencyId,
@@ -2303,11 +2315,31 @@ module.exports = new (class extends controller {
                     type: "prePayment",
                     active: true,
                 },
-                "amount title desc"
+                "amount title desc distancePrice"
             ).lean();
             let amount2 = 0;
+            
+            console.log(
+                "distance",distance
+            );
             if (invoice2) {
-                amount2 = invoice2.amount;
+                if (
+                    invoice2.distancePrice &&
+                    invoice2.distancePrice.length > 0
+                ) {
+                    const matchedPricing = invoice2.distancePrice.find(
+                        function (priceItem) {
+                        return (priceItem.maxDistance * 1000) >= distance;
+                    }
+                    );
+                    if (matchedPricing) {
+                        amount2 = matchedPricing.amount;
+                    } else {
+                        amount2 = invoice2.distancePrice[invoice2.distancePrice.length-1].amount;
+                    }
+                } else {
+                    amount2 = invoice2.amount;
+                }
             }
             const agencySet = await this.AgencySet.findOne(
                 { agencyId: agencyId },

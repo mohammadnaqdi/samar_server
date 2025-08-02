@@ -812,15 +812,16 @@ module.exports = new (class extends controller {
                             { delete: false },
                             {
                                 $or: [
-                                    { admin: user.id },
+                                    { admin: user._id },
                                     { users: { $in: user._id } },
                                 ],
                             },
                         ],
                     },
-                    "code name cityId code location.coordinates active settings"
+                    "code name cityId code location.coordinates active settings admin"
                 ).lean();
                 for (var i in agency) {
+                    if(agency[i].admin.toString()!=user._id.toString()){
                     const wallet = agency[i].settings.find(
                         (obj) => obj.wallet != undefined
                     ).wallet;
@@ -896,7 +897,10 @@ module.exports = new (class extends controller {
                         }
                         console.log("mandeh", mandeh);
                     }
+                }else{
+                    agency[i].mandeh=2;
                 }
+            }
             }
 
             if (user.isSchoolAdmin) {

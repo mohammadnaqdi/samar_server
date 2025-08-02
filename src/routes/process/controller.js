@@ -1515,7 +1515,7 @@ module.exports = new (class extends controller {
                     message: "agencyId driverCode month need",
                 });
             }
-            console.log("req.query",req.query);
+            console.log("req.query", req.query);
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             let driverCode = req.query.driverCode;
             if (mongoose.isValidObjectId(driverCode)) {
@@ -1566,10 +1566,7 @@ module.exports = new (class extends controller {
                         { agencyId: agencyId },
                         { mId: month },
                         {
-                            $or: [
-                                {type:'paySalary'},
-                                {type:'salary'},
-                            ],
+                            $or: [{ type: "paySalary" }, { type: "salary" }],
                         },
                         { accCode: code },
                     ],
@@ -1701,8 +1698,10 @@ module.exports = new (class extends controller {
             {
                 $or: [{ gradeId: { $in: grade } }, { gradeId: 0 }],
             },
-            carId ? { carId } : { carId: 0 },
         ];
+        if (carId && carId != 0) {
+            query.push({ carId });
+        }
 
         return this.PricingTable.find({ $and: query }, "kilometer price -_id")
             .sort({ kilometer: 1 })
@@ -2484,11 +2483,14 @@ module.exports = new (class extends controller {
                                 };
                             })
                         );
-                        const user=await this.User.findById(driver.userId,'name lastName').lean();
+                        const user = await this.User.findById(
+                            driver.userId,
+                            "name lastName"
+                        ).lean();
                         let name = services[0].driverName.split(" ");
                         driverName = name[0];
                         driverLastName = name[1];
-                        if(user){
+                        if (user) {
                             driverName = user.name;
                             driverLastName = user.lastName;
                         }
@@ -2662,7 +2664,6 @@ module.exports = new (class extends controller {
 
             for (const service of services) {
                 const studentIds = service.student;
-
                 const studentDocs = await this.Student.find(
                     { _id: { $in: studentIds } },
                     "serviceDistance"
@@ -2675,7 +2676,7 @@ module.exports = new (class extends controller {
 
                 const [school, driver] = await Promise.all([
                     this.School.findById(
-                        service.schoolId,
+                        service.schoolIds[0],
                         "districtId grade"
                     ).lean(),
                     this.Driver.findById(service.driverId, "carId").lean(),

@@ -12,8 +12,8 @@ module.exports = new (class extends controller {
             const id = req.body.id;
             const name = req.body.name;
             const grade = req.body.grade;
-            // const districtId = req.body.districtId;
-            // const districtTitle = req.body.districtTitle;
+            const districtId = req.body.districtId;
+            const districtTitle = req.body.districtTitle;
             const address = req.body.address;
             const location = req.body.location;
             const typeId = req.body.typeId;
@@ -78,8 +78,8 @@ module.exports = new (class extends controller {
                     gender,
                     genderTitle,
                     grade,
-                    districtId:0,
-                    districtTitle:'',
+                    districtId,
+                    districtTitle,
                     address,
                     location: { type: "Point", coordinates: location },
                     schoolTime,
@@ -97,8 +97,8 @@ module.exports = new (class extends controller {
                     gender,
                     genderTitle,
                     grade,
-                    districtId:0,
-                    districtTitle:'',
+                    districtId,
+                    districtTitle,
                     address,
                     location: { type: "Point", coordinates: location },
                     schoolTime,
