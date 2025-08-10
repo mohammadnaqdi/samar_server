@@ -126,6 +126,8 @@ module.exports = new (class extends controller {
                 return res.status(214).json({ msg: "districtId need" });
             }
 
+            const getStudentNoPack = req.query.getStudentNoPack || '';
+           
             const agencyId = req.query.agencyId || 0;
             let limit = parseInt(req.query.limit) || 20;
             // console.log("limit",limit);
@@ -188,6 +190,18 @@ module.exports = new (class extends controller {
                 }
 
                 schoolOb.school = school;
+                if(getStudentNoPack.trim()!==''){
+
+                    const count=await this.Student.countDocuments({
+                        school:school._id,
+                        delete:false,
+                       //dodo state:3,
+                       packed:false
+                    });
+                    schoolOb.studentNeedpack=count;
+                }else{
+                    schoolOb.studentNeedpack=0;
+                }
                 schoolList.push(schoolOb);
             }
 

@@ -2,27 +2,57 @@ const expressValidator = require("express-validator");
 const check = expressValidator.check;
 
 module.exports = new (class {
-    insertHolidayValidator() {
+    verifySMSAuthorizationValidator() {
         return [
-            check("year").not().isEmpty().withMessage("year cant be empty"),
-            check("month").not().isEmpty().withMessage("month cant be empty"),
-            check("day").not().isEmpty().withMessage("day cant be empty"),
-            check("state").not().isEmpty().withMessage("state cant be empty"),
-        ];
-    }
-    updateSharingValidator() {
-        return [
-            check("ids").not().isEmpty().withMessage("ids cant be empty"),
-            check("percents")
+            check("code").not().isEmpty().withMessage("code cant be empty"),
+            check("mobile").not().isEmpty().withMessage("mobile cant be empty"),
+            check("nid").not().isEmpty().withMessage("nid cant be empty"),
+            check("trackId")
                 .not()
                 .isEmpty()
-                .withMessage("percents cant be empty"),
+                .withMessage("trackId cant be empty"),
         ];
     }
-    getSpacialHolidayValidator() {
+
+    sayadChequeInquiryValidator() {
         return [
-            check("year").not().isEmpty().withMessage("year cant be empty"),
-            check("month").not().isEmpty().withMessage("month cant be empty"),
+            check("sayadId")
+                .not()
+                .isEmpty()
+                .withMessage("sayadId cant be empty"),
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
+            check("payId").not().isEmpty().withMessage("payId cant be empty"),
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+        ];
+    }
+
+    setAdminInfoValidator() {
+        return [
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+            check("name").not().isEmpty().withMessage("name cant be empty"),
+            check("lastName")
+                .not()
+                .isEmpty()
+                .withMessage("lastName cant be empty"),
+            check("nationalCode")
+                .not()
+                .isEmpty()
+                .withMessage("nationalCode cant be empty"),
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
+            check("birthDate")
+                .not()
+                .isEmpty()
+                .withMessage("birthDate cant be empty"),
+            check("acceptCheque")
+                .not()
+                .isEmpty()
+                .withMessage("acceptCheque cant be empty"),
         ];
     }
 })();

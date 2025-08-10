@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
-const {CounterKey} =  require('./keys');
+const { CounterKey } = require("./keys");
 async function getNextSequence(name) {
-  const result = await CounterKey.findOneAndUpdate(
-    { name },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return result.seq;
+    const result = await CounterKey.findOneAndUpdate(
+        { name },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+    );
+    return result.seq;
 }
 const stReportSchema = new mongoose.Schema(
     {
@@ -23,7 +23,7 @@ const stReportSchema = new mongoose.Schema(
         serviceId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Service",
-           required: true,
+            required: true,
         },
         studentId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -40,23 +40,23 @@ const stReportSchema = new mongoose.Schema(
             ref: "School",
             required: true,
         },
-        text: { type: String, required: true, },
-        comment1: { type: String,default:'' },
-        comment2: { type: String,default:'' },
-        code: { type: Number, unique:true },
+        text: { type: String, required: true },
+        comment1: { type: String, default: "" },
+        comment2: { type: String, default: "" },
+        code: { type: Number, unique: true },
         state: { type: Number, default: 0 },
-        grade: { type: Number, default: 0, require: false },
+        grade: { type: Number, default: 0, required: false },
         delete: { type: Boolean, default: false, required: false },
     },
     {
         timestamps: true,
-    },
+    }
 );
 stReportSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    this.code = await getNextSequence('report');
-  }
-  next();
+    if (this.isNew) {
+        this.code = await getNextSequence("report");
+    }
+    next();
 });
 var StReport = mongoose.model("StReport", stReportSchema);
 
@@ -93,21 +93,18 @@ const opinionSchema = new mongoose.Schema(
             required: true,
         },
         content: { type: [] },
-        comment: { type: String,default:'' },
-        month: { type: Number,  required: true },
+        comment: { type: String, default: "" },
+        month: { type: Number, required: true },
         state: { type: Number, default: 0 },
-        grade: { type: Number, default: 0, require: false },
-        sum: { type: Number, },
+        grade: { type: Number, default: 0, required: false },
+        sum: { type: Number },
         delete: { type: Boolean, default: false, required: false },
     },
     {
         timestamps: true,
-    },
+    }
 );
-opinionSchema.index(
-    { month: 1, studentId: 1, driverId: 1 },
-    { unique: true }
-);
+opinionSchema.index({ month: 1, studentId: 1, driverId: 1 }, { unique: true });
 var Opinion = mongoose.model("Opinion", opinionSchema);
 
 const inspectorRpSchema = new mongoose.Schema(
@@ -132,7 +129,7 @@ const inspectorRpSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 var InspectorRp = mongoose.model("InspectorRp", inspectorRpSchema);
 
@@ -160,7 +157,7 @@ const schReport = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 var SchReport = mongoose.model("SchReport", schReport);
 
@@ -203,10 +200,8 @@ const ratingDriver = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 var RatingDriver = mongoose.model("RatingDriver", ratingDriver);
 
-
-
-module.exports = { StReport, SchReport, RatingDriver, InspectorRp ,Opinion};
+module.exports = { StReport, SchReport, RatingDriver, InspectorRp, Opinion };

@@ -2242,7 +2242,7 @@ module.exports = new (class extends controller {
             let contract = await this.AgencySet.findOne(
                 { agencyId },
                 "defHeadLine merchentId tId bank"
-            );
+            ).lean();
             if (!contract) {
                 const showFirstCostToStudent = false;
                 const showCostToDriver = true;
@@ -2258,9 +2258,10 @@ module.exports = new (class extends controller {
                 });
                 await contract.save();
             }
-            contract.defHeadLine.merchentId = contract.merchentId;
-            contract.defHeadLine.tId = contract.tId;
-            contract.defHeadLine.bank = contract.bank;
+            contract.defHeadLine.push({'title':'merchentId','code':contract.merchentId});
+            contract.defHeadLine.push({'title':'tId','code':contract.tId});
+            contract.defHeadLine.push({'title':'bank','code':contract.bank});
+            console.log("contract",contract);
 
             return this.response({
                 res,

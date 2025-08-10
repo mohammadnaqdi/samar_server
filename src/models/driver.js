@@ -17,27 +17,32 @@ const driverSchema = new mongoose.Schema(
             ref: "Car",
             required: true,
         },
-        driverCode: { type: String,  unique: true },
+        driverCode: { type: String, unique: true },
         location: {
-            type: { type: String, enum: ["Point"], default: "Point", required: false },
+            type: {
+                type: String,
+                enum: ["Point"],
+                default: "Point",
+                required: false,
+            },
             coordinates: {
                 type: [Number],
                 index: "2dsphere",
             },
         },
-        address: { type: String, required: false,default:'' },
+        address: { type: String, required: false, default: "" },
         score: { type: Number, required: false, default: 0 },
-        drivingLicence: { type: String, default: "", require: false },
+        drivingLicence: { type: String, default: "", required: false },
         pic: { type: String, default: "" },
         confirmPic: { type: Number, default: 0, required: false },
         birthday: { type: Date, default: Date.now, required: false },
         expireSh: { type: Date, default: null, required: false },
-        moreData: { type: Object, default: {}, require: false }, //DONT FILL
-        healthPic: { type: String, default: "", require: false },
+        moreData: { type: Object, default: {}, required: false }, //DONT FILL
+        healthPic: { type: String, default: "", required: false },
         confirmHealthPic: { type: Number, default: 0, required: false },
-        technicalDiagPic: { type: String, default: "", require: false },
+        technicalDiagPic: { type: String, default: "", required: false },
         confirmTechincalPic: { type: Number, default: 0, required: false },
-        clearancesPic: { type: String, default: "", require: false },
+        clearancesPic: { type: String, default: "", required: false },
         confirmClearPic: { type: Number, default: 0, required: false },
         dLicencePic: { type: String, default: "" },
         confirmDriverLcPic: { type: Number, default: 0, required: false },
@@ -54,7 +59,7 @@ const driverSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const Driver = mongoose.model("Driver", driverSchema);
 

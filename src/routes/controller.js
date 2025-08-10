@@ -5,6 +5,7 @@ const Student = require("./../models/student");
 const School = require("./../models/school");
 const Day = require("../models/days");
 const { DDS, DSC,DIC,DOS } = require("./../models/dds");
+const { SayadCheque } = require("./../models/cheque");
 const {
     Pack,
     Exception,
@@ -68,6 +69,7 @@ const { redisClient } = require("../../startup/redis");
 
 module.exports = class {
     constructor() {
+        this.SayadCheque = SayadCheque;
         this.Opinion = Opinion;
         this.redisClient = redisClient;
         this.Invoice = Invoice;

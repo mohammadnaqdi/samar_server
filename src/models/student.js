@@ -81,6 +81,7 @@ const studentSchema = new mongoose.Schema(
         check: { type: Number, required: false, default: 0 },
         pack: { type: Number, required: false, default: -1 },
         packed: { type: Boolean, default: false },
+        isIn: { type: Boolean, default: false },
         exception: { type: Boolean, default: false },
         neighbourhood: { type: String, required: false, default: "" },
         avanak: { type: Boolean, default: false },

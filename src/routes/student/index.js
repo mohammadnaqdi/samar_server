@@ -28,6 +28,11 @@ router.get(
     isEnyAdmin,
     controller.studentListAddress.bind(controller),
 );
+router.get(
+    "/StudentListPack",
+    isEnyAdmin,
+    controller.studentListPack.bind(controller),
+);
 
 router.get(
     "/GetstudentByCode",

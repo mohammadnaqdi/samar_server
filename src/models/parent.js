@@ -11,11 +11,15 @@ const parentSchema = new mongoose.Schema(
         inActvieReason: { type: String, default: "", required: false },
         fcm: { type: [], default: [], required: false },
         isParent: { type: Boolean, required: false, default: true },
+        nationalCode: { type: String, default: "" },
+        shahabId: { type: String, default: "" },
+        identityNo: { type: String, default: "" },
+        birthDate: { type: Date, default: "", required: false },
     },
     {
         timestamps: true,
-    },
+    }
 );
 const Parent = mongoose.model("Parent", parentSchema);
 
-module.exports = { Parent};
+module.exports = { Parent };

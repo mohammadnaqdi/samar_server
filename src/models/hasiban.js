@@ -96,7 +96,7 @@ const docListSanadSchema = new mongoose.Schema(
     }
 );
 docListSanadSchema.index(
-    { accCode: 1, mId: 1, type: 1, forCode: 1 },
+    { accCode: 1, mId: 1, type: 1, forCode: 1, agencyId: 1 },
     { unique: true }
 );
 const DocListSanad = mongoose.model("DocListSanad", docListSanadSchema);

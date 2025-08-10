@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
-const {CounterKey} =  require('./keys');
+const { CounterKey } = require("./keys");
 async function getNextSequence(name) {
-  const result = await CounterKey.findOneAndUpdate(
-    { name },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return result.seq;
+    const result = await CounterKey.findOneAndUpdate(
+        { name },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+    );
+    return result.seq;
 }
 const userSchema = new mongoose.Schema(
     {
@@ -30,23 +30,27 @@ const userSchema = new mongoose.Schema(
         jwtSalt: { type: String, default: "", required: false },
         fcm: { type: [], default: [], required: false },
         ban: { type: [], default: [], required: false },
-        fin_token: { type: String, default: "" },
-        fin_refresh_token: { type: String, default: "" },
-        fin_token_expiry: { type: Date, default: null }
+        cheque: {
+            fin_token: { type: String, default: "" },
+            fin_refresh_token: { type: String, default: "" },
+            fin_token_expiry: { type: Date, default: null },
+            shahabId: { type: String, default: "" },
+        },
+        birthDate: { type: Date, default: "", required: false },
+        identityNo: { type: String, default: "" },
     },
     {
         timestamps: true,
-    },
+    }
 );
 userSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    const cc = await getNextSequence('user');
-      this.code =pad(6,cc.toString(),'0');
-  }
-  next();
+    if (this.isNew) {
+        const cc = await getNextSequence("user");
+        this.code = pad(6, cc.toString(), "0");
+    }
+    next();
 });
 const User = mongoose.model("User", userSchema);
-
 
 const userHaSchema = new mongoose.Schema(
     {
@@ -71,7 +75,7 @@ const userHaSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 
 const UserHa = mongoose.model("UserHa", userHaSchema);
@@ -91,11 +95,10 @@ const roleSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 
 const Role = mongoose.model("Role", roleSchema);
-
 
 module.exports = { User, UserHa, Role };
 

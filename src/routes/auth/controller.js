@@ -39,23 +39,23 @@ async function sendSmsAndSave(phone, otp, isFiveDigit, isParent = false) {
             OptionalCode: OptionalCode,
         });
 
-        // let config = {
-        //     method: "post",
-        //     url: "https://portal.amootsms.com/rest/SendQuickOTP",
-        //     headers: {
-        //         Authorization: Token,
-        //         "Content-Type": "application/x-www-form-urlencoded",
-        //     },
-        //     data: data,
-        // };
+        let config = {
+            method: "post",
+            url: "https://portal.amootsms.com/rest/SendQuickOTP",
+            headers: {
+                Authorization: Token,
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data: data,
+        };
         // await axios.request(config);
-        // axios(config)
-        //     .then(function (response) {
-        //         // console.log("response", JSON.stringify(response.data));
-        //     })
-        //     .catch(function (error) {
-        //         console.log("error axios service sendSmsAndSAve", error);
-        //     });
+        axios(config)
+            .then(function (response) {
+                // console.log("response", JSON.stringify(response.data));
+            })
+            .catch(function (error) {
+                console.log("error axios service sendSmsAndSAve", error);
+            });
 
         //   let UserName = '09151156929';
         // let Password = 'nazanin110';

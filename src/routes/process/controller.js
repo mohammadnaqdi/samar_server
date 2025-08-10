@@ -2011,7 +2011,7 @@ module.exports = new (class extends controller {
             }).lean();
             let dds = 0;
             let sc = 0;
-            const status = "Edited";
+            let status = "Edited";
             const desc = "بازنویسی شده";
 
             const snum = [];
@@ -2186,7 +2186,7 @@ module.exports = new (class extends controller {
 
             let dds = 0;
             let sc = 0;
-            const status = "Edited";
+            let status = "Edited";
             const desc = "بازنویسی شده در تغییر سرویس";
 
             const snum = [];

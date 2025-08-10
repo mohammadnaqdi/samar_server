@@ -587,7 +587,6 @@ module.exports = new (class extends controller {
                     physicalConditionDesc,
                     physicalCondition,
                     serviceDistance,
-                    time,
                     nationalCode,
                     setter: req.user._id,
                     setterISParent: req.user.isParent || false,
@@ -637,7 +636,6 @@ module.exports = new (class extends controller {
                         parentReleation,
                         isIranian,
                         serviceDistance,
-                        time,
                         nationalCode,
                     },
                     { returnOriginal: false }
@@ -1269,7 +1267,7 @@ module.exports = new (class extends controller {
                 qr.push({ gradeId: gradeId });
             }
             if (gender != 0) {
-               qr.push({ gender });
+                qr.push({ gender });
             }
             console.log(JSON.stringify(qr));
             let sortBy = { studentCode: -1 };
@@ -2289,6 +2287,119 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async studentListPack(req, res) {
+        try {
+            if (req.query.groupId === undefined) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: " groupId need",
+                });
+            }
+            // const agencyId = req.query.agencyId;
+            const groupId = parseInt(req.query.groupId);
+            // const myAgency = await this.Agency.findById(
+            //     agencyId,
+            //     "delete active"
+            // );
+
+            // if (!myAgency || myAgency.delete || !myAgency.active) {
+            //     return this.response({
+            //         res,
+            //         code: 404,
+            //         message: "not active agency",
+            //         data: { fa_m: "شرکت غیرفعال است یا حذف شده" },
+            //     });
+            // }
+            let onlyPack = [];
+            const schls = await this.Pack.find({
+                groupId,
+            }).lean();
+            schls.forEach((scId) => {
+                onlyPack.push(scId.code);
+            });
+            var qr = {
+                delete: false,
+                packed: true,
+                pack: { $in: onlyPack }, //dodo state: 3
+            };
+            if (req.query.schoolId && req.query.schoolId.trim() !== "") {
+                qr.school = ObjectId.createFromHexString(req.query.schoolId);
+                qr.pack = -1;
+                qr.packed=false;
+            }
+            // var qr = [];
+            console.log("qr", qr);
+
+            // qr.push({ school: { $in: onlySchool } });
+            // qr.push({ delete: false });
+            // qr.push({ groupId });
+            // qr.push({  });
+            // const students=await this.Student.find({
+            //     delete: false ,
+            //     packed:true,
+            //     pack:groupId,
+            //     //dodo state: 3
+            // },'name lastName studentCode school address time pack neighbourhood location.coordinates')
+
+            let students = await this.Student.aggregate([
+                {
+                    $match: qr,
+                },
+                {
+                    $project: {
+                        name: 1,
+                        lastName: 1,
+                        studentCode: 1,
+                        school: 1,
+                        time: 1,
+                        address: 1,
+                        pack: 1,
+                        neighbourhood: 1,
+                        "location.coordinates": 1,
+                    },
+                },
+                {
+                    $group: {
+                        _id: "$pack",
+                        students: {
+                            $push: {
+                                name: "$name",
+                                lastName: "$lastName",
+                                studentCode: "$studentCode",
+                                school: "$school",
+                                time: "$time",
+                                address: "$address",
+                                neighbourhood: "$neighbourhood",
+                                coordinates: "$location.coordinates",
+                            },
+                        },
+                    },
+                },
+            ]);
+
+            // let myStudent = [];
+            // for (var i = 0; i < students.length; i++) {
+                
+            //     const pack = await this.GroupPack.findOne(
+            //         {
+            //             code: students[i]._id,
+            //         },
+            //         "schools"
+            //     ).lean();
+            //     if (pack) students[i].schools = pack.schools;
+            // }
+
+            return this.response({
+                res,
+                message: "ok",
+                data: students,
+            });
+        } catch (error) {
+            console.error("Error while studentListPack:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async getstudentByCode(req, res) {
         try {
@@ -2597,18 +2708,20 @@ module.exports = new (class extends controller {
                     actionNameFa: "حذف کامل دانش آموز",
                     desc: `دانش آموز ${student.name} ${student.school} از مدرسه با آی دی ${student.lastName}`,
                 }).save({ session });
-            }else if(req.user._id.toString()!=student.parent.toString()){
+            } else if (req.user._id.toString() != student.parent.toString()) {
                 await session.abortTransaction();
-                    return this.response({
-                        res,code: 203,
-                        message: "couldn't delete this student parnet not match",
-                    });
-            }else if(student.state!=0){
+                return this.response({
+                    res,
+                    code: 203,
+                    message: "couldn't delete this student parnet not match",
+                });
+            } else if (student.state != 0) {
                 await session.abortTransaction();
-                    return this.response({
-                        res,code: 203,
-                        message: "couldn't delete this student state not match",
-                    });
+                return this.response({
+                    res,
+                    code: 203,
+                    message: "couldn't delete this student state not match",
+                });
             }
 
             await Promise.all([
@@ -2872,7 +2985,7 @@ module.exports = new (class extends controller {
                 {
                     $and: qr,
                 },
-                "name lastName studentCode school time address pack neighbourhood"
+                "name lastName studentCode school time address pack neighbourhood location.coordinates"
             );
             let myStudent = [];
             for (var i = 0; i < students.length; i++) {

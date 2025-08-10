@@ -28,12 +28,23 @@ module.exports = new (class {
                 .withMessage("agencyId cant be empty"),
         ];
     }
-    changePackValidator() {
+    setAutoPackValidator() {
         return [
-            check("studentId")
+            check("schoolIds")
                 .not()
                 .isEmpty()
-                .withMessage("studentId cant be empty"),
+                .withMessage("schoolIds cant be empty"),
+            check("grades").not().isEmpty().withMessage("grades cant be empty"),
+            check("time").not().isEmpty().withMessage("time cant be empty"),
+            check("capacity")
+                .not()
+                .isEmpty()
+                .withMessage("capacity cant be empty"),
+        ];
+    }
+    changePackValidator() {
+        return [
+            check("studentId").isString().withMessage("studentId is String"),
             check("groupId")
                 .not()
                 .isEmpty()
@@ -43,6 +54,10 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("agencyId cant be empty"),
+            check("packCode")
+                .not()
+                .isEmpty()
+                .withMessage("packCode cant be empty"),
         ];
     }
 })();
