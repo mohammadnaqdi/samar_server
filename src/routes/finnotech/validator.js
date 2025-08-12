@@ -45,6 +45,7 @@ module.exports = new (class {
                 .isEmpty()
                 .withMessage("nationalCode cant be empty"),
             check("phone").not().isEmpty().withMessage("phone cant be empty"),
+            check("code").not().isEmpty().withMessage("code cant be empty"),
             check("birthDate")
                 .not()
                 .isEmpty()

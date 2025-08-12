@@ -97,7 +97,11 @@ module.exports = new (class extends controller {
       let user = await this.User.findById(sanad.editor, "name lastName");
       if (!user) {
         const userHa = await this.UserHa.findById(sanad.editor, "name");
-        user = { name: userHa.name, lastName: "" };
+        if (userHa) {
+          user = { name: userHa.name, lastName: "" };
+        } else {
+          user = { name: "کاربر آنلاین", lastName: "" };
+        }
       }
 
       const sanadList = await this.DocListSanad.find(

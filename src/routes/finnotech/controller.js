@@ -1,19 +1,14 @@
 const controller = require("../controller");
 const mongoose = require("mongoose");
-const ObjectId = mongoose.Types.ObjectId;
-const config = require("config");
-const Zarin = require("zarinpal-checkout");
-var fs = require("fs");
 const https = require("https");
 const persianDate = require("persian-date");
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
-const { parse } = require("path");
 const amoot_t = process.env.AMOOT_SMS;
 const amootUser = process.env.AMOOT_USER;
 const amootPass = process.env.AMOOT_PASS;
 const SMS_SCOPES =
-    "credit:sms-sayady-cheque-inquiry:get,credit:sms-sayad-accept-cheque:post,credit:sms-sayad-accept-cheque:post";
+    "credit:sms-sayady-cheque-inquiry:get,credit:sms-sayad-accept-cheque:post,credit:sms-sayad-accept-cheque:post,credit:sms-sayad-cancel-cheque:post";
 const CLIENT_SCOPES =
     "credit:sayad-transfers-chain-inquiry:post,card:information:get,oak:shahab-inquiry:get,credit:cheque-color-inquiry:get";
 const NID = "0934454299";
@@ -133,7 +128,7 @@ async function verifySMS(code, mobile, nid, trackId) {
             reqVerify.end();
         });
 
-        console.log("Verify SMS raw:", verifyResponse.data);
+        // console.log("Verify SMS raw:", verifyResponse.data);
 
         let verifyParsed;
         try {
@@ -186,7 +181,7 @@ async function verifySMS(code, mobile, nid, trackId) {
             reqToken.end();
         });
 
-        console.log("Token raw response:", tokenResponse.data);
+        // console.log("Token raw response:", tokenResponse.data);
 
         let tokenParsed;
         try {
@@ -250,7 +245,7 @@ async function verifyRefreshToken(refresh) {
             reqVerify.end();
         });
 
-        console.log("Verify SMS raw:", verifyResponse.data);
+        // console.log("Verify SMS raw:", verifyResponse.data);
 
         let verifyParsed;
         try {
@@ -314,6 +309,78 @@ async function getToken() {
 }
 
 module.exports = new (class extends controller {
+    async getFullChequeInfo(req, res) {
+        try {
+            const { sayadId } = req.query;
+
+            const sayadCheque = await this.SayadCheque.findById(sayadId)
+                .populate({
+                    path: "studentId",
+                    select: "name lastName studentCode",
+                })
+                .lean();
+            if (!sayadCheque) {
+                return res.status(204).json({ message: "Cheque not found" });
+            }
+
+            const payQ = await this.PayQueue.findOne({
+                code: sayadCheque.payQueueCode,
+                studentId: sayadCheque.studentId.studentId,
+            }).lean();
+            if (!payQ) {
+                return res.status(204).json({ message: "PayQueue not found" });
+            }
+
+            sayadCheque.payQueueTitle = payQ.title;
+            sayadCheque.maxDate = payQ.maxDate;
+            sayadCheque.counter = payQ.counter;
+
+            return res.json({ cheque: sayadCheque });
+        } catch (error) {
+            console.error("Error while getFullChequeInfo:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async getUnassignedCheques(req, res) {
+        try {
+            const { agencyId } = req.query;
+
+            if (!agencyId || agencyId == "") {
+                return res.status(204).json({ message: "Invalid agencyId!" });
+            }
+
+            const agency = await this.Agency.findById(agencyId).lean();
+            if (!agency) {
+                return res.status(204).json({ message: "Agency not found!" });
+            }
+
+            const sayadCheques = await this.SayadCheque.find({
+                agencyId,
+                isConfirmed: false,
+            })
+                .populate({
+                    path: "studentId",
+                    select: "name lastName",
+                })
+                .lean();
+
+            const data = sayadCheques.map((cheque) => ({
+                sayadId: cheque._id,
+                studentName: cheque.studentId
+                    ? `${cheque.studentId.name} ${cheque.studentId.lastName}`
+                    : null,
+                amount: cheque.amount,
+                dueDate: cheque.payQueueDate,
+            }));
+
+            return res.json(data);
+        } catch (error) {
+            console.error("Error while getUnassignedCheques:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
     async chequeInfo(req, res) {
         try {
             const { agencyId } = req.query;
@@ -359,7 +426,6 @@ module.exports = new (class extends controller {
             info.parentBirthDate = findParent.birthDate;
             info.parentIdentityNo = findParent.identityNo;
             info.parentShahab = findParent.shahabId;
-            console.log("info", info);
 
             return res.json(info);
         } catch (error) {
@@ -421,6 +487,7 @@ module.exports = new (class extends controller {
                 birthDate,
                 identityNo,
                 acceptCheque,
+                code,
             } = req.body;
 
             if (
@@ -472,6 +539,16 @@ module.exports = new (class extends controller {
             agency.adminCheque = id;
             agency.acceptCheque = acceptCheque;
             await agency.save();
+            const title = "chequeHesab";
+            await this.AgencySet.findOneAndUpdate(
+                { agencyId: agency._id },
+                { $pull: { defHeadLine: { title } } }
+            );
+
+            await this.AgencySet.findOneAndUpdate(
+                { agencyId: agency._id },
+                { $push: { defHeadLine: { title, code } } }
+            );
 
             return res.json({ message: status });
         } catch (error) {
@@ -530,6 +607,25 @@ module.exports = new (class extends controller {
             } else {
                 response.finToken = false;
             }
+            let agencySet = await this.AgencySet.findOne(
+                { agencyId },
+                "defHeadLine"
+            );
+            let chequeHesab = "";
+            if (
+                agencySet &&
+                agencySet.defHeadLine &&
+                agencySet.defHeadLine.length > 0
+            ) {
+                for (const item of agencySet.defHeadLine) {
+                    if (item.title === "chequeHesab") {
+                        chequeHesab = item.code;
+
+                        break;
+                    }
+                }
+            }
+            response.chequeHesab = chequeHesab;
 
             return res.json(response);
         } catch (error) {
@@ -705,20 +801,12 @@ module.exports = new (class extends controller {
     }
 
     async sayadChequeInquiry(req, res) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
         try {
             const { sayadId, agencyId, phone, payId, studentId } = req.body;
-            if (
-                !sayadId ||
-                sayadId == "" ||
-                !agencyId ||
-                agencyId == "" ||
-                !phone ||
-                phone == "" ||
-                !payId ||
-                payId == "" ||
-                !studentId ||
-                studentId == ""
-            ) {
+            if (!sayadId || !agencyId || !phone || !payId || !studentId) {
+                await session.abortTransaction();
                 return this.response({
                     res,
                     code: 204,
@@ -728,80 +816,80 @@ module.exports = new (class extends controller {
 
             let idType = 1;
 
-            let token = "";
-            const now = new Date();
-
-            const parent = await this.Parent.findOne({ phone }).lean();
+            const parent = await this.Parent.findOne({ phone })
+                .session(session)
+                .lean();
             if (!parent) {
+                await session.abortTransaction();
                 return res.status(404).json({ message: "parent not found" });
             }
-
-            if (parent.shahabId == "" || !parent.shahabId) {
+            if (!parent.shahabId) {
+                await session.abortTransaction();
                 return res
                     .status(407)
                     .json({ message: "Parent doesn't have shahab code" });
             }
 
-            const student = await this.Student.findById(studentId).lean();
+            const student = await this.Student.findById(studentId)
+                .session(session)
+                .lean();
             if (!student) {
+                await session.abortTransaction();
                 return res.status(404).json({ message: "student not found" });
             }
 
             const payQueue = await this.PayQueue.findOne({
                 code: payId,
-            }).lean();
+                studentId: student._id,
+            }).session(session);
             if (!payQueue) {
+                await session.abortTransaction();
                 return res.status(404).json({ message: "payQueue not found" });
             }
 
-            const agency = await this.Agency.findById(agencyId).lean();
-            const user = await this.User.findById(agency.adminCheque);
-            const expiry = new Date(user.cheque.fin_token_expiry);
+            const agency = await this.Agency.findById(agencyId)
+                .session(session)
+                .lean();
+            const user = await this.User.findById(agency.adminCheque).session(
+                session
+            );
 
-            if (!expiry) {
-                return res.status(400).json({ message: "Access denied." });
+            const token = await this.checkSMSToken(agency.adminCheque);
+            if (!token.success) {
+                return res
+                    .status(400)
+                    .json({ message: "Failed to refresh sms token" });
             }
 
-            if (expiry > now) {
-                token = user.cheque.fin_token;
-                console.log("Using exiting token...");
-            } else {
-                console.log("Regenerating refresh token...");
-                const generated_token = await verifyRefreshToken(
-                    user.cheque.fin_refresh_token
-                );
-                console.log(generated_token);
-                if (!generated_token.token || !generated_token.refresh_token) {
-                    console.log("Faild to generate sms token!");
-                    return res
-                        .status(500)
-                        .json({ message: "Failed to confirm token!" });
+            let agencySet = await this.AgencySet.findOne(
+                { agencyId },
+                "defHeadLine"
+            ).session(session);
+            let chequeHesab = "";
+            if (agencySet?.defHeadLine?.length > 0) {
+                for (const item of agencySet.defHeadLine) {
+                    if (item.title === "chequeHesab") {
+                        chequeHesab = item.code;
+                        break;
+                    }
                 }
-
-                const timeAdded = addTokenTime();
-
-                user.cheque.fin_token = generated_token.token;
-                user.cheque.fin_refresh_token = generated_token.refresh_token;
-                user.cheque.fin_token_expiry = timeAdded;
-                await user.save();
-                req.user = user;
-
-                token = generated_token.token;
+            }
+            if (!chequeHesab) {
+                await session.abortTransaction();
+                return res
+                    .status(404)
+                    .json({ message: "chequeHesab not found" });
             }
 
+            // Call FinnoTech API
             const url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/users/${user.nationalCode}/sms/sayadChequeInquiry?sayadId=${sayadId}&idType=${idType}`;
-
             const parsedUrl = new URL(url);
-
             const options = {
                 hostname: parsedUrl.hostname,
                 path: parsedUrl.pathname + parsedUrl.search,
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token.token}` },
             };
-
             const apiResponse = await new Promise((resolve, reject) => {
                 const reqApi = https.request(options, (resApi) => {
                     let data = "";
@@ -810,36 +898,17 @@ module.exports = new (class extends controller {
                         resolve({ status: resApi.statusCode, data })
                     );
                 });
-
-                reqApi.on("error", (err) => reject(err));
+                reqApi.on("error", reject);
                 reqApi.end();
             });
 
-            console.log("Raw response:", apiResponse.data);
-
             let parsed = JSON.parse(apiResponse.data);
-            console.log(parsed);
-
             if (parsed.status === "DONE") {
-                // if (parsed.amount !== payQueue.amount) {
-                //     return res.status(402).json({ message: "invalid amount!" });
-                // }
-
-                // persianDate.toLocale("en");
-                // const toPersian = new persianDate(payQueue.payDate).format(
-                //     "YYYYMMDD"
-                // );
-
-                // if (toPersian !== parsed.amount) {
-                //     return res
-                //         .status(406)
-                //         .json({ message: "invalid payDate!" });
-                // }
-
                 parsed = parsed.result;
 
                 const newSayadCheque = new this.SayadCheque({
-                    agencyId: agencyId,
+                    agencyId,
+                    trackId: apiResponse.data.trackId,
                     sayadId: parsed.sayadId,
                     studentId,
                     adminCheque: user._id,
@@ -852,6 +921,8 @@ module.exports = new (class extends controller {
                     parentNid: parent.nationalCode,
                     branchCode: parsed.branchCode,
                     bankCode: parsed.bankCode,
+                    payQueueCode: payQueue.code,
+                    payQueueDate: payQueue.payDate,
                     amount: parsed.amount,
                     dueDate: parsed.dueDate,
                     description: parsed.description,
@@ -877,29 +948,122 @@ module.exports = new (class extends controller {
                     signer: {
                         nid: parent.nationalCode,
                         name: parsed.signers?.[0]?.name || "",
-                        legalStamp: parsed.signers[0].legalStamp || 0,
+                        legalStamp: parsed.signers?.[0]?.legalStamp || 0,
                     },
                 });
+                await newSayadCheque.save({ session });
 
-                await newSayadCheque.save();
+                persianDate.toLocale("en");
+                const SalMali = new persianDate().format("YY");
+                const checkMax = await this.CheckInfo.find(
+                    { agencyId },
+                    "infoId"
+                )
+                    .sort({ infoId: -1 })
+                    .limit(1)
+                    .session(session);
+                let numCheck = checkMax.length > 0 ? checkMax[0].infoId + 1 : 1;
+                const infoNum = `${SalMali}-${numCheck}`;
+                const checkInfo = new this.CheckInfo({
+                    agencyId,
+                    editor: req.user._id,
+                    infoId: numCheck,
+                    infoNum,
+                    seCode: parsed.serialNo,
+                    branchCode: parsed.branchCode,
+                    branchName: "",
+                    bankName: "سایر بانک‌ها",
+                    serial: parsed.sayadId,
+                    type: 5,
+                    rowCount: 2,
+                    infoDate: payQueue.payDate,
+                    infoMoney: parsed.amount,
+                    accCode: chequeHesab,
+                    ownerHesab: "003005" + student.studentCode,
+                    desc: "چک صیادی اقساط",
+                });
+                await checkInfo.save({ session });
+
+                const doc = new this.DocSanad({
+                    agencyId,
+                    note: payQueue.title,
+                    sanadDate: payQueue.payDate,
+                    system: 2,
+                    definite: false,
+                    lock: true,
+                    editor: req.user._id,
+                });
+                await doc.save({ session });
+
+                persianDate.toLocale("en");
+                const today = new persianDate().format("YYYY/MM/DD");
+                const studentName = student.name + " " + student.lastName;
+                const descF = `دریافت چک بابت ${payQueue.title} به نام ${studentName} به شماره صیادی ${parsed.sayadId}`;
+                await new this.DocListSanad({
+                    agencyId,
+                    titleId: doc.id,
+                    doclistId: doc.sanadId,
+                    row: 1,
+                    bes: 0,
+                    bed: parsed.amount,
+                    note: descF,
+                    accCode: chequeHesab,
+                    peigiri: infoNum,
+                    sanadDate: payQueue.payDate,
+                    mId: doc.sanadId,
+                }).save({ session });
+                await new this.DocListSanad({
+                    agencyId,
+                    titleId: doc.id,
+                    doclistId: doc.sanadId,
+                    row: 2,
+                    bed: 0,
+                    bes: parsed.amount,
+                    note: `دریافت چک صیادی در تاریخ ${today}`,
+                    accCode: "003005" + student.studentCode,
+                    peigiri: infoNum,
+                    mId: payId,
+                    type: "invoice",
+                    days: 0,
+                    sanadDate: payQueue.payDate,
+                }).save({ session });
+
+                const checkHistory = new this.CheckHistory({
+                    agencyId,
+                    infoId: checkInfo._id,
+                    editor: req.user._id,
+                    row: 1,
+                    toAccCode: chequeHesab,
+                    fromAccCode: "003005" + student.studentCode,
+                    money: parsed.amount,
+                    status: 5,
+                    desc: `دریافت چک صیادی در تاریخ ${today}`,
+                    sanadNum: doc.sanadId,
+                });
+                await checkHistory.save({ session });
+
+                payQueue.isPaid = true;
+                await payQueue.save({ session });
+
+                await session.commitTransaction();
                 return res.json({ message: "Done", data: parsed });
             } else if (parsed.responseCode === "FN-CTFH-40000240150") {
-                return res.status(400).json({
-                    message: "Failed",
-                    data: "شناسه چک صیادی نامعتبر است",
-                });
+                await session.abortTransaction();
+                return res
+                    .status(400)
+                    .json({ message: "شناسه چک صیادی نامعتبر است" });
             } else {
-                console.error("Error while sayadChequeInquiry:", parsed);
+                await session.abortTransaction();
                 return res
                     .status(500)
                     .json({ message: "Failed", details: parsed });
             }
         } catch (error) {
-            console.error(
-                "Error while sayadChequeInquiry:",
-                error.message || error
-            );
+            await session.abortTransaction();
+            console.error("Error while sayadChequeInquiry:", error);
             return res.status(500).json({ error: "Internal Server Error." });
+        } finally {
+            session.endSession();
         }
     }
 
@@ -935,63 +1099,103 @@ module.exports = new (class extends controller {
         }
     }
 
-    async sayadAcceptCheque(req, res) {
+    async sayadCancelCheque(req, res) {
         try {
-            const { chequeId, parentId } = req.query;
-            if (!chequeId || chequeId == "" || !parentId || parentId == "") {
+            const { sayadId } = req.query;
+            if (!sayadId || sayadId == "") {
                 return res.status(500).json({
-                    message: "Invalid chequeId.",
+                    message: "Invalid sayadId.",
                 });
             }
 
-            const sayadCheque = await this.SayadCheque.findById(chequeId);
+            const sayadCheque = await this.SayadCheque.findById(sayadId);
             if (!sayadCheque) {
                 return res.status(500).json({
                     message: "Invalid sayadCheque.",
                 });
             }
 
-            const parent = await this.Parent.findById(parentId);
-            if (!parent) {
+            let parentIdType = "1";
+
+            const token = await this.checkSMSToken(req.user._id);
+            if (!token.success) {
+                return res
+                    .status(400)
+                    .json({ message: "Failed to refresh sms token" });
+            }
+
+            const body = {
+                sayadId: sayadCheque.sayadId,
+                cancelDescription: "رد",
+                canceller: {
+                    idCode: sayadCheque.holder.nid,
+                    shahabId: sayadCheque.adminShahab,
+                    idType: sayadCheque.holder.idType,
+                },
+                cancellerAgent: {
+                    idCode: sayadCheque.signer.nid,
+                    shahabId: sayadCheque.parentShahab,
+                    idType: parentIdType,
+                },
+            };
+
+            let url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/users/${sayadCheque.holder.nid}/sms/sayadCancelCheque`;
+
+            const response = await axios.post(url, body, {
+                headers: {
+                    Authorization: "Bearer " + token.token,
+                },
+            });
+
+            if (response.data.status === "DONE") {
+                sayadCheque.isConfirmed = false;
+                sayadCheque.confirmationReferenceId =
+                    response.data.result.referenceId;
+                await sayadCheque.save();
+
+                return res.json({
+                    message: "Cancelled.",
+                    refrence: response.data.result.referenceId,
+                });
+            } else {
+                return res.json({
+                    message: "Failed",
+                    refrence: null,
+                });
+            }
+        } catch (error) {
+            console.error(
+                "Error while sayadCancelCheque:",
+                error.message || error
+            );
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async sayadAcceptCheque(req, res) {
+        try {
+            const { sayadId } = req.query;
+            if (!sayadId || sayadId == "") {
                 return res.status(500).json({
-                    message: "Invalid parentId.",
+                    message: "Invalid sayadId.",
                 });
             }
 
-            let token = "";
-            const now = new Date();
-            const user = await this.User.findById(req.user._id);
-            const expiry = new Date(user.cheque.fin_token_expiry);
-
-            if (!expiry) {
-                return res.status(400).json({ message: "Access denied." });
+            const sayadCheque = await this.SayadCheque.findById(sayadId);
+            if (!sayadCheque) {
+                return res.status(500).json({
+                    message: "Invalid sayadCheque.",
+                });
             }
 
-            if (expiry > now) {
-                token = user.cheque.fin_token;
-            } else {
-                console.log("Regenerating refresh token...");
-                const generated_token = await verifyRefreshToken(
-                    user.cheque.fin_refresh_token
-                );
-                console.log(generated_token);
-                if (!generated_token.token || !generated_token.refresh_token) {
-                    console.log("Faild to generate sms token!");
-                    return res
-                        .status(500)
-                        .json({ message: "Failed to confirm token!" });
-                }
-
-                const timeAdded = addTokenTime();
-
-                user.cheque.fin_token = generated_token.token;
-                user.cheque.fin_refresh_token = generated_token.refresh_token;
-                user.cheque.fin_token_expiry = timeAdded;
-                await user.save();
-                req.user = user;
-
-                token = generated_token.token;
+            const token = await this.checkSMSToken(req.user._id);
+            if (!token.success) {
+                return res
+                    .status(400)
+                    .json({ message: "Failed to refresh sms token" });
             }
+
+            let parentIdType = "1";
 
             const body = {
                 sayadId: sayadCheque.sayadId,
@@ -999,13 +1203,13 @@ module.exports = new (class extends controller {
                 acceptDescription: "تایید",
                 acceptor: {
                     idCode: sayadCheque.holder.nid,
-                    shahabId: user.cheque.shahabId,
+                    shahabId: sayadCheque.adminShahab,
                     idType: sayadCheque.holder.idType,
                 },
                 acceptorAgent: {
                     idCode: sayadCheque.signer.nid,
-                    shahabId: parent.cheque.shahabId,
-                    idType: "1",
+                    shahabId: sayadCheque.parentShahab,
+                    idType: parentIdType,
                 },
             };
 
@@ -1013,7 +1217,7 @@ module.exports = new (class extends controller {
 
             const response = await axios.post(url, body, {
                 headers: {
-                    Authorization: "Bearer " + token,
+                    Authorization: "Bearer " + token.token,
                 },
             });
 
@@ -1184,6 +1388,46 @@ module.exports = new (class extends controller {
                 error.response.data || error
             );
             return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async checkSMSToken(userId) {
+        try {
+            let token = "";
+            const now = new Date();
+            const user = await this.User.findById(userId);
+            const expiry = new Date(user.cheque.fin_token_expiry);
+
+            if (!expiry) {
+                return { success: false, token: null };
+            }
+
+            if (expiry > now) {
+                token = user.cheque.fin_token;
+            } else {
+                console.log("Regenerating refresh token...");
+                const generated_token = await verifyRefreshToken(
+                    user.cheque.fin_refresh_token
+                );
+                if (!generated_token.token || !generated_token.refresh_token) {
+                    console.log("Faild to generate sms token!");
+                    return { success: false, token: null };
+                }
+
+                const timeAdded = addTokenTime();
+
+                user.cheque.fin_token = generated_token.token;
+                user.cheque.fin_refresh_token = generated_token.refresh_token;
+                user.cheque.fin_token_expiry = timeAdded;
+                await user.save();
+
+                token = generated_token.token;
+            }
+
+            return { success: true, token };
+        } catch (error) {
+            console.error("Error while checking sms token:", error);
+            return { success: false, token: null };
         }
     }
 })();

@@ -62,24 +62,28 @@ router.post(
 
 router.get(
     "/getCardInformation",
+    isAgencyAdmin,
     controller.validate.bind(controller),
     controller.getCardInformation.bind(controller)
 );
 
 router.get(
     "/sayadAcceptCheque",
+    isAgencyAdmin,
     controller.validate.bind(controller),
     controller.sayadAcceptCheque.bind(controller)
 );
 
 router.get(
     "/chequeColorInquiry",
+    isAgencyAdmin,
     controller.validate.bind(controller),
     controller.chequeColorInquiry.bind(controller)
 );
 
 router.get(
     "/confirmShahabCode",
+    isAgencyAdmin,
     controller.validate.bind(controller),
     controller.confirmShahabCode.bind(controller)
 );
@@ -102,6 +106,30 @@ router.get(
     isLoggined,
     controller.validate.bind(controller),
     controller.getParentShahab.bind(controller)
+);
+
+router.get(
+    "/getUnassignedCheques",
+    isLoggined,
+    isAgencyAdmin,
+    controller.validate.bind(controller),
+    controller.getUnassignedCheques.bind(controller)
+);
+
+router.get(
+    "/getFullChequeInfo",
+    isLoggined,
+    isAgencyAdmin,
+    controller.validate.bind(controller),
+    controller.getFullChequeInfo.bind(controller)
+);
+
+router.get(
+    "/sayadCancelCheque",
+    isLoggined,
+    isAgencyAdmin,
+    controller.validate.bind(controller),
+    controller.sayadCancelCheque.bind(controller)
 );
 
 module.exports = router;
