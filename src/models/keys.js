@@ -62,6 +62,13 @@ const citySchema = new mongoose.Schema({
   active: { type: Boolean, default: true, required: false },
   isCenter: { type: Boolean, default: true, required: false },
   delete: { type: Boolean, default: false, required: false },
+  location: {
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: {
+        type: [Number],
+        index: "2dsphere",
+      },
+    },
 });
 citySchema.pre("save", async function (next) {
   if (this.isNew) {

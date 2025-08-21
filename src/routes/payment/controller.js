@@ -3,18 +3,89 @@ const axios = require("axios");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const Zarin = require("zarinpal-checkout");
+const soap = require("soap");
 
-const TERMINAL = 99018831;
+function getDate() {
+    const now = new Date();
 
-function generateRandom6Digit() {
-    return Math.floor(100000 + Math.random() * 900000);
+    const localDate = now
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, "")
+        .toString();
+    const localTime = now
+        .toTimeString()
+        .slice(0, 8)
+        .replace(/:/g, "")
+        .toString();
+
+    return { localDate, localTime };
 }
 
-function generateInvoice(min = 11111111, max = 99999999) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+async function generateMellatToken(
+    amount,
+    orderId,
+    payerId,
+    terminalID,
+    userName,
+    userPassword,
+    additionalData,
+    link = "mellatCallback",
+    CellNumber
+) {
+    try {
+        if (!amount || amount < 10000) {
+            amount = 10000;
+        }
+
+        const { localDate, localTime } = getDate();
+
+        const args = {
+            terminalId: parseInt(terminalID),
+            userName,
+            userPassword,
+            orderId: parseInt(orderId),
+            amount,
+            localDate,
+            localTime,
+            additionalData,
+            mobileNo: CellNumber,
+            callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
+            payerId: parseInt(payerId),
+        };
+
+        var options = {
+            overrideRootElement: {
+                namespace: "ns1",
+            },
+        };
+
+        return new Promise((resolve, reject) => {
+            soap.createClient(
+                "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl",
+                options,
+                (err, client) => {
+                    client.bpPayRequest(args, (err, result, body) => {
+                        if (err) {
+                            console.error(
+                                "Error while generating mallet bank token:",
+                                err
+                            );
+                            return null;
+                        }
+                        console.log("result in generate mellat", result);
+                        return resolve(result);
+                    });
+                }
+            );
+        });
+    } catch (error) {
+        console.error("Error while generating mellat bank token:", error);
+        return null;
+    }
 }
 
-async function generateToken(
+async function generateSepehrToken(
     amount,
     invoice,
     link = "verify2",
@@ -49,7 +120,7 @@ async function generateToken(
         console.log("response", response.data);
         return null;
     } catch (error) {
-        console.error("Error while generating bank token:", error);
+        console.error("Error while generating sepehr bank token:", error);
         return null;
     }
 }
@@ -67,7 +138,43 @@ module.exports = new (class extends controller {
             });
         }
         const agencyId = req.query.agencyId;
+        const bank = req.query.bank || "";
+        console.log("bank", bank);
+        const bankGate =
+            bank.trim() === ""
+                ? await this.BankGate.findOne({
+                      agencyId,
+                      active: true,
+                      type: { $ne: "CARD" },
+                  })
+                : await this.BankGate.findOne({
+                      agencyId,
+                      active: true,
+                      type: bank.trim(),
+                  });
+        console.log("bankGate", bankGate);
+        if (!bankGate) {
+            return this.response({
+                res,
+                code: 404,
+                message: "bankGate not find",
+            });
+        }
+        const studentId = req.query.studentId;
+        let desc = req.query.desc;
 
+        const student = await this.Student.findById(
+            studentId,
+            "studentCode name lastName serviceDistance"
+        ).lean();
+
+        if (!student) {
+            return this.response({
+                res,
+                code: 404,
+                message: "student not find",
+            });
+        }
         let invoice = await this.Invoice.findOne(
             {
                 agencyId: agencyId,
@@ -88,11 +195,29 @@ module.exports = new (class extends controller {
                 type: "prePayment",
                 active: true,
             },
-            "amount title desc"
+            "amount title desc distancePrice"
         ).lean();
         let amount2 = 0;
         if (invoice2) {
-            amount2 = invoice2.amount;
+            if (invoice2.distancePrice && invoice2.distancePrice.length > 0) {
+                const matchedPricing = invoice2.distancePrice.find(function (
+                    priceItem
+                ) {
+                    return (
+                        priceItem.maxDistance * 1000 >= student.serviceDistance
+                    );
+                });
+                if (matchedPricing) {
+                    amount2 = matchedPricing.amount;
+                } else {
+                    amount2 =
+                        invoice2.distancePrice[
+                            invoice2.distancePrice.length - 1
+                        ].amount;
+                }
+            } else {
+                amount2 = invoice2.amount;
+            }
             if (title === "") {
                 title = invoice2.title;
             }
@@ -104,18 +229,7 @@ module.exports = new (class extends controller {
                 message: "invoice not find",
             });
         }
-        const studentId = req.query.studentId;
-        let desc = req.query.desc;
 
-        const student = await this.Student.findById(studentId);
-
-        if (!student) {
-            return this.response({
-                res,
-                code: 404,
-                message: "student not find",
-            });
-        }
         if (student) {
             desc = title + " " + student.name + " " + student.lastName;
         }
@@ -130,37 +244,7 @@ module.exports = new (class extends controller {
                 message: "agency not find",
             });
         }
-        let agencySet = await this.AgencySet.findOne(
-            { agencyId },
-            "tId defHeadLine"
-        );
-        if (!agencySet || !agencySet.tId || agencySet.tId === "") {
-            return this.response({
-                res,
-                code: 400,
-                message: "agencySet not find",
-            });
-        }
-        let bankCode = "";
-        if (
-            agencySet &&
-            agencySet.defHeadLine &&
-            agencySet.defHeadLine.length > 0
-        ) {
-            for (const item of agencySet.defHeadLine) {
-                if (item.title === "payGatewayHesab") {
-                    bankCode = item.code;
-                    break;
-                }
-            }
-        }
-        if (bankCode === "") {
-            return this.response({
-                res,
-                code: 400,
-                message: "agencySet not find",
-            });
-        }
+
         if (amount + amount2 < 10000) {
             console.log("amount < 10000", amount);
             return this.response({
@@ -177,6 +261,7 @@ module.exports = new (class extends controller {
             let newTr = new this.Transactions({
                 userId: req.user._id,
                 amount: amount + amount2,
+                bank: bankGate.type,
                 desc,
                 queueCode: 0,
                 stCode: student.studentCode,
@@ -184,30 +269,52 @@ module.exports = new (class extends controller {
             });
             await newTr.save();
 
-            let token = await generateToken(
-                amount + amount2,
-                newTr.authority,
-                "VerifyPrePayment",
-                req.user.phone,
-                agencySet.tId
-            );
-            // if (!token) {
-            //     token = await generateToken(
-            //         amount + amount2,
-            //         newTr.authority,
-            //         "VerifyPrePayment"
-            //     );
-            // }
-            if (!token) {
-                return res.status(201).json({
-                    message: "خطای بانک",
+            if (bankGate.type === "SADERAT") {
+                let token = await generateSepehrToken(
+                    amount + amount2,
+                    newTr.authority,
+                    "callBack",
+                    req.user.phone,
+                    bankGate.terminal
+                );
+                if (!token) {
+                    return res.status(201).json({
+                        message: "خطای بانک",
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    message: `https://pay.samar-rad.ir?TerminalID=${bankGate.terminal}&token=${token}`,
+                });
+            } else if (bankGate.type === "MELLAT") {
+                let token = await generateMellatToken(
+                    amount + amount2,
+                    newTr.authority,
+                    "0",
+                    bankGate.terminal,
+                    bankGate.userName,
+                    bankGate.userPass,
+                    "",
+                    "callBack",
+                    req.user.phone
+                );
+                console.log("token.return mellat", token.return);
+                const spl = token.return;
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+                console.log("spl mellat", spl);
+
+                return res.json({
+                    success: true,
+                    message: `https://pay.mysamar.ir/mellat.html?RefId=${
+                        spl.split(",")[1]
+                    }&MobileNo=${req.user.phone}`,
                 });
             }
-
-            return res.json({
-                success: true,
-                message: `https://pay.samar-rad.ir?TerminalID=${agencySet.tId}&token=${token}`,
-            });
         } catch (e) {
             console.log("sepehr bank error", e);
             res.status(201).json({
@@ -240,7 +347,9 @@ module.exports = new (class extends controller {
         const stCode = req.query.stCode;
         let desc = req.query.desc;
 
-        const student = await this.Student.findOne({ studentCode: stCode });
+        const student = await this.Student.findOne({
+            studentCode: stCode,
+        }).lean();
 
         if (student) {
             desc = req.query.desc + " " + student.name + " " + student.lastName;
@@ -248,9 +357,9 @@ module.exports = new (class extends controller {
 
         const queueCode = parseInt(req.query.queueCode);
         let payQueue = await this.PayQueue.findOne(
-            { code: queueCode },
-            "amount amount03 amount37 amount7i merchentId agencyId type"
-        );
+            { code: queueCode, studentId: student._id },
+            "amount agencyId type title"
+        ).lean();
         if (!payQueue) {
             return this.response({
                 res,
@@ -293,54 +402,13 @@ module.exports = new (class extends controller {
         //     });
         // }
 
-        if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
-            if (student.serviceDistance <= 3000) {
-                payQueue.amount = payQueue.amount03;
-            } else if (student.serviceDistance <= 7000) {
-                payQueue.amount = payQueue.amount37;
-            } else {
-                payQueue.amount = payQueue.amount7i;
-            }
-        }
-
-        let agencyId = payQueue.agencyId;
-        let agency;
-        if (agencyId != null) {
-            agency = await this.Agency.findById(agencyId, "settings name");
-            if (agency) {
-                desc = desc + " شرکت " + agency.name;
-            }
-        }
-        console.log(agency);
-
-        if (!agency) {
-            // console.log(" student.school",  student.school);
-            const school = await this.School.findById(
-                student.school,
-                "agencyId"
-            ).lean();
-            if (school) {
-                agency = await this.Agency.findById(
-                    school.agencyId,
-                    "settings name"
-                );
-                if (agency) {
-                    desc = desc + " شرکت " + agency.name;
-                }
-            }
-
-            // console.log("agency", agency);
+        const agencyId = payQueue.agencyId;
+        const agency = await this.Agency.findById(agencyId, "settings name");
+        if (agency) {
+            desc = desc + " شرکت " + agency.name;
         }
         console.log("payQueue", payQueue);
-        if (!payQueue) {
-            console.log("log here1");
 
-            return this.response({
-                res,
-                code: 404,
-                message: "Pay Queue not find",
-            });
-        }
         if (amount < 10000) {
             console.log("amount < 10000", amount);
             return this.response({
@@ -349,101 +417,91 @@ module.exports = new (class extends controller {
                 message: "amount not enough",
             });
         }
-        if (
-            payQueue.amount > 0 &&
-            amount != payQueue.amount &&
-            payQueue.type != 7
-        ) {
-            console.log(
-                "amount not correct",
-                amount,
-                "payQueue.amount",
-                payQueue.amount
-            );
 
-            return this.response({
-                res,
-                code: 204,
-                message: "amount not correct",
-            });
-        }
-
-        if (payQueue.amount < 0 || payQueue.type === 7) {
-            let kol = "003";
-            let moeen = "005";
-
-            const code = kol + moeen + stCode;
-            console.log("code", code);
-            let remaining = 0;
-            const result = await this.DocListSanad.aggregate([
-                {
-                    $match: {
-                        accCode: code,
-                        agencyId: agencyId,
-                    },
-                },
-                {
-                    $group: {
-                        _id: null,
-                        // totalbed: { $sum: '$bed' },
-                        // totalbes: { $sum: '$bes' }
-                        total: {
-                            $sum: {
-                                $subtract: ["$bed", "$bes"],
-                            },
-                        },
-                    },
-                },
-            ]);
-            // console.log("result[0]", result[0]);
-            remaining = result[0] === undefined ? 0 : result[0].total;
-
-            console.log("remaining remaining", remaining);
-            if (remaining > 10000) {
-                amount =
-                    (Math.abs(payQueue.amount) * Math.abs(remaining)) / 100;
-                amount = financial(amount);
-                if (amount < 10000) {
-                    return this.response({
-                        res,
-                        code: 203,
-                        message: "amount not enough",
-                    });
-                }
-            } else {
-                return this.response({
-                    res,
-                    code: 205,
-                    message: "remaining is not bed",
-                });
-            }
-        }
         console.log("amount", amount);
-        // const url = config.get("url.address3");
-        if (!desc.includes("شرکت")) {
-            desc = desc + " " + process.env.URL;
-        }
         console.log("desc", desc);
         try {
-            let invoice = generateInvoice();
-
-            const check = await this.Transactions.findOne({
-                authority: invoice,
+            const bankGate = await this.BankGate.findOne({
+                agencyId,
+                type: { $ne: "CARD" },
+                active: true,
             }).lean();
-            if (check) {
-                invoice = generateInvoice();
-            }
-
-            let token = await generateToken(amount, invoice);
-            if (!token) {
-                token = await generateToken(amount, invoice);
-            }
-            if (!token) {
-                return res.status(201).json({
-                    message: "خطای بانک",
+            if (!bankGate) {
+                return res.status(404).json({
+                    message: "No bankGate available for this agency!",
                 });
             }
 
+            if (bankGate.type === "MELLAT") {
+                const newTr = new this.Transactions({
+                    userId: req.user._id,
+                    amount: amount,
+                    bank: "MELLAT",
+                    desc: desc,
+                    queueCode: queueCode,
+                    stCode: stCode,
+                    agencyId,
+                });
+                await newTr.save();
+                let token = await generateMellatToken(
+                    amount,
+                    newTr.authority,
+                    "0",
+                    bankGate.terminal,
+                    bankGate.userName,
+                    bankGate.userPass,
+                    "",
+                    "mellatCallback",
+                    mobile
+                );
+
+                const spl = token.return;
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+                if (spl.split(",").length < 2) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    message: `https://pay.mysamar.ir/mellat.html?RefId=${
+                        spl.split(",")[1]
+                    }&MobileNo=${mobile}`,
+                });
+            } else if (bankGate.type === "SADERAT") {
+                const newTr = new this.Transactions({
+                    userId: req.user._id,
+                    amount: amount,
+                    bank: "SADERAT",
+                    desc: desc,
+                    queueCode: queueCode,
+                    stCode: stCode,
+                    agencyId,
+                });
+                await newTr.save();
+                let token = await generateSepehrToken(
+                    amount,
+                    newTr.authority,
+                    "saderatCallback",
+                    mobile,
+                    bankGate.terminal
+                );
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    message: `https://pay.mysamar.ir?TerminalID=${TERMINAL}&token=${token}`,
+                });
+            }
             const newTr = new this.Transactions({
                 userId: req.user._id,
                 amount: amount,
@@ -454,6 +512,15 @@ module.exports = new (class extends controller {
                 agencyId,
             });
             await newTr.save();
+            let token = await generateSepehrToken(amount, newTr.authority);
+            if (!token) {
+                token = await generateSepehrToken(amount, newTr.authority);
+            }
+            if (!token) {
+                return res.status(201).json({
+                    message: "خطای بانک",
+                });
+            }
 
             return res.json({
                 success: true,
@@ -1252,6 +1319,7 @@ module.exports = new (class extends controller {
             const agencyId = ObjectId.createFromHexString(req.body.agencyId);
             let payQueue = await this.PayQueue.findOne({
                 studentId,
+                agencyId,
                 type: "registration",
             });
             if (!payQueue) {
@@ -1296,12 +1364,16 @@ module.exports = new (class extends controller {
                         await student.save();
                     }
                 }
+                payQueue.cardNumber='';
+                payQueue.refId='';
+                payQueue.isPaid=true;
+                await payQueue.save();
                 const prePayment = await this.PayQueue.findOne({
                     agencyId: agency._id,
                     studentId: student._id,
                     type: "prePayment",
                 });
-                if (!prePayment || !prePayment.delete) {
+                if (!prePayment || prePayment.delete) {
                     const invoice = await this.Invoice.findOne({
                         agencyId: agency._id,
                         type: "prePayment",
@@ -1316,7 +1388,8 @@ module.exports = new (class extends controller {
                             const matchedPricing = invoice.distancePrice.find(
                                 function (priceItem) {
                                     return (
-                                        priceItem.maxDistance * 1000 >= student.serviceDistance
+                                        priceItem.maxDistance * 1000 >=
+                                        student.serviceDistance
                                     );
                                 }
                             );
@@ -1414,6 +1487,7 @@ module.exports = new (class extends controller {
                 editor: req.user._id,
             });
             await doc.save();
+
             let docPaid = new this.DocListSanad({
                 agencyId,
                 titleId: doc.id,
@@ -1424,7 +1498,7 @@ module.exports = new (class extends controller {
                 note: desc,
                 accCode: costCode,
                 mId: doc.sanadId,
-                peigiri: student.studentCode,
+                peigiri:payQueue.refId || '',
                 sanadDate: new Date(),
             });
             await docPaid.save();
@@ -1440,11 +1514,13 @@ module.exports = new (class extends controller {
                 mId: payQueue.code,
                 type: "invoice",
                 forCode: "003005" + student.studentCode,
-                peigiri: student.studentCode,
+                peigiri:payQueue.cardNumber || '',
                 sanadDate: new Date(),
             }).save();
             payQueue.isPaid = true;
             payQueue.payDate = new Date();
+            payQueue.cardNumber='';
+            payQueue.refId='';
             await payQueue.save();
 
             // let payAction = new this.PayAction({
@@ -1470,14 +1546,14 @@ module.exports = new (class extends controller {
                     studentId: student._id,
                     type: "prePayment",
                 });
-                if (!prePayment || !prePayment.delete) {
+                if (!prePayment || prePayment.delete) {
                     const invoice = await this.Invoice.findOne({
                         agencyId: agency._id,
                         type: "prePayment",
                         delete: false,
                     });
                     if (invoice) {
-                          let amount2 = 0;
+                        let amount2 = 0;
                         if (
                             invoice.distancePrice &&
                             invoice.distancePrice.length > 0
@@ -1485,7 +1561,8 @@ module.exports = new (class extends controller {
                             const matchedPricing = invoice.distancePrice.find(
                                 function (priceItem) {
                                     return (
-                                        priceItem.maxDistance * 1000 >= student.serviceDistance
+                                        priceItem.maxDistance * 1000 >=
+                                        student.serviceDistance
                                     );
                                 }
                             );
@@ -2439,7 +2516,11 @@ module.exports = new (class extends controller {
                     pays.push({ payQueue, doclistSanad: null });
                     continue;
                 }
-                pays.push({ payQueue, doclistSanad: doclistSanad });
+                const cheque = await this.SayadCheque.findOne(
+                    { sanadId: doclistSanad.doclistId },
+                    "status payQueueDate"
+                ).lean();
+                pays.push({ payQueue, doclistSanad: doclistSanad, cheque });
                 if (!payQueue.isPaid) {
                     payQueue.isPaid = true;
                     payQueue.payDate = doclistSanad.createdAt;
@@ -2453,6 +2534,152 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error while getStudentPays:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setStudentPayCard(req, res) {
+        const session = await this.Student.startSession();
+        session.startTransaction();
+
+        try {
+            const { agencyId, studentId, cardNumber, refId, amount, payDate } =
+                req.body;
+
+            let student = await this.Student.findById(studentId).session(
+                session
+            );
+
+            if (!student) {
+                await session.abortTransaction();
+                session.endSession();
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "student not found",
+                });
+            }
+
+            const distance = student.serviceDistance;
+
+            const invoice = await this.Invoice.findOne({
+                agencyId,
+                type: "registration",
+                active: true,
+            })
+                .session(session)
+                .lean();
+
+            let amountReg = invoice ? invoice.amount : 0;
+
+            const invoice2 = await this.Invoice.findOne({
+                agencyId,
+                type: "prePayment",
+                active: true,
+            })
+                .session(session)
+                .lean();
+
+            let amount2 = 0;
+            if (invoice2) {
+                if (
+                    invoice2.distancePrice &&
+                    invoice2.distancePrice.length > 0
+                ) {
+                    const matchedPricing = invoice2.distancePrice.find(
+                        (priceItem) => priceItem.maxDistance * 1000 >= distance
+                    );
+                    amount2 = matchedPricing
+                        ? matchedPricing.amount
+                        : invoice2.distancePrice[
+                              invoice2.distancePrice.length - 1
+                          ].amount;
+                } else {
+                    amount2 = invoice2.amount;
+                }
+            }
+
+            // ---- Handle Registration Payment ----
+            if (amountReg > 0) {
+                let payQueue = await this.PayQueue.findOne({
+                    studentId: student._id,
+                    type: "registration",
+                }).session(session);
+
+                if (!payQueue) {
+                    payQueue = new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        code: invoice.code,
+                        agencyId,
+                        studentId: student._id,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: true,
+                        isSetAuto: true,
+                        payDate,
+                        cardNumber,
+                        refId,
+                    });
+                } else {
+                    payQueue.isPaid = true;
+                    payQueue.isSetAuto = true;
+                    payQueue.payDate = payDate;
+                    payQueue.cardNumber = cardNumber;
+                    payQueue.refId = refId;
+                }
+                await payQueue.save({ session });
+            }
+
+            // ---- Handle PrePayment ----
+            if (amount - amountReg > 0 && amount2 > 0) {
+                let prePayment = await this.PayQueue.findOne({
+                    agencyId,
+                    studentId: student._id,
+                    type: "prePayment",
+                }).session(session);
+
+                if (!prePayment) {
+                    prePayment = new this.PayQueue({
+                        inVoiceId: invoice2._id,
+                        code: invoice2.code,
+                        agencyId,
+                        studentId: student._id,
+                        setter: req.user._id,
+                        type: invoice2.type,
+                        amount: amount - amountReg,
+                        title: invoice2.title,
+                        maxDate: invoice2.maxDate,
+                        isPaid: true,
+                        isSetAuto: true,
+                        payDate,
+                        cardNumber,
+                        refId,
+                    });
+                } else {
+                    prePayment.isPaid = true;
+                    prePayment.isSetAuto = true;
+                    prePayment.payDate = payDate;
+                    prePayment.cardNumber = cardNumber;
+                    prePayment.refId = refId;
+                }
+                await prePayment.save({ session });
+            }
+            student.state = 1;
+            student.stateTitle = "در انتظار تایید اطلاعات";
+            await student.save({ session });
+            await session.commitTransaction();
+            session.endSession();
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error while setStudentPayCard:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

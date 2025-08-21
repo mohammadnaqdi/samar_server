@@ -4,15 +4,11 @@ const Student = require("./../models/student");
 // const Shifts = require("./../models/shifts");
 const School = require("./../models/school");
 const Day = require("../models/days");
-const { DDS, DSC,DIC,DOS } = require("./../models/dds");
+const { DDS, DSC, DIC, DOS } = require("./../models/dds");
 const { SayadCheque } = require("./../models/cheque");
-const {
-    Pack,
-    Exception,
-    GroupPack,
-} = require("../models/pack");
+const { Pack, Exception, GroupPack } = require("../models/pack");
 const UserInfo = require("./../models/userInfo");
-const {Keys,CounterKey,City,SearchLog} = require("./../models/keys");
+const { Keys, CounterKey, City, SearchLog } = require("./../models/keys");
 const { Agency, AgencySet } = require("./../models/agency");
 // const Payoff = require("./../models/payoff");
 // const Payment = require("./../models/payment");
@@ -31,16 +27,23 @@ const {
     StReport,
     SchReport,
     RatingDriver,
-    InspectorRp,Opinion
+    InspectorRp,
+    Opinion,
 } = require("./../models/report");
 const { Holiday } = require("./../models/calendar");
 const { Versionsoft } = require("./../models/versionsoft");
 const {
     Transactions,
-    PayQueue,Invoice
+    PayQueue,
+    Invoice,
     // PayAction,
 } = require("./../models/transactions");
-const { MessageCode, Messaging ,Seen,Notification} = require("./../models/otp");
+const {
+    MessageCode,
+    Messaging,
+    Seen,
+    Notification,
+} = require("./../models/otp");
 const {
     LevelAcc,
     LevelAccDetail,
@@ -59,16 +62,23 @@ const {
     BankInfo,
     CheckBook,
     CheckPage,
+    BankGate,
 } = require("./../models/banks");
 const Rule = require("./../models/rules");
-const {Feedback,OperationLog} = require("./../models/feedback");
-const {ContractText,SignedContract,StimApi} = require("./../models/contract");
-const { Parent} = require("./../models/parent");
+const { Feedback, OperationLog } = require("./../models/feedback");
+const { FinnotechUsage } = require("./../models/finnotech");
+const {
+    ContractText,
+    SignedContract,
+    StimApi,
+} = require("./../models/contract");
+const { Parent } = require("./../models/parent");
 const { redisClient } = require("../../startup/redis");
-        
 
 module.exports = class {
     constructor() {
+        this.FinnotechUsage = FinnotechUsage;
+        this.BankGate = BankGate;
         this.SayadCheque = SayadCheque;
         this.Opinion = Opinion;
         this.redisClient = redisClient;
@@ -143,9 +153,8 @@ module.exports = class {
         this.CheckBook = CheckBook;
         this.CheckPage = CheckPage;
         this.AgencySet = AgencySet;
-        
     }
-async scanAllKeys() {
+    async scanAllKeys() {
         let cursor = 0;
         const allKeys = [];
 
@@ -198,7 +207,7 @@ async scanAllKeys() {
         }
     }
 
-   async updateRedisDocument(redisKey, updates = {}) {
+    async updateRedisDocument(redisKey, updates = {}) {
         try {
             // Convert Mongoose document to plain object if needed
             if (typeof updates.toObject === "function") {
@@ -235,7 +244,7 @@ async scanAllKeys() {
             let messages = [];
             errors.forEach((err) => messages.push(err.msg));
 
-            console.log("messages",messages)
+            console.log("messages", messages);
 
             res.status(400).json({
                 message: "validation error",

@@ -291,6 +291,15 @@
 
     <script>
         // Parse URL parameters
+         function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return Object.fromEntries(params);
+        }
+
+        function toPersianNum(num) {
+            const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+            return num.toString().replace(/\d/g, d => persianDigits[d]);
+        }
         function getQueryParams() {
             const params = new URLSearchParams(window.location.search);
             return {

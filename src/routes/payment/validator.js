@@ -21,12 +21,45 @@ module.exports = new (class {
                 .withMessage("queueCode cant be empty"),
         ];
     }
+    setStudentPayCardValidator() {
+        return [
+            //agencyId, studentId, cardNumber, refId, amount, payDate
+            check("cardNumber")
+                .not()
+                .isEmpty()
+                .withMessage("cardNumber cant be empty"),
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+            check("studentId")
+                .not()
+                .isEmpty()
+                .withMessage("studentId cant be empty"),
+            check("refId").not().isEmpty().withMessage("refId cant be empty"),
+            check("amount").not().isEmpty().withMessage("amount cant be empty"),
+            check("amount").isNumeric().withMessage("amount is number"),
+            check("payDate")
+                .not()
+                .isEmpty()
+                .withMessage("payDate cant be empty"),
+        ];
+    }
     studentPayState2Validator() {
         return [
-            check("stateStart").not().isEmpty().withMessage("stateStart cant be empty"),
-            check("stateEnd").not().isEmpty().withMessage("stateEnd cant be empty"),
+            check("stateStart")
+                .not()
+                .isEmpty()
+                .withMessage("stateStart cant be empty"),
+            check("stateEnd")
+                .not()
+                .isEmpty()
+                .withMessage("stateEnd cant be empty"),
             check("isPaid").not().isEmpty().withMessage("isPaid cant be empty"),
-            check("schools").not().isEmpty().withMessage("schools cant be empty"),
+            check("schools")
+                .not()
+                .isEmpty()
+                .withMessage("schools cant be empty"),
             check("queues").not().isEmpty().withMessage("queues cant be empty"),
         ];
     }
@@ -134,8 +167,14 @@ module.exports = new (class {
     }
     setInstallmentByParentValidator() {
         return [
-            check("agencyId").not().isEmpty().withMessage("agencyId cant be empty"),
-            check("studentId").not().isEmpty().withMessage("studentId cant be empty"),
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+            check("studentId")
+                .not()
+                .isEmpty()
+                .withMessage("studentId cant be empty"),
             check("prices").not().isEmpty().withMessage("prices cant be empty"),
             check("codes").not().isEmpty().withMessage("codes cant be empty"),
         ];

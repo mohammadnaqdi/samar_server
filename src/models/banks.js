@@ -67,7 +67,7 @@ const bankInfoSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const BankInfo = mongoose.model("BankInfo", bankInfoSchema);
 
@@ -92,7 +92,7 @@ const checkBookSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const CheckBook = mongoose.model("CheckBook", checkBookSchema);
 
@@ -130,8 +130,45 @@ const checkPageSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const CheckPage = mongoose.model("CheckPage", checkPageSchema);
 
-module.exports = { CostCenter, BankInfo, CheckBook, CheckPage };
+const bankGateSchema = new mongoose.Schema(
+    {
+        agencyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Agency",
+            required: true,
+        },
+        editor: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        bankName: { type: String, default: "" },
+        bankCode: { type: String, default: "" },
+        type: {
+            type: String,
+            enum: ["CARD", "MELLAT", "SADERAT"],
+            default: "MELLAT",
+        },
+        card: { type: String, default: "" },
+        terminal: { type: String, default: "" },
+        userName: { type: String, default: "" },
+        userPass: { type: String, default: "" },
+        hesab: { type: String, required: true },
+        active: { type: Boolean, default: true },
+        personal: { type: Boolean, default: false },
+        prePayment: { type: Boolean, default: true },
+        installments: { type: Boolean, default: true },
+    },
+    {
+        timestamps: true,
+    }
+);
+bankGateSchema.index({ agencyId: 1, type: 1 }, { unique: true });
+
+const BankGate = mongoose.model("BankGate", bankGateSchema);
+
+module.exports = { CostCenter, BankInfo, CheckBook, CheckPage, BankGate };

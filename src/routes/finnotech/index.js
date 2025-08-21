@@ -29,7 +29,7 @@ router.get(
 router.get(
     "/sayadTransfersChainInquiry",
     isLoggined,
-    isAdmin,
+    isAgencyAdmin,
     controller.validate.bind(controller),
     controller.sayadTransfersChainInquiry.bind(controller)
 );
@@ -69,6 +69,7 @@ router.get(
 
 router.get(
     "/sayadAcceptCheque",
+    isLoggined,
     isAgencyAdmin,
     controller.validate.bind(controller),
     controller.sayadAcceptCheque.bind(controller)
@@ -130,6 +131,13 @@ router.get(
     isAgencyAdmin,
     controller.validate.bind(controller),
     controller.sayadCancelCheque.bind(controller)
+);
+
+router.get(
+    "/getStudentCheques",
+    isLoggined,
+    controller.validate.bind(controller),
+    controller.getStudentCheques.bind(controller)
 );
 
 module.exports = router;

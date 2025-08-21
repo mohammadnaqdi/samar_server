@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
-const {CounterKey} =  require('./keys');
+const { CounterKey } = require("./keys");
 async function getNextSequence(name) {
-  const result = await CounterKey.findOneAndUpdate(
-    { name },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return result.seq;
+    const result = await CounterKey.findOneAndUpdate(
+        { name },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+    );
+    return result.seq;
 }
 const transSchema = new mongoose.Schema(
     {
@@ -20,7 +20,8 @@ const transSchema = new mongoose.Schema(
             ref: "Agency",
             default: null,
         },
-        authority: { type: String, unique: true,},
+        bank: { type: String, default: "" },
+        authority: { type: String, unique: true },
         rrn: { type: String, default: "" },
         tracenumber: { type: String, default: "" },
         issuerbank: { type: String, default: "" },
@@ -38,11 +39,11 @@ const transSchema = new mongoose.Schema(
     }
 );
 transSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    const cc = await getNextSequence('authority');
-      this.authority =cc.toString();
-  }
-  next();
+    if (this.isNew) {
+        const cc = await getNextSequence("authority");
+        this.authority = cc.toString();
+    }
+    next();
 });
 const Transactions = mongoose.model("Transactions", transSchema);
 
@@ -50,16 +51,19 @@ const payQueueSchema = new mongoose.Schema(
     {
         inVoiceId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Invoice", required: true
+            ref: "Invoice",
+            required: true,
         },
-        code: { type: Number},
+        code: { type: Number },
         agencyId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Agency", required: true
+            ref: "Agency",
+            required: true,
         },
         studentId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Student", required: true
+            ref: "Student",
+            required: true,
         },
         setter: { type: mongoose.Schema.Types.ObjectId, required: true },
         type: {
@@ -78,27 +82,33 @@ const payQueueSchema = new mongoose.Schema(
         title: { type: String, required: true },
         payDate: { type: Date, default: null },
         counter: { type: Number, default: 0 },
-        maxDate: { 
-            type: Date, 
-            default: function() {
+        maxDate: {
+            type: Date,
+            default: function () {
                 const now = new Date();
-                const year = now.getMonth() >= 2 ? now.getFullYear() + 1 : now.getFullYear();
+                const year =
+                    now.getMonth() >= 2
+                        ? now.getFullYear() + 1
+                        : now.getFullYear();
                 return new Date(year, 2, 1); // March is month 2 (0-based)
-            }
+            },
         },
         isPaid: { type: Boolean, default: false },
+        cardNumber:{ type: String, default: "" },
+        refId:{ type: String, default: "" },
+        amount:{ type: Number, default: 0 },
+        payDate: { type: Date, default: null },
         isSetAuto: { type: Boolean, default: true },
         delete: { type: Boolean, default: false },
-        authority: { type: String, default: '' },
+        authority: { type: String, default: "" },
+        bank: { type: String, default: "" },
+        
     },
     {
         timestamps: true,
-    },
+    }
 );
-payQueueSchema.index(
-    { code: 1, studentId: 1 },
-    { unique: true }
-);
+payQueueSchema.index({ code: 1, studentId: 1 }, { unique: true });
 const PayQueue = mongoose.model("PayQueue", payQueueSchema);
 
 const invoiceSchema = new mongoose.Schema(
@@ -126,17 +136,21 @@ const invoiceSchema = new mongoose.Schema(
         title: { type: String, required: true },
         desc: { type: String, default: "" },
         schools: [],
-        distancePrice: { type: [
-            {maxDistance:Number,amount:Number}
-        ], default: [] },
+        distancePrice: {
+            type: [{ maxDistance: Number, amount: Number }],
+            default: [],
+        },
         counter: { type: Number, default: 0 },
-        maxDate: { 
-            type: Date, 
-            default: function() {
+        maxDate: {
+            type: Date,
+            default: function () {
                 const now = new Date();
-                const year = now.getMonth() >= 2 ? now.getFullYear() + 1 : now.getFullYear();
+                const year =
+                    now.getMonth() >= 2
+                        ? now.getFullYear() + 1
+                        : now.getFullYear();
                 return new Date(year, 2, 1); // March is month 2 (0-based)
-            }
+            },
         },
         active: { type: Boolean, default: true },
         confirmInfo: { type: Boolean, default: false },
@@ -146,14 +160,14 @@ const invoiceSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
-invoiceSchema.index({ agencyId: 1, type: 1,counter:1 }, { unique: true });
+invoiceSchema.index({ agencyId: 1, type: 1, counter: 1 }, { unique: true });
 invoiceSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    this.code= await getNextSequence('invoice');
-  }
-  next();
+    if (this.isNew) {
+        this.code = await getNextSequence("invoice");
+    }
+    next();
 });
 const Invoice = mongoose.model("Invoice", invoiceSchema);
 
@@ -195,4 +209,4 @@ const Invoice = mongoose.model("Invoice", invoiceSchema);
 
 // const PayAction = mongoose.model("payAction", payActionSchema);
 
-module.exports = { Transactions, PayQueue,Invoice };
+module.exports = { Transactions, PayQueue, Invoice };

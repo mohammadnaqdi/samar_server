@@ -767,4 +767,18 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: error });
         }
     }
+    async getAllCity(req, res) {
+        try {
+          
+            const city = await this.City.find({ delete: false },'name code meter location.coordinates');
+
+            return this.response({
+                res,
+                data: city,
+            });
+        } catch (error) {
+            console.error("Error in getAllCity:", error);
+            return res.status(500).json({ error: error });
+        }
+    }
 })();

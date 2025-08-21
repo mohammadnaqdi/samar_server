@@ -2,6 +2,7 @@ const controller = require("../controller");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const config = require("config");
+const soap = require("soap");
 const Zarin = require("zarinpal-checkout");
 var fs = require("fs");
 const persianDate = require("persian-date");
@@ -14,9 +15,183 @@ const NID = "0934454299";
 const CLIENT = "samar";
 const ENCODED_TOKEN = "c2FtYXI6bG52VERSMnBlZDJMcTJORDZvRWg=";
 const REDIRECT_URL = "https://mysamar.ir/api/fin/getAuthorization";
-const TERMINAL = 99018831;
+const TERMINALsadert = 99018831;
+const TERMINALmellat = 8551948;
+const userPassMellat = 15806659;
+const urlVerifySaderat = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
+const urlVerifyMellat = "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl";
 
-async function generateToken(
+function getDate() {
+    const now = new Date();
+
+    const localDate = now
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, "")
+        .toString();
+    const localTime = now
+        .toTimeString()
+        .slice(0, 8)
+        .replace(/:/g, "")
+        .toString();
+
+    return { localDate, localTime };
+}
+
+async function generateMellatToken(
+    amount,
+    orderId,
+    payerId,
+    terminalID,
+    userName,
+    userPassword,
+    additionalData,
+    link = "mellatCallback",
+    CellNumber
+) {
+    try {
+        if (!amount || amount < 10000) {
+            amount = 10000;
+        }
+
+        const { localDate, localTime } = getDate();
+
+        const args = {
+            terminalId: parseInt(terminalID),
+            userName,
+            userPassword,
+            orderId: parseInt(orderId),
+            amount,
+            localDate,
+            localTime,
+            additionalData,
+            mobileNo: CellNumber,
+            callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
+            payerId: parseInt(payerId),
+        };
+
+        var options = {
+            overrideRootElement: {
+                namespace: "ns1",
+            },
+        };
+
+        return new Promise((resolve, reject) => {
+            soap.createClient(
+                "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl",
+                options,
+                (err, client) => {
+                    client.bpPayRequest(args, (err, result, body) => {
+                        if (err) {
+                            console.error(
+                                "Error while generating mallet bank token:",
+                                err
+                            );
+                            return null;
+                        }
+
+                        return resolve(result);
+                    });
+                }
+            );
+        });
+    } catch (error) {
+        console.error("Error while generating mellat bank token:", error);
+        return null;
+    }
+}
+  // FOR ALL BANK
+async function varifyPaidBank(
+    typeBank,
+    digitalreceipt,
+    terminalID,
+    userName,
+    userPassword
+) {
+    try {
+        if (typeBank === "SADERAT") {
+            const url = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
+            const payload = {
+                digitalreceipt: digitalreceipt,
+                Tid: terminalID,
+            };
+            let response = await axios.post(url, payload, {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+
+            console.log("response vvvvvvvvvvvvvvvvvvery=", response.data);
+
+            let responseData = response.data;
+            if (responseData.Status === "NOk") {
+                response = await axios.post(url, payload, {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+                responseData = response.data;
+                console.log("nok", response.data);
+                throw new Error("response shaparak verification failed");
+            }
+
+            if (
+                (responseData.Status === "Ok" ||
+                    responseData.Status === "OK" ||
+                    responseData.Status === "Duplicate") &&
+                responseData.ReturnId.toString() === amount.toString()
+            ) {
+                console.log("end verification");
+                return true;
+            } else {
+                throw new Error("Payment verification failed");
+            }
+        } else if (typeBank === "MELLAT") {
+            const args = {
+                terminalId: terminalID,
+                userName: userName,
+                userPassword: userPassword,
+                orderId: SaleOrderId,
+                saleOrderId: SaleOrderId,
+                saleReferenceId: transAction,
+            };
+
+            var options = {
+                overrideRootElement: {
+                    namespace: "ns1",
+                },
+            };
+
+            const resVerify = await new Promise((resolve, reject) => {
+                soap.createClient(
+                    "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl",
+                    options,
+                    (err, client) => {
+                        client.bpVerifyRequest(args, (err, result, body) => {
+                            if (err) {
+                                console.log("varify paid bank", err);
+                                return reject(err);
+                            }
+                            return resolve(result);
+                        });
+                    }
+                );
+            });
+
+            if (resVerify.return == 0) {
+                return true;
+            }
+            return false;
+        }
+        console.log("varify paid  not find typeBank", typeBank);
+        return false;
+    } catch (error) {
+        console.error("Error while varifyPaidBank:", error);
+        return false;
+    }
+}
+
+async function generateSepehrToken(
     amount,
     invoice,
     link = "verify2",
@@ -52,191 +227,10 @@ async function generateToken(
         return null;
     } catch (error) {
         console.error("Error while generating bank token:", error);
-         return null;
+        return null;
     }
 }
 
-const { v4: uuidv4 } = require("uuid");
-function addTokenTime() {
-    const now = new Date();
-    return new Date(now.getTime() + 864000000);
-}
-async function makeHttpsGet(url, authToken) {
-    return new Promise((resolve, reject) => {
-        const parsedUrl = new URL(url);
-        const options = {
-            hostname: parsedUrl.hostname,
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: "GET",
-            headers: {
-                Authorization: `Basic ${authToken}`,
-            },
-        };
-
-        const req = https.request(options, (res) => {
-            let data = "";
-            res.on("data", (chunk) => (data += chunk));
-            res.on("end", () => resolve({ status: res.statusCode, data }));
-        });
-
-        req.on("error", reject);
-        req.end();
-    });
-}
-
-async function verifySMS(code, mobile, nid, trackId) {
-    try {
-        const body = JSON.stringify({
-            mobile,
-            otp: code,
-            nid,
-            trackId,
-        });
-
-        const verifyUrl = "https://api.finnotech.ir/dev/v2/oauth2/verify/sms";
-        const parsedVerifyUrl = new URL(verifyUrl);
-
-        const verifyOptions = {
-            hostname: parsedVerifyUrl.hostname,
-            path: parsedVerifyUrl.pathname,
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${ENCODED_TOKEN}`,
-                "Content-Length": Buffer.byteLength(body),
-            },
-        };
-
-        // ✅ First request: Verify SMS OTP
-        const verifyResponse = await new Promise((resolve, reject) => {
-            const reqVerify = https.request(verifyOptions, (resVerify) => {
-                let data = "";
-                resVerify.on("data", (chunk) => (data += chunk));
-                resVerify.on("end", () =>
-                    resolve({ status: resVerify.statusCode, data })
-                );
-            });
-            reqVerify.on("error", reject);
-            reqVerify.write(body);
-            reqVerify.end();
-        });
-
-        console.log("Verify SMS raw:", verifyResponse.data);
-
-        let verifyParsed;
-        try {
-            verifyParsed = JSON.parse(verifyResponse.data);
-        } catch (err) {
-            console.error("Failed to parse verify SMS JSON:", err);
-            return { token: null, refresh_token: null };
-        }
-
-        if (verifyParsed.status !== "DONE") {
-            console.error("Error while verifySMS:", verifyParsed);
-            return { token: null, refresh_token: null };
-        }
-
-        // ✅ Extract OTP code for token request
-        const otpCode = verifyParsed.result.code;
-
-        // ✅ Now request access token
-        const tokenBody = JSON.stringify({
-            grant_type: "authorization_code",
-            code: otpCode,
-            auth_type: "SMS",
-            redirect_uri: REDIRECT_URL,
-        });
-
-        const tokenUrl = "https://api.finnotech.ir/dev/v2/oauth2/token";
-        const parsedTokenUrl = new URL(tokenUrl);
-
-        const tokenOptions = {
-            hostname: parsedTokenUrl.hostname,
-            path: parsedTokenUrl.pathname,
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${ENCODED_TOKEN}`,
-                "Content-Length": Buffer.byteLength(tokenBody),
-            },
-        };
-
-        const tokenResponse = await new Promise((resolve, reject) => {
-            const reqToken = https.request(tokenOptions, (resToken) => {
-                let data = "";
-                resToken.on("data", (chunk) => (data += chunk));
-                resToken.on("end", () =>
-                    resolve({ status: resToken.statusCode, data })
-                );
-            });
-            reqToken.on("error", reject);
-            reqToken.write(tokenBody);
-            reqToken.end();
-        });
-
-        console.log("Token raw response:", tokenResponse.data);
-
-        let tokenParsed;
-        try {
-            tokenParsed = JSON.parse(tokenResponse.data);
-        } catch (err) {
-            console.error("Failed to parse token JSON:", err);
-            return { token: null, refresh_token: null };
-        }
-
-        if (tokenParsed.status === "DONE") {
-            return {
-                token: tokenParsed.result.value,
-                refresh_token: tokenParsed.result.refreshToken,
-            };
-        } else {
-            console.error("Error while getting sms token:", tokenParsed);
-            return { token: null, refresh_token: null };
-        }
-    } catch (error) {
-        console.error("Error while verifySMS:", error.message || error);
-        return { token: null, refresh_token: null };
-    }
-}
-async function getToken() {
-    try {
-        const url = "https://api.finnotech.ir/dev/v2/oauth2/token";
-
-        const body = {
-            grant_type: "client_credentials",
-            nid: NID,
-            scopes: "credit:sayad-transfers-chain-inquiry:post,card:information:get",
-        };
-
-        const response = await axios.post(url, body, {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: "Basic " + ENCODED_TOKEN,
-            },
-        });
-
-        console.log("Response from token:", response.data);
-
-        if (response.data.responseCode === "FN-BRFH-20000000000") {
-            return {
-                token: response.data.result.value,
-                refresh_token: response.data.result.refreshToken,
-            };
-        } else {
-            console.error("Error while getting token:", response.data);
-            return {
-                token: null,
-                refresh_token: null,
-            };
-        }
-    } catch (err) {
-        console.error("Error while getting token:", err.response);
-        return {
-            token: null,
-            refresh_token: null,
-        };
-    }
-}
 module.exports = new (class extends controller {
     //for we dont need to create a new object only export directly a class
 
@@ -1722,7 +1716,7 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    async verifyCoBank(req, res) {
+    async saderatCallback(req, res) {
         const {
             amount,
             invoiceid,
@@ -1733,7 +1727,7 @@ module.exports = new (class extends controller {
             issuerbank,
             respcode,
         } = req.body;
-        console.log(req.body);
+        // console.log(req.body);
 
         const session = await this.Transactions.startSession();
         let transAction;
@@ -1743,22 +1737,24 @@ module.exports = new (class extends controller {
             }).session(session);
 
             if (!transAction) {
+                await session.abortTransaction();
+                session.endSession();
                 res.writeHead(404, { "Content-Type": "text/html" });
                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
                 res.end(html);
-                session.endSession();
                 return;
             }
             console.log("verify transAction.done=", transAction.done);
             console.log("verify transAction.state=", transAction.state);
             if (transAction.done && transAction.state === 1) {
-                res.redirect(`https://panel.${process.env.URL}/finance`);
+                await session.abortTransaction();
                 session.endSession();
-                return;
+                return res.redirect(`https://panel.${process.env.URL}/finance`);
             }
             const checkResp = respcode == 0;
-            console.log("verifyCoBank checkResp", checkResp);
+            console.log("saderatCallback checkResp", checkResp);
             if (!checkResp) {
+                await session.abortTransaction();
                 res.writeHead(404, { "Content-Type": "text/html" });
                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
                 res.end(html);
@@ -1791,7 +1787,7 @@ module.exports = new (class extends controller {
                 ).wallet;
                 const bank = transAction.stCode;
 
-                console.log("wallet", wallet);
+                // console.log("wallet", wallet);
 
                 const aa = bank.substring(6);
                 const level = await this.LevelAccDetail.findOne(
@@ -1892,11 +1888,6 @@ module.exports = new (class extends controller {
                     sanadDate: new Date(),
                 }).save({ session });
 
-                // return this.response({
-                //     res,
-                //     data: transAction,
-                // });
-
                 const url =
                     "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
                 const payload = {
@@ -1909,7 +1900,7 @@ module.exports = new (class extends controller {
                     },
                 });
 
-                console.log("response vvvvvvvvvvvvvvvvvvery=", response.data);
+                // console.log("response vvvvvvvvvvvvvvvvvvery=", response.data);
 
                 let responseData = response.data;
                 if (responseData.Status === "NOk") {
@@ -1927,7 +1918,6 @@ module.exports = new (class extends controller {
                     responseData.Status === "OK" ||
                     responseData.Status === "Duplicate"
                 ) {
-                    //send sms
                     var tarikh = new persianDate().format("YY/M/D");
                     var saat = new persianDate().format("H:m");
                     const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
@@ -1961,13 +1951,6 @@ module.exports = new (class extends controller {
                     //         console.log(error);
                     //     });
                     await axios.request(config);
-                    // axios(config)
-                    //     .then(function (response) {
-                    //         console.log("axios verifyCo", "then");
-                    //     })
-                    //     .catch(function (error) {
-                    //         console.log("axios verifyCo error", error);
-                    //     });
                     const user = await this.User.findById(
                         agency.admin,
                         "phone lastName"
@@ -2006,8 +1989,6 @@ module.exports = new (class extends controller {
                         //     });
                     }
 
-                    //end send sms
-                    console.log("end pay");
                     return res.redirect(
                         `https://panel.${process.env.URL}/finance`
                     );
@@ -2016,30 +1997,334 @@ module.exports = new (class extends controller {
                 }
             });
         } catch (error) {
-            console.error("Error while verifyPrePayment:", error);
-            res.status(500).json({
-                error: error.message || "Internal Server Error.",
+            await session.abortTransaction();
+            console.error("Error while verifying saderat transaction:", error);
+            return res.status(500).json({
+                error: "Error while verifying saderat transaction",
             });
         } finally {
             session.endSession();
         }
     }
-async paymentCoBank(req, res) {
+
+    async mellatCallback(req, res) {
+        const {
+            RefId,
+            ResCode,
+            SaleOrderId,
+            SaleReferenceId,
+            CardHolderInfo,
+            CardHolderPan,
+            FinalAmount,
+        } = req.body;
+
+        const amount = FinalAmount;
+        const invoiceid = SaleOrderId;
+        const cardnumber = CardHolderPan;
+        const rrn = "";
+        const tracenumber = "";
+        const digitalreceipt = RefId;
+        const issuerbank = "";
+        const respcode = ResCode;
+
+        const session = await this.Transactions.startSession();
+        let transAction;
+        try {
+            transAction = await this.Transactions.findOne({
+                authority: invoiceid.toString(),
+            }).session(session);
+
+            if (!transAction) {
+                res.writeHead(404, { "Content-Type": "text/html" });
+                await session.abortTransaction();
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                res.end(html);
+                session.endSession();
+                return;
+            }
+
+            // console.log("verify transAction.done=", transAction.done);
+            // console.log("verify transAction.state=", transAction.state);
+            if (transAction.done && transAction.state === 1) {
+                await session.abortTransaction();
+                res.redirect(`https://panel.${process.env.URL}/finance`);
+                session.endSession();
+                return;
+            }
+            const checkResp = respcode == 0;
+            // console.log("saderatCallback checkResp", checkResp);
+            if (!checkResp) {
+                res.writeHead(404, { "Content-Type": "text/html" });
+                await session.abortTransaction();
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                res.end(html);
+                session.endSession();
+                return;
+            }
+            await session.withTransaction(async () => {
+                const tr = await this.Transactions.findByIdAndUpdate(
+                    transAction._id,
+                    {
+                        refID: digitalreceipt,
+                        issuerbank,
+                        cardnumber,
+                        tracenumber,
+                        rrn,
+                        done: true,
+                        state: 1,
+                        amount: amount,
+                    },
+                    { new: true, session }
+                );
+                const agencyId = transAction.agencyId;
+                const agency = await this.Agency.findById(
+                    agencyId,
+                    "settings name admin"
+                ).session(session);
+
+                const wallet = agency.settings.find(
+                    (obj) => obj.wallet != undefined
+                ).wallet;
+                const bank = transAction.stCode;
+
+                const aa = bank.substring(6);
+                const level = await this.LevelAccDetail.findOne(
+                    { accCode: aa, agencyId },
+                    "accName"
+                ).session(session);
+                if (!level) {
+                    return this.response({
+                        res,
+                        code: 403,
+                        message: "level is null!",
+                    });
+                }
+                persianDate.toLocale("en");
+                var SalMali = new persianDate().format("YY");
+                const checkMax = await this.CheckInfo.find(
+                    { agencyId },
+                    "infoId"
+                )
+                    .sort({ infoId: -1 })
+                    .limit(1)
+                    .session(session);
+                let numCheck = 1;
+                if (checkMax.length > 0) {
+                    numCheck = checkMax[0].infoId + 1;
+                }
+                const infoNum = `${SalMali}-${numCheck}`;
+                let checkInfo = new this.CheckInfo({
+                    agencyId,
+                    editor: tr.userId,
+                    infoId: numCheck,
+                    infoNum,
+                    seCode: "0",
+                    branchCode: "",
+                    branchName: "",
+                    bankName: level.accName,
+                    serial: digitalreceipt,
+                    type: 6,
+                    rowCount: 1,
+                    infoDate: new Date(),
+                    infoMoney: tr.amount,
+                    accCode: bank,
+                    ownerHesab: "",
+                    desc: "هزینه شارژ کیف پول",
+                });
+                await checkInfo.save({ session });
+
+                let doc = new this.DocSanad({
+                    agencyId,
+                    note: "هزینه شارژ کیف پول",
+                    sanadDate: new Date(),
+                    system: 2,
+                    definite: false,
+                    lock: true,
+                    editor: tr.userId,
+                });
+                await doc.save({ session });
+                await new this.DocListSanad({
+                    agencyId,
+                    titleId: doc.id,
+                    doclistId: doc.sanadId,
+                    row: 1,
+                    bed: 0,
+                    mId: doc.sanadId,
+                    bes: tr.amount,
+                    isOnline: true,
+                    note: `شارژ کیف پول به شماره پیگیری ${invoiceid}`,
+                    accCode: bank,
+                    peigiri: digitalreceipt,
+                    sanadDate: new Date(),
+                }).save({ session });
+
+                await new this.DocListSanad({
+                    agencyId,
+                    titleId: doc.id,
+                    doclistId: doc.sanadId,
+                    row: 2,
+                    bed: tr.amount,
+                    bes: 0,
+                    mId: doc.sanadId,
+                    isOnline: true,
+                    note: `شارژ کیف پول به شماره پیگیری ${invoiceid}`,
+                    accCode: wallet,
+                    peigiri: digitalreceipt,
+                    sanadDate: new Date(),
+                }).save({ session });
+                await new this.CheckHistory({
+                    agencyId,
+                    infoId: checkInfo.id,
+                    editor: tr.userId,
+                    row: 1,
+                    toAccCode: wallet,
+                    fromAccCode: bank,
+                    money: tr.amount,
+                    status: 6,
+                    desc: `شارژ کیف پول به شماره پیگیری ${invoiceid}`,
+                    sanadNum: doc.sanadId,
+                    sanadDate: new Date(),
+                }).save({ session });
+
+         
+
+                const args = {
+                    terminalId: TERMINALmellat,
+                    userName: TERMINALmellat,
+                    userPassword: userPassMellat,
+                    orderId: SaleOrderId,
+                    saleOrderId: SaleOrderId,
+                    saleReferenceId: SaleReferenceId,
+                };
+
+                var options = {
+                    overrideRootElement: {
+                        namespace: "ns1",
+                    },
+                };
+
+                const resVerify = await new Promise((resolve, reject) => {
+                    soap.createClient(
+                        "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl",
+                        options,
+                        (err, client) => {
+                            client.bpVerifyRequest(
+                                args,
+                                (err, result, body) => {
+                                    if (err) {
+                                        //console.log(err);
+                                        reject(err);
+                                    }
+                                    return resolve(result);
+                                }
+                            );
+                        }
+                    );
+                });
+
+                if (resVerify.return == 0) {
+                    var tarikh = new persianDate().format("YY/M/D");
+                    var saat = new persianDate().format("H:m");
+                    const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
+                    ساعت ${saat}
+                    مبلغ ${transAction.amount} انجام گردید`;
+
+                    const postData = {
+                        UserName: amootUser,
+                        Password: amootPass,
+                        SendDateTime: getFormattedDateTime(new Date()),
+                        SMSMessageText: text,
+                        LineNumber: "service",
+                        Mobiles: "09151156929",
+                    };
+
+                    let config = {
+                        method: "post",
+                        url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
+                        headers: {
+                            Authorization: amoot_t,
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                        data: postData,
+                    };
+
+                    await axios.request(config);
+                    const user = await this.User.findById(
+                        agency.admin,
+                        "phone lastName"
+                    ).session(session);
+                    if (user) {
+                        const text2 = `آقا/ خانم ${user.lastName} گرامی
+            پنل سرویس مدارس سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید
+            `;
+
+                        const postData = {
+                            UserName: amootUser,
+                            Password: amootPass,
+                            SendDateTime: getFormattedDateTime(new Date()),
+                            SMSMessageText: text2,
+                            LineNumber: "service",
+                            Mobiles: user.phone,
+                        };
+
+                        let config = {
+                            method: "post",
+                            url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
+                            headers: {
+                                Authorization: amoot_t,
+                                "Content-Type":
+                                    "application/x-www-form-urlencoded",
+                            },
+                            data: postData,
+                        };
+                        await axios.request(config);
+                    }
+
+                    await session.commitTransaction();
+                    session.endSession();
+
+                    return res.redirect(
+                        `https://panel.${process.env.URL}/finance`
+                    );
+                } else {
+                    await session.abortTransaction();
+                    console.error(
+                        "Failed to verify mellat transaction:",
+                        resVerify
+                    );
+                    return res.status(400).json({
+                        error: "Mellat bank error, failed to verify transaction",
+                    });
+                }
+            });
+        } catch (error) {
+            await session.abortTransaction();
+            console.error("Error while verifyPrePayment:", error);
+            return res.status(500).json({
+                error: "Mellat bank error, failed to verify transaction",
+            });
+        } finally {
+            session.endSession();
+        }
+    }
+
+    async paymentCoBank(req, res) {
         // console.log("paymentCorrrrrr")
         if (
             req.query.amount === undefined ||
             req.query.agencyId === undefined ||
             req.query.mobile === undefined ||
             req.query.userId === undefined ||
-            req.query.bankListAcc === undefined 
+            req.query.bankListAcc === undefined
         ) {
             return this.response({
                 res,
                 code: 214,
-                message: "amount & agencyId & mobile & userId & bankListAcc need",
+                message:
+                    "amount & agencyId & mobile & userId & bankListAcc need",
             });
         }
-        const amount = parseInt(req.query.amount);
+        let amount = parseInt(req.query.amount);
         const agencyId = req.query.agencyId;
         const mobile = req.query.mobile;
         const bankListAcc = req.query.bankListAcc;
@@ -2062,38 +2347,82 @@ async paymentCoBank(req, res) {
         // console.log("ip",`https://panel.${process.env.URL}/finance`)
         try {
             const desc = "شارژ آنلاین کیف شرکت " + agency.name;
-            const newTr = new this.Transactions({
-                userId: req.query.userId,
-                amount: amount,
-                desc: desc,
-                queueCode: 0,
-                stCode: bankListAcc,
-                agencyId,
-            });
-            await newTr.save();
-            let token = await generateToken(
-                amount,
-                newTr.authority,
-                "VerifyCoBank",
-                mobile,
-                TERMINAL
-            );
-            if (!token) {
-                return res.status(201).json({
-                    message: "خطای بانک",
-                });
-            }
 
-            return res.json({
-                success: true,
-                message: `https://pay.samar-rad.ir?TerminalID=${TERMINAL}&token=${token}`,
-            });
+            // if (bankGate.type === "MELLAT") {
+                const newTr = new this.Transactions({
+                    userId: req.query.userId,
+                    amount: amount,
+                    bank: "MELLAT",
+                    desc: desc,
+                    queueCode: 0,
+                    stCode: bankListAcc,
+                    agencyId,
+                });
+                await newTr.save();
+                let token = await generateMellatToken(
+                    amount,
+                    newTr.authority,
+                    "0",
+                    TERMINALmellat,
+                    TERMINALmellat,
+                    userPassMellat,
+                    "",
+                    "mellatCallback",
+                    mobile
+                );
+
+                const spl = token.return;
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+                 if(spl.split(",").length<2){
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+                return res.json({
+                    success: true,
+                    message: `https://pay.mysamar.ir/mellat.html?RefId=${
+                        spl.split(",")[1]
+                    }&MobileNo=${mobile}`,
+                });
+            // }
+            // else if (bankGate.type === "SADERAT") {
+                // const newTr = new this.Transactions({
+                //     userId: req.query.userId,
+                //     amount: amount,
+                //     bank: "SADERAT",
+                //     desc: desc,
+                //     queueCode: 0,
+                //     stCode: bankListAcc,
+                //     agencyId,
+                // });
+                // await newTr.save();
+                // let token = await generateSepehrToken(
+                //     amount,
+                //     newTr.authority,
+                //     "saderatCallback",
+                //     mobile,
+                //     bankGate.terminal
+                // );
+                // if (!token) {
+                //     return res.status(201).json({
+                //         message: `خطای بانک ${bankGate.bankName}`,
+                //     });
+                // }
+
+                // return res.json({
+                //     success: true,
+                //     message: `https://pay.mysamar.ir?TerminalID=${TERMINALsadert}&token=${token}`,
+                // });
+            // }
         } catch (error) {
             console.error("Error while paymentCoBank:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-
 
     async verifyCoCharge(req, res) {
         console.log("req.query", JSON.stringify(req.query));
@@ -2421,239 +2750,787 @@ async paymentCoBank(req, res) {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    async sayadTransfersChainInquiry(req, res) {
+    // FOR ALL BANK
+    async callBack(req, res) {
+        let amount = 0;
+        let authority = "";
+        let cardNumber = "";
+        let rrn = "";
+        let traceNumber = "";
+        let digitalReceipt = "";
+        let bankName = "";
+        let respCode = "";
+        let typeBank = "";
+        if ("RefId" in req.body && "ResCode" in req.body) {
+            // Body For MELLAT
+            typeBank = "MELLAT";
+            const {
+                RefId,
+                ResCode,
+                SaleOrderId,
+                SaleReferenceId,
+                CardHolderInfo,
+                CardHolderPan,
+                FinalAmount,
+            } = req.body;
+            amount = FinalAmount;
+            authority = SaleOrderId;
+            cardNumber = CardHolderPan;
+            respCode = ResCode;
+            digitalReceipt = RefId;
+            rrn = SaleReferenceId;
+            traceNumber = CardHolderInfo;
+
+            // Handle type A
+        } else if ("amount" in req.body && "invoiceid" in req.body) {
+            // Body For SADERAT
+            typeBank = "SADERAT";
+            amount = req.body.amount;
+            authority = req.body.invoiceid;
+            cardNumber = req.body.cardnumber;
+            rrn = req.body.rrn;
+            traceNumber = req.body.tracenumber;
+            digitalReceipt = req.body.digitalReceipt;
+            respCode = req.body.respcode;
+            bankName = req.body.issuerbank;
+            // Handle type B
+        } else {
+            return res.status(400).json({ error: "Invalid request body" });
+        }
+
+        let transAction;
         try {
-            const { sayadId, nid } = req.query;
-
-            if (!sayadId || sayadId == "" || !nid || nid == "") {
-                return this.response({
-                    res,
-                    code: 204,
-                    message: "Invalid sayadId or nid!",
-                });
-            }
-
-            const trackId = uuidv4();
-
-            const { token, refresh_token } = await getToken();
-            if (!token || !refresh_token) {
-                console.log("Faild to generate auth token!");
-                return res
-                    .status(500)
-                    .json({ error: "Internal Server Error." });
-            }
-
-            const url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/sayadTransfersChainInquiry?trackId=${trackId}`;
-
-            const body = {
-                sayadId,
-                chequeType: "1",
-                idCode: nid,
-            };
-
-            const response = await axios.post(url, body, {
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: "Bearer " + token,
-                },
+            transAction = await this.Transactions.findOne({
+                authority: authority.toString(),
             });
 
-            if (response.data.responseCode === "FN-CTKZ-20003200000") {
-                return res.json({ chain: response.data.result.chain });
-            } else {
-                console.error("Error while sayadChequeInquiry:", response.data);
-                return res.status(500).json({ message: "Failure" });
-            }
-        } catch (error) {
-            console.error("Error while sayadChequeInquiry:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-
-    async sendSMSAuthorization(req, res) {
-        try {
-            const { phone } = req.query;
-
-            if (!phone || phone == "") {
-                return this.response({
-                    res,
-                    code: 204,
-                    message: "Invalid phone!",
-                });
+            if (!transAction) {
+                res.writeHead(404, { "Content-Type": "text/html" });
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                res.end(html);
+                return;
             }
 
-            const scopes = "credit:sms-sayady-cheque-inquiry:get";
-            const url = `https://api.finnotech.ir/dev/v2/oauth2/authorize?client_id=${CLIENT}&response_type=code&redirect_uri=${REDIRECT_URL}&scope=${scopes}&mobile=${phone}&auth_type=SMS`;
-
-            const response = await makeHttpsGet(url, ENCODED_TOKEN);
-
-            console.log("Raw response:", response.data);
-
-            let parsed;
-            try {
-                parsed = JSON.parse(response.data);
-            } catch (err) {
-                console.error(
-                    "Failed to parse response from sendSMSAuthorization:",
-                    err
-                );
-                return res
-                    .status(500)
-                    .json({ message: "Invalid JSON from API" });
-            }
-
-            if (parsed.responseCode === "FN-BRFH-20000000000") {
-                return res.json({ trackId: parsed.result.trackId });
-            } else {
-                console.error("Error while SendSMSAuthorization:", parsed);
-                return res.status(500).json({ message: "Could not send code" });
-            }
-        } catch (error) {
-            console.error("Request Error:", error.message);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-
-    async sayadChequeInquiry(req, res) {
-        try {
-            const { sayadId, code, mobile, nid, trackId } = req.body;
-            if (
-                !sayadId ||
-                sayadId == "" ||
-                !code ||
-                code == "" ||
-                !mobile ||
-                mobile == "" ||
-                !nid ||
-                nid == "" ||
-                !trackId ||
-                trackId == ""
-            ) {
-                return this.response({
-                    res,
-                    code: 204,
-                    message: "Invalid input!",
-                });
-            }
-
-            let idType = 1;
-
-            let token = "";
-            const now = new Date();
-            const user = req.user;
-            const expiry = new Date(user.fin_token_expiry);
-
-            if (expiry && expiry > now) {
-                token = user.fin_token;
-            } else {
-                const generated_token = await verifySMS(
-                    code,
-                    mobile,
-                    nid,
-                    trackId
-                );
-                if (!generated_token.token || !generated_token.refresh_token) {
-                    console.log("Faild to generate sms token!");
-                    return res
-                        .status(500)
-                        .json({ error: "Internal Server Error." });
-                }
-                token = generated_token.token;
-
-                const timeAdded = addTokenTime();
-
-                const findUser = await this.User.findById(user._id);
-                findUser.fin_token = generated_token.token;
-                findUser.fin_refresh_token = generated_token.refresh_token;
-                findUser.fin_token_expiry = timeAdded;
-                await findUser.save();
-                req.user = findUser;
-            }
-
-            const url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/users/${nid}/sms/sayadChequeInquiry?sayadId=${sayadId}&idType=${idType}`;
-
-            const parsedUrl = new URL(url);
-
-            const options = {
-                hostname: parsedUrl.hostname,
-                path: parsedUrl.pathname + parsedUrl.search,
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            };
-
-            const apiResponse = await new Promise((resolve, reject) => {
-                const reqApi = https.request(options, (resApi) => {
-                    let data = "";
-                    resApi.on("data", (chunk) => (data += chunk));
-                    resApi.on("end", () =>
-                        resolve({ status: resApi.statusCode, data })
+            // console.log("verify transAction.done=", transAction.done);
+            // console.log("verify transAction.state=", transAction.state);
+            if (transAction.done && transAction.state === 1) {
+                if (transAction.stCode === "") {
+                    return res.redirect(
+                        `https://panel.${process.env.URL}/finance`
                     );
-                });
-
-                reqApi.on("error", (err) => reject(err));
-                reqApi.end();
-            });
-
-            console.log("Raw response:", apiResponse.data);
-
-            let parsed;
-            try {
-                parsed = JSON.parse(apiResponse.data);
-            } catch (err) {
-                console.error(
-                    "Failed to parse JSON from sayadChequeInquiry:",
-                    err
-                );
-                return res
-                    .status(500)
-                    .json({ message: "Invalid JSON from API" });
+                } else {
+                    return res.redirect(
+                        `https://app.${process.env.URL}/?st=${transAction.stCode}`
+                    );
+                }
             }
-
-            if (parsed.responseCode === "FN-CTKZ-20000200000") {
-                return res.json({ data: parsed.result });
+            const checkResp = respCode == 0;
+            // console.log("saderatCallback checkResp", checkResp);
+            if (!checkResp) {
+                res.writeHead(404, { "Content-Type": "text/html" });
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                res.end(html);
+                return;
+            }
+            if (transAction.stCode === "") {
+                //dodo
             } else {
-                console.error("Error while sayadChequeInquiry:", parsed);
-                return res
-                    .status(500)
-                    .json({ message: "Could not fetch data", details: parsed });
+                await this.verifyPrePaymentStudent(
+                    req,
+                    res,
+                    transAction,
+                    traceNumber,
+                    amount,
+                    authority,
+                    cardNumber,
+                    rrn,
+                    digitalReceipt,
+                    bankName,
+                    typeBank
+                );
             }
         } catch (error) {
-            console.error(
-                "Error while sayadChequeInquiry:",
-                error.message || error
-            );
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-
-    async getCardInformation(req, res) {
-        try {
-            const { card } = req.query;
-
-            const token = await getToken();
-
-            const url =
-                "https://api.finnotech.ir/mpg/v2/clients/samar/cards/" + card;
-
-            const response = await axios.get(url, {
-                headers: {
-                    Authorization: "Bearer " + token,
-                },
+            console.error("Error while verifyPrePayment:", error);
+            return res.status(500).json({
+                error: "Mellat bank error, failed to verify transaction",
             });
-
-            console.log(response.data);
-
-            return res.json({ message: response.data });
-        } catch (error) {
-            console.error(
-                "Error while getCardInformation:",
-                error.message || error
-            );
-            return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+  // FOR ALL BANK 
+    async verifyPrePaymentStudent(
+    res,
+    transAction,
+    traceNumber,
+    amount,
+    authority,
+    cardnumber,
+    rrn,
+    digitalreceipt,
+    issuerbank,
+    typeBank
+) {
+    const session = await this.Transactions.startSession();
+    try {
+        await session.withTransaction(async () => {
+            const agencyId = transAction.agencyId;
+            
+            // Fetch agency and bankGate in parallel with session
+            const [agency, bankGate] = await Promise.all([
+                this.Agency.findById(agencyId, "settings").session(session),
+                this.BankGate.findOne({ agencyId, type: typeBank }).session(session)
+            ]);
+
+            if (!agency || !bankGate) {
+                throw new Error("Agency or bankGate not found");
+            }
+
+            const tid = bankGate.terminal;
+            const bankCode = bankGate.hesab;
+
+            // Update transaction
+            const tr = await this.Transactions.findByIdAndUpdate(
+                transAction._id,
+                {
+                    refID: digitalreceipt,
+                    issuerbank,
+                    cardnumber,
+                    traceNumber,
+                    rrn,
+                    done: true,
+                    state: 1,
+                    amount: amount,
+                },
+                { new: true, session }
+            );
+
+            if (!tr) {
+                throw new Error("Transaction not found");
+            }
+
+            let amountpaid = tr.amount;
+            const student = await this.Student.findOne({
+                studentCode: tr.stCode,
+            }).session(session);
+
+            if (!student) {
+                throw new Error("Student not found");
+            }
+
+            // Fetch invoices in parallel
+            const [invoice, invoice2] = await Promise.all([
+                this.Invoice.findOne({
+                    agencyId,
+                    type: "registration",
+                    active: true,
+                }).lean().session(session),
+                this.Invoice.findOne({
+                    agencyId,
+                    type: "prePayment",
+                    active: true,
+                }).lean().session(session)
+            ]);
+
+            let amountReg = invoice?.amount || 0;
+            let confirmInfo = invoice?.confirmInfo || false;
+            // let amount2 = invoice2?.amount || 0;
+
+            // Update student state
+            if (confirmInfo && student.state < 2) {
+                student.state = 2;
+                student.stateTitle = "تایید اطلاعات";
+            }
+            if (student.state < 3) {
+                student.state = 3;
+                student.stateTitle = "تایید پیش پرداخت";
+            }
+            await student.save({ session });
+
+            // Handle registration payment
+            if (amountReg > 0 && amountpaid >= amountReg) {
+                amountpaid =amountpaid- amountReg;
+                let payQueue = await this.PayQueue.findOne({
+                    studentId: student._id,
+                    type: "registration",
+                }).session(session);
+
+                if (!payQueue) {
+                    payQueue = new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        code: invoice.code,
+                        agencyId,
+                        studentId: student._id,
+                        setter: tr.userId,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: true,
+                        isSetAuto:true,
+                        authority: tr.authority,
+                        payDate: new Date(),
+                    });
+                } else {
+                    payQueue.isPaid = true;
+                    payQueue.isSetAuto = true;
+                    payQueue.payDate = new Date();
+                    payQueue.authority = tr.authority;
+                }
+                await payQueue.save({ session });
+
+                const wallet = agency.settings.find(obj => obj.wallet)?.wallet;
+                const costCode = agency.settings.find(obj => obj.cost)?.cost;
+
+                if (!costCode || !wallet) {
+                    throw new Error("costCode or wallet not found");
+                }
+
+                const desc = `پرداخت ${payQueue.title} آنلاین بابت دانش آموز ${student.name} ${student.lastName}`;
+                const doc = new this.DocSanad({
+                    agencyId,
+                    note: desc,
+                    sanadDate: new Date(),
+                    system: 3,
+                    definite: false,
+                    lock: true,
+                    editor: tr.userId,
+                });
+                await doc.save({ session });
+
+                await Promise.all([
+                    new this.DocListSanad({
+                        agencyId,
+                        titleId: doc.id,
+                        doclistId: doc.sanadId,
+                        row: 1,
+                        bed: amountReg,
+                        bes: 0,
+                        note: desc,
+                        accCode: costCode,
+                        mId: doc.sanadId,
+                        isOnline: true,
+                        peigiri: student.studentCode,
+                        sanadDate: new Date(),
+                    }).save({ session }),
+                    new this.DocListSanad({
+                        agencyId,
+                        titleId: doc.id,
+                        doclistId: doc.sanadId,
+                        row: 2,
+                        bed: 0,
+                        bes: amountReg,
+                        note: desc,
+                        accCode: wallet,
+                        mId: payQueue.code,
+                        isOnline: true,
+                        type: "invoice",
+                        forCode: "003005" + student.studentCode,
+                        peigiri: student.studentCode,
+                        sanadDate: new Date(),
+                    }).save({ session })
+                ]);
+            }
+
+            // Handle pre-payment
+            if (bankCode && amountpaid > 0 && invoice2) {
+                let prePayment = await this.PayQueue.findOne({
+                    agencyId: agency._id,
+                    studentId: student._id,
+                    type: "prePayment",
+                }).session(session);
+
+                if (!prePayment) {
+                    prePayment = new this.PayQueue({
+                        inVoiceId: invoice2._id,
+                        code: invoice2.code,
+                        agencyId: agency._id,
+                        studentId: student._id,
+                        setter: tr.userId,
+                        type: invoice2.type,
+                        amount: amountpaid,
+                        title: invoice2.title,
+                        maxDate: invoice2.maxDate,
+                        isPaid: true,
+                        isSetAuto: true,
+                        payDate: new Date(),
+                        authority: tr.authority,
+                    });
+                } else {
+                   prePayment.isPaid = true;
+                    prePayment.isSetAuto = true;
+                    prePayment.payDate = new Date();
+                    prePayment.authority = tr.authority;
+                }
+                await prePayment.save({ session });
+
+                const bankName = "بانک شرکت";
+                const auth = tr.authority;
+                persianDate.toLocale("en");
+                const SalMali = new persianDate().format("YY");
+                const checkMax = await this.CheckInfo.find({ agencyId }, "infoId")
+                    .sort({ infoId: -1 })
+                    .limit(1)
+                    .session(session);
+                const numCheck = checkMax.length > 0 ? checkMax[0].infoId + 1 : 1;
+                const infoNum = `${SalMali}-${numCheck}`;
+
+                const checkInfo = new this.CheckInfo({
+                    agencyId,
+                    editor: tr.userId,
+                    infoId: numCheck,
+                    infoNum,
+                    seCode: "0",
+                    branchCode: "",
+                    branchName: "",
+                    bankName,
+                    serial: auth,
+                    type: 6,
+                    rowCount: 2,
+                    infoDate: new Date(),
+                    infoMoney: amountpaid,
+                    accCode: bankCode,
+                    ownerHesab: "",
+                    desc: tr.desc,
+                });
+                await checkInfo.save({ session });
+
+                const doc = new this.DocSanad({
+                    agencyId,
+                    note: tr.desc,
+                    sanadDate: new Date(),
+                    system: 2,
+                    definite: false,
+                    lock: true,
+                    editor: tr.userId,
+                });
+                await doc.save({ session });
+
+                await Promise.all([
+                    new this.DocListSanad({
+                        agencyId,
+                        titleId: doc.id,
+                        doclistId: doc.sanadId,
+                        row: 1,
+                        bed: amountpaid,
+                        bes: 0,
+                        isOnline: true,
+                        mId: doc.sanadId,
+                        note: `${tr.desc} به شماره پیگیری ${authority}`,
+                        accCode: bankCode,
+                        peigiri: digitalreceipt,
+                    }).save({ session }),
+                    new this.DocListSanad({
+                        agencyId,
+                        titleId: doc.id,
+                        doclistId: doc.sanadId,
+                        row: 2,
+                        bed: 0,
+                        bes: amountpaid,
+                        isOnline: true,
+                        mId: prePayment.code,
+                        type: "invoice",
+                        forCode: "003005" + student.studentCode,
+                        note: `${tr.desc} به شماره پیگیری ${authority}`,
+                        accCode: "003005" + student.studentCode,
+                        peigiri: digitalreceipt,
+                    }).save({ session }),
+                    new this.CheckHistory({
+                        agencyId,
+                        infoId: checkInfo.id,
+                        editor: tr.userId,
+                        row: 1,
+                        toAccCode: bankCode,
+                        fromAccCode: "003005" + student.studentCode,
+                        money: amountpaid,
+                        status: 6,
+                        desc: `${tr.desc} به شماره پیگیری ${authority}`,
+                        sanadNum: doc.sanadId,
+                    }).save({ session })
+                ]);
+            }
+
+            const done = await varifyPaidBank(
+                typeBank,
+                digitalreceipt,
+                tid,
+                bankGate.userName,
+                bankGate.userPass
+            );
+
+            if (!done) {
+                throw new Error("Payment verification failed");
+            }
+
+            res.redirect(
+                `https://${process.env.URL}/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${tr.stCode}`
+            );
+        }, {
+            // Transaction options
+            readConcern: { level: 'snapshot' },
+            writeConcern: { w: 'majority' }
+        });
+    } catch (error) {
+        console.error("Error in verifyPrePayment:", error);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+            error: error.message || "Internal Server Error"
+        }));
+    }
+    finally {
+        await session.endSession();
+    }
+}
+    // async verifyPrePaymentStudent(
+    //     res,
+    //     transAction,
+    //     traceNumber,
+    //     amount,
+    //     authority,
+    //     cardnumber,
+    //     rrn,
+    //     digitalreceipt,
+    //     issuerbank,
+    //     typeBank
+    // ) {
+    //     // console.log("req.query", JSON.stringify(req.query));
+
+    //     const session = await this.Transactions.startSession();
+    //     let transAction;
+    //     try {
+    //         await session.withTransaction(async () => {
+    //             const agencyId = transAction.agencyId;
+    //             const agency = await this.Agency.findById(
+    //                 agencyId,
+    //                 "settings"
+    //             ).session(session);
+    //             const bankGate = await this.BankGate.findOne({
+    //                 agencyId: agency._id,
+    //                 type: typeBank,
+    //             }).session(session);
+    //             if (!agency || !bankGate) {
+    //                 console.error(
+    //                     "agency or bankGate not find in verifyPrePay"
+    //                 );
+    //                 res.writeHead(404, { "Content-Type": "text/html" });
+    //                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+    //                 res.end(html);
+    //                 session.endSession();
+    //                 return;
+    //             }
+    //             const tid = bankGate.terminal;
+    //             const bankCode = bankGate.hesab;
+    //             const tr = await this.Transactions.findByIdAndUpdate(
+    //                 transAction._id,
+    //                 {
+    //                     refID: digitalreceipt,
+    //                     issuerbank,
+    //                     cardnumber,
+    //                     traceNumber,
+    //                     rrn,
+    //                     done: true,
+    //                     state: 1,
+    //                     amount: amount,
+    //                 },
+    //                 { new: true, session }
+    //             ).session(session);
+    //             let amountpaid = tr.amount;
+    //             let student = await this.Student.findOne({
+    //                 studentCode: tr.stCode,
+    //             }).session(session);
+    //             if (!student) {
+    //                 console.error("student not find in verifyPrePay");
+    //                 res.writeHead(404, { "Content-Type": "text/html" });
+    //                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+    //                 res.end(html);
+    //                 session.endSession();
+    //                 return;
+    //             }
+    //             console.log("bankCode", bankCode);
+
+    //             let invoice = await this.Invoice.findOne({
+    //                 agencyId: agencyId,
+    //                 type: "registration",
+    //                 active: true,
+    //             })
+    //                 .lean()
+    //                 .session(session);
+
+    //             let amountReg = 0;
+    //             let confirmInfo = true;
+    //             if (invoice) {
+    //                 console.log("invoice.amount", invoice.amount);
+    //                 amountReg = invoice.amount;
+    //                 confirmInfo = invoice.confirmInfo;
+    //             }
+
+    //             let invoice2 = await this.Invoice.findOne({
+    //                 agencyId: agencyId,
+    //                 type: "prePayment",
+    //                 active: true,
+    //             })
+    //                 .lean()
+    //                 .session(session);
+    //             let amount2 = 0;
+    //             if (invoice2) {
+    //                 amount2 = invoice2.amount;
+    //             }
+    //             console.log("amount2", amount2);
+    //             console.log("student.state", student.state);
+    //             console.log("confirmInfo", confirmInfo);
+
+    //             if (confirmInfo && student.state < 2) {
+    //                 student.state = 2;
+    //                 student.stateTitle = "تایید اطلاعات";
+    //                 await student.save({ session });
+    //             }
+
+    //             if (student.state < 3) {
+    //                 student.state = 3;
+    //                 student.stateTitle = "تایید پیش پرداخت";
+    //                 await student.save({ session });
+    //             }
+    //             console.log("amountReg", amountReg);
+    //             console.log("amountpaid", amountpaid);
+    //             if (amountReg > 0 && amountpaid >= amountReg) {
+    //                 amountpaid = amountpaid - amountReg;
+    //                 let payQueue = await this.PayQueue.findOne({
+    //                     studentId: student._id,
+    //                     type: "registration",
+    //                 }).session(session);
+
+    //                 if (!payQueue) {
+    //                     payQueue = new this.PayQueue({
+    //                         inVoiceId: invoice._id,
+    //                         code: invoice.code,
+    //                         agencyId: agencyId,
+    //                         studentId: student._id,
+    //                         setter: tr.userId,
+    //                         type: invoice.type,
+    //                         amount: invoice.amount,
+    //                         title: invoice.title,
+    //                         maxDate: invoice.maxDate,
+    //                         isPaid: true,
+    //                         authority: tr.authority,
+    //                         payDate: new Date(),
+    //                     });
+    //                     await payQueue.save({ session });
+    //                 } else {
+    //                     payQueue.done = true;
+    //                     payQueue.payDate = new Date();
+    //                     payQueue.authority = tr.authority;
+
+    //                     await payQueue.save({ session });
+    //                 }
+    //                 console.log("payQueue=", payQueue.code);
+
+    //                 const wallet = agency.settings.find(
+    //                     (obj) => obj.wallet != undefined
+    //                 ).wallet;
+    //                 const costCode = agency.settings.find(
+    //                     (obj) => obj.cost != undefined
+    //                 ).cost;
+    //                 if (!costCode || !wallet) {
+    //                     throw new Error("costCode || wallet not found");
+    //                 }
+    //                 console.log("wallet", wallet);
+    //                 const desc = `پرداخت ${payQueue.title} آنلاین بابت دانش آموز ${student.name} ${student.lastName}`;
+    //                 let doc = new this.DocSanad({
+    //                     agencyId,
+    //                     note: desc,
+    //                     sanadDate: new Date(),
+    //                     system: 3,
+    //                     definite: false,
+    //                     lock: true,
+    //                     editor: tr.userId,
+    //                 });
+    //                 await doc.save({ session });
+
+    //                 let docPaid = new this.DocListSanad({
+    //                     agencyId,
+    //                     titleId: doc.id,
+    //                     doclistId: doc.sanadId,
+    //                     row: 1,
+    //                     bed: amountReg,
+    //                     bes: 0,
+    //                     note: desc,
+    //                     accCode: costCode,
+    //                     mId: doc.sanadId,
+    //                     isOnline: true,
+    //                     peigiri: student.studentCode,
+    //                     sanadDate: new Date(),
+    //                 });
+    //                 await docPaid.save({ session });
+
+    //                 await new this.DocListSanad({
+    //                     agencyId,
+    //                     titleId: doc.id,
+    //                     doclistId: doc.sanadId,
+    //                     row: 2,
+    //                     bed: 0,
+    //                     bes: amountReg,
+    //                     note: desc,
+    //                     accCode: wallet,
+    //                     mId: payQueue.code,
+    //                     isOnline: true,
+    //                     type: "invoice",
+    //                     forCode: "003005" + student.studentCode,
+    //                     peigiri: student.studentCode,
+    //                     sanadDate: new Date(),
+    //                 }).save({ session });
+    //             }
+
+    //             console.log("ddddd amountpaid", amountpaid);
+
+    //             if (bankCode != "" && amountpaid > 0 && invoice2) {
+    //                 let prePayment = await this.PayQueue.findOne({
+    //                     agencyId: agency._id,
+    //                     studentId: student._id,
+    //                     type: "prePayment",
+    //                 }).session(session);
+
+    //                 if (!prePayment) {
+    //                     prePayment = new this.PayQueue({
+    //                         inVoiceId: invoice2._id,
+    //                         code: invoice2.code,
+    //                         agencyId: agency._id,
+    //                         studentId: student._id,
+    //                         setter: tr.userId,
+    //                         type: invoice2.type,
+    //                         amount: invoice2.amount,
+    //                         title: invoice2.title,
+    //                         maxDate: invoice2.maxDate,
+    //                         isPaid: true,
+    //                         payDate: new Date(),
+    //                         authority: tr.authority,
+    //                     });
+    //                     await prePayment.save({ session });
+    //                 } else {
+    //                     prePayment.done = true;
+    //                     prePayment.payDate = new Date();
+    //                     prePayment.authority = tr.authority;
+    //                     await prePayment.save({ session });
+    //                 }
+
+    //                 console.log("prePayment==", prePayment.code);
+    //                 const bank = bankCode;
+    //                 const bankName = "بانک شرکت";
+    //                 const auth = tr.authority;
+    //                 console.log("xxxxxxxxxxx22222222");
+    //                 persianDate.toLocale("en");
+    //                 var SalMali = new persianDate().format("YY");
+    //                 const checkMax = await this.CheckInfo.find(
+    //                     { agencyId },
+    //                     "infoId"
+    //                 )
+    //                     .sort({ infoId: -1 })
+    //                     .limit(1)
+    //                     .session(session);
+    //                 let numCheck = 1;
+    //                 if (checkMax.length > 0) {
+    //                     numCheck = checkMax[0].infoId + 1;
+    //                 }
+    //                 const infoNum = `${SalMali}-${numCheck}`;
+    //                 let checkInfo = new this.CheckInfo({
+    //                     agencyId,
+    //                     editor: tr.userId,
+    //                     infoId: numCheck,
+    //                     infoNum,
+    //                     seCode: "0",
+    //                     branchCode: "",
+    //                     branchName: "",
+    //                     bankName: bankName,
+    //                     serial: auth,
+    //                     type: 6,
+    //                     rowCount: 2,
+    //                     infoDate: new Date(),
+    //                     infoMoney: amountpaid,
+    //                     accCode: bank,
+    //                     ownerHesab: "",
+    //                     desc: tr.desc,
+    //                 });
+    //                 await checkInfo.save({ session });
+    //                 console.log("tr.desc", tr.desc);
+    //                 console.log("ddddd amountpaid", amountpaid);
+    //                 let doc = new this.DocSanad({
+    //                     agencyId,
+    //                     note: tr.desc,
+    //                     sanadDate: new Date(),
+    //                     system: 2,
+    //                     definite: false,
+    //                     lock: true,
+    //                     editor: tr.userId,
+    //                 });
+
+    //                 await doc.save({ session });
+    //                 await new this.DocListSanad({
+    //                     agencyId,
+    //                     titleId: doc.id,
+    //                     doclistId: doc.sanadId,
+    //                     row: 1,
+    //                     bed: amountpaid,
+    //                     bes: 0,
+    //                     isOnline: true,
+    //                     mId: doc.sanadId,
+    //                     note: ` ${tr.desc} به شماره پیگیری ${authority}`,
+    //                     accCode: bank,
+    //                     peigiri: digitalreceipt,
+    //                     isOnline: true,
+    //                 }).save({ session });
+
+    //                 await new this.DocListSanad({
+    //                     agencyId,
+    //                     titleId: doc.id,
+    //                     doclistId: doc.sanadId,
+    //                     row: 2,
+    //                     bed: 0,
+    //                     bes: amountpaid,
+    //                     isOnline: true,
+    //                     mId: prePayment.code,
+    //                     type: "invoice",
+    //                     forCode: "003005" + student.studentCode,
+    //                     note: ` ${tr.desc} به شماره پیگیری ${authority}`,
+    //                     accCode: "003005" + student.studentCode,
+    //                     peigiri: digitalreceipt,
+    //                 }).save({ session });
+    //                 console.log("doc.sanadId", doc.sanadId);
+    //                 console.log("checkInfo.id", checkInfo.id);
+    //                 await new this.CheckHistory({
+    //                     agencyId,
+    //                     infoId: checkInfo.id,
+    //                     editor: tr.userId,
+    //                     row: 1,
+    //                     toAccCode: bank,
+    //                     fromAccCode: "003005" + student.studentCode,
+    //                     money: amountpaid,
+    //                     status: 6,
+    //                     desc: ` ${tr.desc} به شماره پیگیری ${authority}`,
+    //                     sanadNum: doc.sanadId,
+    //                 }).save({ session });
+    //             }
+
+    //             let done = await varifyPaidBank(
+    //                 typeBank,
+    //                 digitalreceipt,
+    //                 tid,
+    //                 bankGate.userName,
+    //                 bankGate.userPass
+    //             );
+    //             if (done) {
+    //                 return res.redirect(
+    //                     `https://${process.env.URL}/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${tr.stCode}`
+    //                 );
+    //             } else {
+    //                 throw new Error("Payment verification failed");
+    //             }
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while verifyPrePayment:", error);
+    //         res.status(500).json({
+    //             error: error.message || "Internal Server Error.",
+    //         });
+    //     } finally {
+    //         session.endSession();
+    //     }
+    // }
 })();
 
 function financial(x) {

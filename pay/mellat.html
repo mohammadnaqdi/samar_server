@@ -1,0 +1,41 @@
+<html>
+    <body
+        onload="updateFormValues(); document.getElementById('paymentForm').submit();"
+    >
+        <form
+            id="paymentForm"
+            action="https://bpm.shaparak.ir/pgwchannel/startpay.mellat"
+            method="POST"
+        >
+            <input type="hidden" id="RefId" name="RefId" />
+            <input
+                type="hidden"
+                id="MobileNo"
+                name="MobileNo"
+                value="989121231111"
+            />
+            <noscript>
+                <input
+                    type="submit"
+                    value="Click here if you are not redirected"
+                />
+            </noscript>
+        </form>
+
+        <script>
+            function updateFormValues() {
+                const urlParams = new URLSearchParams(window.location.search);
+
+                const RefId = urlParams.get("RefId");
+                if (RefId) {
+                    document.getElementById("RefId").value = RefId;
+                }
+
+                const MobileNo = urlParams.get("MobileNo");
+                if (MobileNo) {
+                    document.getElementById("MobileNo").value = MobileNo;
+                }
+            }
+        </script>
+    </body>
+</html>

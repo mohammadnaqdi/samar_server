@@ -20,6 +20,7 @@ router.post("/GetAddress2",validator.getAddress2Validator(),
 router.get("/SearchAddress", controller.searchAddress.bind(controller));
 router.get("/GetDistance", controller.getDistance.bind(controller));
 router.get("/GetCityProvinceByDistrict", controller.getCityProvinceByDistrict.bind(controller));
+router.get("/GetAllCity", controller.getAllCity.bind(controller));
 router.get("/GetTrip", controller.getTrip.bind(controller));
 router.post("/GetMySearch",
     validator.getMySearchValidator(),

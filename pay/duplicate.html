@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fa">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>پرداخت تکراری</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #f4f7fb;
+        direction: rtl;
+      }
+
+      .payment-result {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        margin: 20px auto;
+        max-width: 460px;
+        border: 2px solid #f39c12;
+      }
+
+      .payment-result h2 {
+        color: #f39c12;
+        margin-bottom: 20px;
+        font-size: 24px;
+        font-weight: bold;
+      }
+
+      .payment-result .data-container {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f9eb96;
+        border-radius: 8px;
+        text-align: right;
+      }
+
+      .payment-result .data-item {
+        margin: 10px 0;
+        color: #333;
+      }
+
+      .data-item span {
+        font-weight: bold;
+        color: #f39c12;
+        margin-left: 5px;
+      }
+
+      .app-button {
+        background-color: #f39c12;
+        color: white;
+        padding: 14px 28px;
+        border: none;
+        border-radius: 30px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(243, 156, 18, 0.3);
+      }
+
+      .app-button:hover {
+        background-color: #e67e22;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 10px rgba(243, 156, 18, 0.4);
+      }
+
+      .app-button:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 4px rgba(243, 156, 18, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="payment-result">
+      <h2>پرداخت تکراری</h2>
+      <div id="dataContainer" class="data-container" style="display: none"></div>
+      <button class="app-button" onclick="openApp()">باز کردن اپ راکسی</button>
+    </div>
+
+    <script>
+      // Function to get URL parameters
+      function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        const paramObj = {};
+        for (const [key, value] of params) {
+          paramObj[key] = value;
+        }
+        return paramObj;
+      }
+
+      // Persian number conversion
+      function toPersianNum(num) {
+        const persianDigits = [
+          "۰",
+          "۱",
+          "۲",
+          "۳",
+          "۴",
+          "۵",
+          "۶",
+          "۷",
+          "۸",
+          "۹",
+        ];
+        return num.toString().replace(/\d/g, (d) => persianDigits[d]);
+      }
+
+      // Display parameters on page load
+      window.onload = function () {
+        const params = getUrlParams();
+        const dataContainer = document.getElementById("dataContainer");
+
+        if (params.amount || params.transaction) {
+          dataContainer.style.display = "block";
+          let content = "";
+
+          if (params.amount) {
+            const amountInPersian = toPersianNum(params.amount);
+            content += `<div class="data-item">مبلغ: <span>${amountInPersian} تومان</span></div>`;
+          }
+
+          if (params.transaction) {
+            const transactionInPersian = toPersianNum(params.transaction);
+            content += `<div class="data-item">کد تراکنش: <span>${transactionInPersian}</span></div>`;
+          }
+
+          dataContainer.innerHTML = content;
+        }
+      };
+
+      function openApp() {
+        const appScheme = "raxiapp://open/link?data=duplicate";
+        const fallbackUrl = "https://app.raxitaxi.ir/travelPage?data=duplicate";
+        const timeout = 2000;
+
+        let iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = appScheme;
+        document.body.appendChild(iframe);
+
+        let isAppOpened = false;
+        const startTime = Date.now();
+
+        window.onblur = function () {
+          isAppOpened = true;
+        };
+
+        setTimeout(function () {
+          document.body.removeChild(iframe);
+          if (!isAppOpened && Date.now() - startTime < timeout + 500) {
+            window.location = fallbackUrl;
+          }
+        }, timeout);
+
+        window.location = appScheme;
+      }
+    </script>
+  </body>
+</html>

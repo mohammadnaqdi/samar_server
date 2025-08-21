@@ -1,30 +1,83 @@
 const controller = require("../controller");
 const https = require("https");
 const axios = require("axios");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
+const amoot_t = process.env.AMOOT_SMS;
+const amootUser = process.env.AMOOT_USER;
+const amootPass = process.env.AMOOT_PASS;
+function getFormattedDateTime(date) {
+    if (!(date instanceof Date)) {
+        throw new TypeError("Input must be a Date object");
+    }
 
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // zero-pad month
+    const day = String(date.getDate()).padStart(2, "0"); // zero-pad day
+    const hour = String(date.getHours()).padStart(2, "0"); // zero-pad hour
+    const minute = String(date.getMinutes()).padStart(2, "0"); // zero-pad minute
+    const second = String(date.getSeconds()).padStart(2, "0"); // zero-pad second
+
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+}
 module.exports = new (class extends controller {
     async bnkBanksInsert(req, res) {
         try {
+            const id = req.body.id;
+            const codeHesab = req.body.hesab;
+            const agencyId = req.body.agencyId;
+            const iranBankId = req.body.iranBankId;
+            const bankName = req.body.bankName;
+            const branchCode = req.body.branchCode;
+            const branchName = req.body.branchName;
+            const accType = req.body.accType.trim();
+            const numHesab = req.body.numHesab;
+            const eCard = req.body.eCard.trim();
+            const owner = req.body.owner.trim();
+            const addressBank = req.body.addressBank.trim();
+            const addressTel = req.body.addressTel.trim();
+            const serialCheck = req.body.serialCheck;
+            const costCenter = req.body.costCenter.trim();
+            const shMeli = req.body.nationalCode.trim();
+            const editor = req.user.id;
+            if (id != undefined && id != Null) {
+                const bankInfo = await this.BankInfo.findByIdAndUpdate(
+                    id,
+                    {
+                        editor,
+                        codeHesab,
+                        iranBankId,
+                        bankName,
+                        branchCode,
+                        branchName,
+                        accType,
+                        numHesab,
+                        eCard,
+                        owner,
+                        addressBank,
+                        addressTel,
+                        serialCheck,
+                        costCenter,
+                        shMeli,
+                    },
+                    { new: true }
+                );
 
-        const id = req.body.id;
-        const codeHesab = req.body.hesab;
-        const agencyId = req.body.agencyId;
-        const iranBankId = req.body.iranBankId;
-        const bankName = req.body.bankName;
-        const branchCode = req.body.branchCode;
-        const branchName = req.body.branchName;
-        const accType = req.body.accType.trim();
-        const numHesab = req.body.numHesab;
-        const eCard = req.body.eCard.trim();
-        const owner = req.body.owner.trim();
-        const addressBank = req.body.addressBank.trim();
-        const addressTel = req.body.addressTel.trim();
-        const serialCheck = req.body.serialCheck;
-        const costCenter = req.body.costCenter.trim();
-        const shMeli = req.body.nationalCode.trim();
-        const editor = req.user.id;
-        if(id!=undefined && id!=Null){
-          const bankInfo=  await this.BankInfo.findByIdAndUpdate(new ObjectId(id),{
+                // await new this.OperatorAction({
+                //     actUserID: req.user.coId,
+                //     actType: 2,
+                //     actName: "ویرایش",
+                //     actTableName: "Tbl_BankInfo",
+                //     actKeyField: iranBankId.toString(),
+                //     actFormEn: "FrmBankiranSave",
+                //     actFormFa: "ویرایش حساب بانکی",
+                //     actDescription: `ویرایش حساب بانکی در ${bankName} به نام ${owner}`,
+                // }).save();
+                res.json(bankInfo);
+                return;
+            }
+            let bankInfo = new this.BankInfo({
+                agencyId,
                 editor,
                 codeHesab,
                 iranBankId,
@@ -40,74 +93,37 @@ module.exports = new (class extends controller {
                 serialCheck,
                 costCenter,
                 shMeli,
-            },
-            { new: true });
-          
-    
+            });
+            await bankInfo.save();
+
             // await new this.OperatorAction({
             //     actUserID: req.user.coId,
-            //     actType: 2,
-            //     actName: "ویرایش",
+            //     actType: 1,
+            //     actName: "ثبت",
             //     actTableName: "Tbl_BankInfo",
             //     actKeyField: iranBankId.toString(),
             //     actFormEn: "FrmBankiranSave",
-            //     actFormFa: "ویرایش حساب بانکی",
-            //     actDescription: `ویرایش حساب بانکی در ${bankName} به نام ${owner}`,
+            //     actFormFa: "ایجاد حساب بانکی",
+            //     actDescription: `ثبت حساب بانکی در ${bankName} به نام ${owner}`,
             // }).save();
             res.json(bankInfo);
-            return
-        }
-        let bankInfo = new this.BankInfo({
-            agencyId,
-            editor,
-            codeHesab,
-            iranBankId,
-            bankName,
-            branchCode,
-            branchName,
-            accType,
-            numHesab,
-            eCard,
-            owner,
-            addressBank,
-            addressTel,
-            serialCheck,
-            costCenter,
-            shMeli,
-        });
-        await bankInfo.save();
-
-        // await new this.OperatorAction({
-        //     actUserID: req.user.coId,
-        //     actType: 1,
-        //     actName: "ثبت",
-        //     actTableName: "Tbl_BankInfo",
-        //     actKeyField: iranBankId.toString(),
-        //     actFormEn: "FrmBankiranSave",
-        //     actFormFa: "ایجاد حساب بانکی",
-        //     actDescription: `ثبت حساب بانکی در ${bankName} به نام ${owner}`,
-        // }).save();
-        res.json(bankInfo);
-        return;
+            return;
         } catch (error) {
-           console.error("Error while bnkBanksInsert:", error);
+            console.error("Error while bnkBanksInsert:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
     async bnkBanksById(req, res) {
         try {
+            const id = req.query.id;
+            console.log("id", id);
+            const bankInfo = await this.BankInfo.findById(id);
+            console.log("bankInfo", bankInfo);
 
-        const id = req.query.id;
-        console.log("id",id)
-        const bankInfo=  await this.BankInfo.findById(id);
-        console.log("bankInfo",bankInfo)
-          
-    
-          
-        res.json(bankInfo);
-        return;
+            res.json(bankInfo);
+            return;
         } catch (error) {
-           console.error("Error while bnkBanksById:", error);
+            console.error("Error while bnkBanksById:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -498,7 +514,7 @@ module.exports = new (class extends controller {
                     return res.json(response.data);
                 })
                 .catch((error) => {
-                    console.error("error 1 in chequeInquiryTransfer",error);
+                    console.error("error 1 in chequeInquiryTransfer", error);
                     return this.response({
                         res,
                         code: 217,
@@ -506,7 +522,7 @@ module.exports = new (class extends controller {
                     });
                 });
         } catch (error) {
-            console.error("error 2 in chequeInquiryTransfer",error);
+            console.error("error 2 in chequeInquiryTransfer", error);
             return this.response({
                 res,
                 code: 217,
@@ -534,7 +550,7 @@ module.exports = new (class extends controller {
                     return res.json(response.data);
                 })
                 .catch((error) => {
-                    console.error("error 1 in getForWhatList",error);
+                    console.error("error 1 in getForWhatList", error);
                     return this.response({
                         res,
                         code: 217,
@@ -542,12 +558,332 @@ module.exports = new (class extends controller {
                     });
                 });
         } catch (error) {
-            console.error("error 2 in getForWhatList",error);
+            console.error("error 2 in getForWhatList", error);
             return this.response({
                 res,
                 code: 217,
                 error,
             });
+        }
+    }
+
+    async setBankGate(req, res) {
+        try {
+            const {
+                agencyId,
+                bankName,
+                bankCode,
+                type,
+                card,
+                terminal,
+                userName,
+                userPass,
+                hesab,
+                active,
+                personal,
+            } = req.body;
+
+            if (!agencyId) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId required",
+                });
+            }
+
+            const find = await this.BankGate.findOne({ agencyId, type }).lean();
+            if (!find) {
+                await this.BankGate.create({
+                    agencyId,
+                    editor: req.user._id,
+                    bankName,
+                    bankCode,
+                    type,
+                    card,
+                    terminal,
+                    userName,
+                    userPass,
+                    hesab,
+                    active,
+                    personal,
+                });
+
+                return res.json({ message: "Done" });
+            }
+
+            await this.BankGate.findByIdAndUpdate(find._id, {
+                agencyId,
+                editor: req.user._id,
+                bankName,
+                bankCode,
+                type,
+                card,
+                terminal,
+                userName,
+                userPass,
+                hesab,
+                active,
+                personal,
+            });
+            return res.json({ message: "Done" });
+        } catch (error) {
+            console.error("Error in setBankGate:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async getBankGate(req, res) {
+        try {
+            const { agencyId } = req.query;
+            if (!agencyId) {
+                return res.status(404).json({ message: "Invalid agencyId!" });
+            }
+
+            const find = await this.BankGate.find({ agencyId }).lean();
+            return res.json(find);
+        } catch (error) {
+            console.error("Error in getBankGate:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getBankGateOnlyCard(req, res) {
+        try {
+            const { agencyId } = req.query;
+            if (!agencyId) {
+                return res.status(404).json({ message: "Invalid agencyId!" });
+            }
+
+            const find = await this.BankGate.findOne({ agencyId,type:"CARD" }).lean();
+            return res.json(find);
+        } catch (error) {
+            console.error("Error in getBankGateOnlyCard:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getBankGate4Parent(req, res) {
+        try {
+            const { agencyId } = req.query;
+            if (!agencyId) {
+                return res.status(404).json({ message: "Invalid agencyId!" });
+            }
+
+            const find = await this.BankGate.find(
+                { agencyId, active: true },
+                "type bankName card terminal bankCode installments prePayment userName"
+            ).lean();
+
+            return res.json(find);
+        } catch (error) {
+            console.error("Error in getBankGate4Parent:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getAgencyPayCards(req, res) {
+        try {
+            const { agencyId } = req.query;
+            if (!agencyId) {
+                return res.status(404).json({ message: "Invalid agencyId!" });
+            }
+            let match={
+                        isPaid: true,
+                        cardNumber: { $nin: ["", null] },
+                        agencyId: ObjectId.createFromHexString(agencyId),
+                        delete: false,
+                    };
+            if(req.query.studentId && req.query.studentId.trim()!=''){
+                match.studentId=ObjectId.createFromHexString(req.query.studentId);
+            }
+            const payCards = await this.PayQueue.aggregate([
+                {
+                    $match: match,
+                },
+                {
+                    $group: {
+                        _id: {
+                            cardNumber: "$cardNumber",
+                            refId: "$refId",
+                        },
+                        docs: { $push: "$$ROOT" }, // keep full documents
+                    },
+                },
+                {
+                    $project: {
+                        "docs.isPaid": 0,
+                        "docs.delete": 0,
+                        "docs.authority": 0,
+                        "docs.createdAt": 0,
+                        "docs.updatedAt": 0,
+                        "docs.__v": 0,
+                    },
+                },
+            ]);
+
+            let pays = [];
+            for (var card of payCards) {
+                console.log("card", card);
+                const docs = card["docs"];
+                const ccc = card["_id"];
+                let payDate = docs[0].payDate;
+                let studentId = docs[0].studentId;
+                let cardPays = [];
+                const student = await this.Student.findById(
+                    docs[0].studentId,
+                    "name lastName studentCode parent state stateTitle"
+                ).lean();
+                if (student) {
+                    const parent = await this.Parent.findById(
+                        student.parent,
+                        "phone name lastName"
+                    ).lean();
+                    if (parent) {
+                        for (var doc of docs) {
+                            cardPays.push({
+                                id: doc["_id"],
+                                type: doc["type"],
+                                amount: doc["amount"],
+                                title: doc["title"],
+                                counter: doc["counter"],
+                                maxDate: doc["maxDate"],
+                                code: doc["code"],
+                                studentName:
+                                    student.name + " " + student.lastName,
+                                parentName: parent.name + " " + parent.lastName,
+                                phone: parent.phone,
+                                studentCode: student.studentCode,
+                                state: student.state,
+                                stateTitle: student.stateTitle,
+                            });
+                        }
+                    }
+                }
+                if (cardPays.length > 0) {
+                    pays.push({
+                        cardNumber: ccc["cardNumber"],
+                        refId: ccc["refId"],
+                        payDate,
+                        cardPays,studentId
+                    });
+                }
+            }
+
+            return res.json(pays);
+        } catch (error) {
+            console.error("Error in getAgencyPayCards:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async rejectPayCard(req, res) {
+        const session = await this.PayQueue.startSession();
+        session.startTransaction();
+
+        try {
+            const { idPay, idReg, idPre, agencyId } = req.query;
+
+            if (!agencyId) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "Invalid agencyId!" });
+            }
+
+            const agency = await this.Agency.findById(
+                agencyId,
+                "name tel"
+            ).lean();
+            if (!agency) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "Agency not found" });
+            }
+
+            let parentPhone = "";
+            console.log("000000000000");
+            const rejectPayCardHelper = async (
+                payQueueId,
+                newState,
+                newStateTitle
+            ) => {
+                if (!payQueueId || payQueueId.trim() === "") return;
+
+                const payCard = await this.PayQueue.findById(
+                    payQueueId
+                ).session(session);
+                if (!payCard) return;
+
+                payCard.isPaid = false;
+                payCard.cardNumber = "";
+                payCard.refId = "";
+                await payCard.save({ session });
+
+                const student = await this.Student.findByIdAndUpdate(
+                    payCard.studentId,
+                    { state: newState, stateTitle: newStateTitle },
+                    { new: true, session }
+                );
+
+                if (student && parentPhone === "") {
+                    const parent = await this.Parent.findById(
+                        student.parent,
+                        "phone"
+                    ).lean();
+                    if (parent) parentPhone = parent.phone;
+                }
+            };
+
+            // Reject prePayment
+            await rejectPayCardHelper(idPre, 1, "نیاز به تایید اطلاعات");
+
+            // Reject registration
+            await rejectPayCardHelper(idReg, 0, "ثبت شده");
+
+            await session.commitTransaction();
+            session.endSession();
+
+            // Send SMS if parentPhone is available
+            if (parentPhone !== "") {
+                const text = `والدین گرامی واریز ثبت شده شما برای سرویس مدارس از طرف مدیر شرکت رد گردید.
+${agency.name} - ${agency.tel}
+دستیار هوشمند سمر`;
+
+                const postData = {
+                    UserName: amootUser,
+                    Password: amootPass,
+                    SendDateTime: getFormattedDateTime(new Date()),
+                    SMSMessageText: text,
+                    LineNumber: "service",
+                    Mobiles: parentPhone,
+                };
+                console.log("text", text);
+                const config = {
+                    method: "post",
+                    url: "https://portal.amootsms.com/webservice2.asmx/SendSimple_REST",
+                    headers: {
+                        Authorization: amoot_t,
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    data: postData,
+                };
+
+                axios(config)
+                    .then((response) => {
+                        console.log(
+                            "SMS response:",
+                            JSON.stringify(response.data)
+                        );
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "SMS sending error:",
+                            error.message || error
+                        );
+                    });
+            }
+
+            return res.json({ message: "ok" });
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error in rejectPayCard:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
         }
     }
 })();

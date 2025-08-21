@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const controller = require("./controller");
 const validator = require("./validator");
+const { isAgencyAdmin } = require("../../middleware/auth");
 
 router.get("/GetAddAccUrl", controller.getAddAccUrl.bind(controller));
 router.get("/GetMyBank", controller.getMyBank.bind(controller));
@@ -13,42 +14,64 @@ router.post(
     "/GetAccountList",
     validator.getAccountListValidator(),
     controller.validate.bind(controller),
-    controller.getAccountList.bind(controller),
+    controller.getAccountList.bind(controller)
 );
 router.post(
     "/ChequeRegister",
     validator.chequeRegisterValidator(),
     controller.validate.bind(controller),
-    controller.chequeRegister.bind(controller),
+    controller.chequeRegister.bind(controller)
 );
 router.post(
     "/ChequeAccept",
     validator.chequeAcceptValidator(),
     controller.validate.bind(controller),
-    controller.chequeAccept.bind(controller),
+    controller.chequeAccept.bind(controller)
 );
 router.post(
     "/ChequeInquiryHolder",
     validator.chequeAcceptValidator(),
     controller.validate.bind(controller),
-    controller.chequeInquiryHolder.bind(controller),
+    controller.chequeInquiryHolder.bind(controller)
 );
 router.post(
     "/ChequeInquiryTransfer",
     validator.chequeAcceptValidator(),
     controller.validate.bind(controller),
-    controller.chequeInquiryTransfer.bind(controller),
+    controller.chequeInquiryTransfer.bind(controller)
 );
 
 router.post(
-  '/BnkBanksInsert',
-  validator.bnkBanksInsertValidator(),
-  controller.validate.bind(controller),
-  controller.bnkBanksInsert.bind(controller)
+    "/BnkBanksInsert",
+    validator.bnkBanksInsertValidator(),
+    controller.validate.bind(controller),
+    controller.bnkBanksInsert.bind(controller)
+);
+router.get("/BnkBanksById", controller.bnkBanksById.bind(controller));
+
+router.post(
+    "/setBankGate",
+    validator.setBankGateValidator(),
+    controller.validate.bind(controller),
+    controller.setBankGate.bind(controller)
+);
+
+router.get("/getBankGate", controller.getBankGate.bind(controller));
+router.get("/GetBankGateOnlyCard", controller.getBankGateOnlyCard.bind(controller));
+router.get(
+    "/GetBankGate4Parent",
+    controller.getBankGate4Parent.bind(controller)
 );
 router.get(
-  '/BnkBanksById',
-  controller.bnkBanksById.bind(controller)
+    "/GetAgencyPayCards",
+    isAgencyAdmin,
+    controller.getAgencyPayCards.bind(controller)
+);
+router.get(
+    "/RejectPayCard",
+    isAgencyAdmin,
+    controller.rejectPayCard.bind(controller)
 );
 
 module.exports = router;
+

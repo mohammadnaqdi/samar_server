@@ -1,6 +1,7 @@
 const controller = require("../controller");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+
 const textValues = [
     "سرویس مدرسه یک سرویس جمعی می باشد که در صورت تکمیل ظرفیت خودرو سرویس دهی انجام می پذیرد",
     "شرکت مجری سرویس دهی به مدرسه فرزند شما، مسئولیت تعیین راننده و انجام کلیه کارهای مربوط به سرویس را دارد و مسئولیتی از این بابت به عهده رادرایانه نمیباشد!",
@@ -525,6 +526,18 @@ module.exports = new (class extends controller {
             const tel = req.body.tel;
             const cityCode = req.body.cityCode;
             const registrationPrice = req.body.registrationPrice;
+            let city=await this.City.findOne({code:cityCode});
+            if(!city){
+                           return this.response({
+                        res,
+                        code: 404,
+                        message: "City not find ",
+                    });
+            }
+            if(!city.location){
+                city.location={ type: "Point", coordinates: location },
+                await city.save();
+            }
             // if (
             //     code.toString().trim() === "0" ||
             //     code.toString().trim() === ""
@@ -576,6 +589,7 @@ module.exports = new (class extends controller {
                     await agency.save({ session });
                     let invoice = new this.Invoice({
                         title: "هزینه ثبت نام",
+                        desc:'هزینه بیمه، پیامک، آوانک، اطلاع رسانی، مالی سمر و خدمات تشویقی ',
                         confirmInfo: true,
                         agencyId: agency._id,
                         setter: userId,
@@ -1174,11 +1188,17 @@ module.exports = new (class extends controller {
                 });
             }
             console.log("driversList", driversList);
+            const payCards = await this.PayQueue.find({
+                isPaid: true,
+                cardNumber: { $ne: "" },
+                agencyId,
+                active: true,
+            });
             // const sanadCount=await this.DocSanad.countDocuments({agencyId})
 
             return this.response({
                 res,
-                data: { schools, services, drivers, reports, mandeh },
+                data: { schools, services, drivers, reports, mandeh, payCards },
             });
         } catch (error) {
             console.error("Error while in dashboard company:", error);
@@ -1383,6 +1403,26 @@ module.exports = new (class extends controller {
                 });
                 student4.push(ss);
             }
+            const payCards = await this.PayQueue.aggregate([
+                {
+                    $match: {
+                        isPaid: true,
+                        cardNumber: { $ne: "", $ne: null },
+                        agencyId,
+                        delete: false,
+                    },
+                },
+                {
+                    $group: {
+                        _id: { refId: "$refId", cardNumber: "$cardNumber" },
+                    },
+                },
+                {
+                    $count: "uniqueCount",
+                },
+            ]);
+
+            const count = payCards.length > 0 ? payCards[0].uniqueCount : 0;
             return this.response({
                 res,
                 data: {
@@ -1401,6 +1441,7 @@ module.exports = new (class extends controller {
                     sanadCount2,
                     sanadCount3,
                     sanadCount4,
+                    payCards:count,
                 },
             });
         } catch (error) {
@@ -2258,10 +2299,13 @@ module.exports = new (class extends controller {
                 });
                 await contract.save();
             }
-            contract.defHeadLine.push({'title':'merchentId','code':contract.merchentId});
-            contract.defHeadLine.push({'title':'tId','code':contract.tId});
-            contract.defHeadLine.push({'title':'bank','code':contract.bank});
-            console.log("contract",contract);
+            contract.defHeadLine.push({
+                title: "merchentId",
+                code: contract.merchentId,
+            });
+            contract.defHeadLine.push({ title: "tId", code: contract.tId });
+            contract.defHeadLine.push({ title: "bank", code: contract.bank });
+            console.log("contract", contract);
 
             return this.response({
                 res,
@@ -2287,17 +2331,17 @@ module.exports = new (class extends controller {
 
             const agencyId = req.query.agencyId;
             const distanceS = req.query.distance || "0";
-              const id = req.query.id;
-              let distance = parseInt(distanceS);
+            const id = req.query.id;
+            let distance = parseInt(distanceS);
             if (mongoose.isValidObjectId(id)) {
-              const student=await this.Student.findById(id,'serviceDistance').lean();
-                if(student){
-                    distance=student.serviceDistance;
+                const student = await this.Student.findById(
+                    id,
+                    "serviceDistance"
+                ).lean();
+                if (student) {
+                    distance = student.serviceDistance;
                 }
             }
-
-            
-
             let invoice = await this.Invoice.findOne(
                 {
                     agencyId: agencyId,
@@ -2319,10 +2363,8 @@ module.exports = new (class extends controller {
                 "amount title desc distancePrice"
             ).lean();
             let amount2 = 0;
-            
-            console.log(
-                "distance",distance
-            );
+
+            console.log("distance", distance);
             if (invoice2) {
                 if (
                     invoice2.distancePrice &&
@@ -2330,37 +2372,19 @@ module.exports = new (class extends controller {
                 ) {
                     const matchedPricing = invoice2.distancePrice.find(
                         function (priceItem) {
-                        return (priceItem.maxDistance * 1000) >= distance;
-                    }
+                            return priceItem.maxDistance * 1000 >= distance;
+                        }
                     );
                     if (matchedPricing) {
                         amount2 = matchedPricing.amount;
                     } else {
-                        amount2 = invoice2.distancePrice[invoice2.distancePrice.length-1].amount;
+                        amount2 =
+                            invoice2.distancePrice[
+                                invoice2.distancePrice.length - 1
+                            ].amount;
                     }
                 } else {
                     amount2 = invoice2.amount;
-                }
-            }
-            const agencySet = await this.AgencySet.findOne(
-                { agencyId: agencyId },
-                "tId defHeadLine"
-            );
-            let tid = 0;
-            let bankCode = "";
-            if (agencySet && agencySet.tId) {
-                tid = agencySet.tId;
-            }
-            if (
-                agencySet &&
-                agencySet.defHeadLine &&
-                agencySet.defHeadLine.length > 0
-            ) {
-                for (const item of agencySet.defHeadLine) {
-                    if (item.title === "payGatewayHesab") {
-                        bankCode = item.code;
-                        break;
-                    }
                 }
             }
 
@@ -2371,7 +2395,7 @@ module.exports = new (class extends controller {
                     prePayment: amount2,
                     invoice,
                     invoice2,
-                    canPayOnline: tid != 0 && bankCode != "",
+                    canPayOnline: true,
                 },
             });
         } catch (error) {

@@ -1,0 +1,30 @@
+<html>
+    <body onload="updateFormValues(); document.getElementById('paymentForm').submit();">
+        <form id="paymentForm" action="https://sepehr.shaparak.ir:8080/Pay" method="POST">
+            <input type="hidden" name="TerminalID" id="terminalID" value="99018831">
+            <input type="hidden" name="token" id="token" value="">
+            <noscript>
+                <input type="submit" value="Click here if you are not redirected">
+            </noscript>
+        </form>
+
+        <script>
+            function updateFormValues() {
+                // Get URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                // Get TerminalID from URL if it exists
+                const terminalID = urlParams.get('TerminalID');
+                if (terminalID) {
+                    document.getElementById('terminalID').value = terminalID;
+                }
+
+                // Get token from URL if it exists
+                const token = urlParams.get('token');
+                if (token) {
+                    document.getElementById('token').value = token;
+                }
+            }
+        </script>
+    </body>
+</html>

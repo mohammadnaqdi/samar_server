@@ -83,6 +83,13 @@ router.post(
     controller.validate.bind(controller),
     controller.payRegistrationWithWallet.bind(controller)
 );
+router.post(
+    "/SetStudentPayCard",
+    isLoggined,
+    validator.setStudentPayCardValidator(),
+    controller.validate.bind(controller),
+    controller.setStudentPayCard.bind(controller)
+);
 
 router.get(
     "/GetStudentPays",
