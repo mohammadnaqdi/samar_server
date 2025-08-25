@@ -4,19 +4,20 @@ const contractTextSchema = new mongoose.Schema(
     {
         agencyId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Agency", required: true 
+            ref: "Agency",
+            required: true,
         },
         text: { type: String, required: true },
         active: { type: Boolean, default: true },
         needService: { type: Boolean, default: true },
         delete: { type: Boolean, default: false },
+        attachment: [{ title: String, pic: String }],
     },
     {
         timestamps: true,
     }
 );
 var ContractText = mongoose.model("ContractText", contractTextSchema);
-
 
 const signedContractSchema = new mongoose.Schema(
     {
@@ -69,10 +70,10 @@ const signedContractSchema = new mongoose.Schema(
 const SignedContract = mongoose.model("SignedContract", signedContractSchema);
 
 const estimApiSchema = new mongoose.Schema(
-    {   
+    {
         title: { type: String, required: true },
         api: { type: String, required: true },
-        desc: { type: String,},
+        desc: { type: String },
         active: { type: Boolean, default: true },
         pdf: { type: Boolean, default: true },
         excel: { type: Boolean, default: false },
@@ -94,4 +95,4 @@ const estimApiSchema = new mongoose.Schema(
 );
 var StimApi = mongoose.model("StimApi", estimApiSchema);
 
-module.exports = { ContractText,SignedContract,StimApi };
+module.exports = { ContractText, SignedContract, StimApi };

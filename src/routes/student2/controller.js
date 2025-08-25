@@ -383,14 +383,14 @@ module.exports = new (class extends controller {
             const doc = await this.DocListSanad.find(
                 {
                     agencyId,
-                    type:'service',
+                    type: "service",
                     mId: { $in: list },
                     bes: 0,
                     bed: { $ne: 0 },
                 },
                 "doclistId days bed bes mId updatedAt accCode -_id"
             );
-console.log("doc", doc.length);
+            console.log("doc", doc.length);
             return this.response({
                 res,
                 data: doc,
@@ -582,7 +582,138 @@ console.log("doc", doc.length);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    
+
+    async applyStudentPrePayment(req, res) {
+        try {
+            if (
+                req.query.agencyId === undefined ||
+                req.query.agencyId.trim() === ""
+            ) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId need",
+                });
+            }
+            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+            const invoice = await this.Invoice.findOne({
+                agencyId,
+                type: "prePayment",
+            });
+            if (!invoice) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "invoice not find",
+                });
+            }
+            const student = await this.Student.find(
+                {
+                    agencyId,
+                    delete: false,
+                },
+                "serviceDistance state name"
+            ).lean();
+            for (var st of student) {
+                let pay = await this.PayQueue.findOne({
+                    code: invoice.code,
+                    agencyId,
+                    studentId: st._id,
+                    type: "prePayment",
+                });
+                if (pay) {
+                    if (!pay.isPaid) {
+                        let amount2 = 0;
+                        if (
+                            invoice.distancePrice &&
+                            invoice.distancePrice.length > 0
+                        ) {
+                            const matchedPricing = invoice.distancePrice.find(
+                                function (priceItem) {
+                                    return (
+                                        priceItem.maxDistance * 1000 >=
+                                        st.serviceDistance
+                                    );
+                                }
+                            );
+                            if (matchedPricing) {
+                                amount2 = matchedPricing.amount;
+                            } else {
+                                amount2 =
+                                    invoice.distancePrice[
+                                        invoice.distancePrice.length - 1
+                                    ].amount;
+                            }
+                        } else {
+                            amount2 = invoice.amount;
+                        }
+                        pay.amount = amount2;
+                        pay.title = invoice.title;
+                        pay.delete = invoice.delete;
+                        console.log("st save", st.name);
+                        await pay.save();
+                    }
+                } else if (st.state > 0) {
+                    let amount2 = 0;
+                    if (
+                        invoice.distancePrice &&
+                        invoice.distancePrice.length > 0
+                    ) {
+                        const matchedPricing = invoice.distancePrice.find(
+                            function (priceItem) {
+                                return (
+                                    priceItem.maxDistance * 1000 >=
+                                    st.serviceDistance
+                                );
+                            }
+                        );
+                        if (matchedPricing) {
+                            amount2 = matchedPricing.amount;
+                        } else {
+                            amount2 =
+                                invoice.distancePrice[
+                                    invoice.distancePrice.length - 1
+                                ].amount;
+                        }
+                    } else {
+                        amount2 = invoice.amount;
+                    }
+                    await new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        code: invoice.code,
+                        agencyId: agencyId,
+                        studentId: st._id,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: amount2,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                    }).save();
+                    console.log("st add", st.name);
+                }
+            }
+
+            await new this.OperationLog({
+                userId: req.user._id,
+                name: req.user.name + " " + req.user.lastName,
+                agencyId: agencyId,
+                targetIds: [invoice.code],
+                targetTable: "PayQueue",
+                sanadId: 0,
+                actionName: "applyStudentPrePayment",
+                actionNameFa: `اعمال پیش پرداخت روی همه ی دانش آموزان`,
+                desc: ``,
+            }).save();
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error in applyStudentPrePayment:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 })();
 
 function getMonth(now) {

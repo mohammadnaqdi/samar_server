@@ -22,7 +22,8 @@ router.post("/ServiceListDoc",
     controller.validate.bind(controller),
     controller.serviceListDoc.bind(controller));
 // router.get("/SetAllStudentLevelAgencyToNewOne",isSuperAdmin,controller.setAllStudentLevelAgencyToNewOne.bind(controller))    
-router.get("/StudentDDS",controller.studentDDS.bind(controller))    
+router.get("/StudentDDS",controller.studentDDS.bind(controller));    
+router.get("/ApplyStudentPrePayment",controller.applyStudentPrePayment.bind(controller));    
 router.post("/AddStudentToService",isAgencyAdmin,
     validator.addStudentToServiceValidator(),
     controller.validate.bind(controller),

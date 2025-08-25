@@ -6,7 +6,6 @@ const axios = require("axios");
 const neshan = process.env.NESHAN;
 
 module.exports = new (class extends controller {
-
     async setSchool(req, res) {
         try {
             const id = req.body.id;
@@ -126,8 +125,8 @@ module.exports = new (class extends controller {
                 return res.status(214).json({ msg: "districtId need" });
             }
 
-            const getStudentNoPack = req.query.getStudentNoPack || '';
-           
+            const getStudentNoPack = req.query.getStudentNoPack || "";
+
             const agencyId = req.query.agencyId || 0;
             let limit = parseInt(req.query.limit) || 20;
             // console.log("limit",limit);
@@ -190,17 +189,16 @@ module.exports = new (class extends controller {
                 }
 
                 schoolOb.school = school;
-                if(getStudentNoPack.trim()!==''){
-
-                    const count=await this.Student.countDocuments({
-                        school:school._id,
-                        delete:false,
-                       //dodo state:3,
-                       packed:false
+                if (getStudentNoPack.trim() !== "") {
+                    const count = await this.Student.countDocuments({
+                        school: school._id,
+                        delete: false,
+                        //dodo state:3,
+                        packed: false,
                     });
-                    schoolOb.studentNeedpack=count;
-                }else{
-                    schoolOb.studentNeedpack=0;
+                    schoolOb.studentNeedpack = count;
+                } else {
+                    schoolOb.studentNeedpack = 0;
                 }
                 schoolList.push(schoolOb);
             }
@@ -223,56 +221,66 @@ module.exports = new (class extends controller {
             // console.log("limit",limit);
             const search = req.body.search.trim();
             const location = req.body.location;
-            let gradeId = req.body.gradeId ;
-            console.log("req.body.gradeId=",req.body.gradeId)
-            console.log("gradeId=",gradeId)
-           
-            const gradePreSchool=await this.Keys.findOne({titleEn:'Preschool'},'keyId').lean();
-            const kindergarten=await this.Keys.findOne({titleEn:'kindergarten'},'keyId').lean();
-             if (!gradePreSchool || !kindergarten) {
+            let gradeId = req.body.gradeId;
+            console.log("req.body.gradeId=", req.body.gradeId);
+            console.log("gradeId=", gradeId);
+
+            const gradePreSchool = await this.Keys.findOne(
+                { titleEn: "Preschool" },
+                "keyId"
+            ).lean();
+            const kindergarten = await this.Keys.findOne(
+                { titleEn: "kindergarten" },
+                "keyId"
+            ).lean();
+            if (!gradePreSchool || !kindergarten) {
                 return this.response({
                     res,
                     code: 404,
                     message: "gradePreSchool or kindergarten  is not find",
                 });
             }
-            gradeId=gradeId-gradePreSchool.keyId;
-             if (gradeId < 0) {
+            gradeId = gradeId - gradePreSchool.keyId;
+            if (gradeId < 0) {
                 return this.response({
                     res,
                     code: 204,
                     message: "gradeId is not correct",
                 });
             }
-            
+
             const grade =
                 gradeId === 0
                     ? kindergarten.keyId
                     : gradeId < 4
-                    ? kindergarten.keyId+1
+                    ? kindergarten.keyId + 1
                     : gradeId < 7
-                    ? kindergarten.keyId+2
+                    ? kindergarten.keyId + 2
                     : gradeId < 10
-                    ? kindergarten.keyId+3
-                    : kindergarten.keyId+4;
+                    ? kindergarten.keyId + 3
+                    : kindergarten.keyId + 4;
             let page = req.body.page || 0;
             const districtId = req.body.districtId || 0;
             if (limit < 1) limit = 1;
             if (page < 0) page = 0;
 
             const qr = [{ delete: false }];
-            console.log("grade=",grade)
-            if(grade<kindergarten.keyId+3){
-                qr.push({grade});
-            }else{
-                 qr.push({grade:{$in:[kindergarten.keyId+3,kindergarten.keyId+4]}});
+            console.log("grade=", grade);
+            if (grade < kindergarten.keyId + 3) {
+                qr.push({ grade });
+            } else {
+                qr.push({
+                    grade: {
+                        $in: [kindergarten.keyId + 3, kindergarten.keyId + 4],
+                    },
+                });
             }
             if (agencyId && ObjectId.isValid(agencyId)) {
                 // Check if agencyId is a valid ObjectId before using it
                 qr.push({ agencyId: ObjectId.createFromHexString(agencyId) });
-            }else{
-                qr.push({ agencyId: {$ne:null} });
-                  console.log("agencyId=",agencyId)
+            } else {
+                qr.push({ agencyId: { $ne: null } });
+                console.log("agencyId=", agencyId);
             }
             if (districtId !== 0) qr.push({ districtId });
             if (search !== "")
@@ -528,21 +536,17 @@ module.exports = new (class extends controller {
 
     async unselectedSchools(req, res) {
         try {
-            const {
-                search = "",
-                page = 0,
-                agencyLocation
-            } = req.body;
+            const { search = "", page = 0, agencyLocation } = req.body;
 
             // Build query conditions
             const conditions = {
                 delete: false,
-                agencyId:null,
+                agencyId: null,
             };
 
             // Add search conditions if provided
             if (search && search.trim() !== "") {
-                conditions.name= { $regex: ".*" + search + ".*" } ;
+                conditions.name = { $regex: ".*" + search + ".*" };
             }
             const maxDistance = req.body.maxDistance || 50000;
             let schools = await this.School.aggregate([
@@ -559,10 +563,10 @@ module.exports = new (class extends controller {
                     },
                 },
                 {
-                    $match:  conditions ,
+                    $match: conditions,
                 },
                 { $sort: { "dist.calculated": 1 } },
-                { $skip: (page * 40) },
+                { $skip: page * 40 },
                 { $limit: 40 },
             ]).exec();
             // // Fetch schools
@@ -819,6 +823,7 @@ module.exports = new (class extends controller {
             }
             const { studentId, agencyId } = req.query;
             const signedContract = await this.SignedContract.findOne({
+                agencyId,
                 studentId,
             });
             if (signedContract) {
@@ -856,10 +861,10 @@ module.exports = new (class extends controller {
                 });
             }
 
-            const service = await this.Service.findOne({
-                student: studentId,
-                delete: false,
-            }).lean();
+            let service;
+            if (student.state === 4) {
+                service = await this.Service.findById(student.service).lean();
+            }
             if (!service && contractText.needService) {
                 return this.response({
                     res,
@@ -907,6 +912,10 @@ module.exports = new (class extends controller {
                 student.startOfContract,
                 student.endOfContract
             );
+            let serviceCost = 0;
+            if (student.state === 4) {
+                serviceCost = student.serviceCost;
+            }
 
             const data = {
                 agencyId: agencyId,
@@ -922,19 +931,37 @@ module.exports = new (class extends controller {
                 studentFirstName: student.name,
                 studentLastName: student.lastName,
                 studentGrade: grade.title,
-                studentNationalCode: student.nationalCode,
+                studentNationalCode:
+                    student.nationalCode.trim() === ""
+                        ? "......................."
+                        : student.nationalCode,
                 schoolName: school.name,
                 schoolId: school._id,
+                attachment: contractText.attachment,
                 contractStart: persian_date.start,
                 contractEnd: persian_date.end,
-                contractMonths: persian_date.months,
-                contractDays: persian_date.days,
-                serviceCost: service ? service.cost * persian_date.months : 0,
-                serviceCostMonth: service ? service.cost : 0,
-                serviceNum: service ? service.serviceNum : 0,
-                driverName: service ? service.driverName : "",
-                driverPhone: service ? service.driverPhone : "",
-                driverCar: service ? service.driverCar : "",
+                contractMonths: persian_date.months.toString(),
+                contractDays: persian_date.days.toString(),
+                serviceCost:
+                    serviceCost == 0
+                        ? (serviceCost * persian_date.months).toString()
+                        : "........................",
+                serviceCostMonth:
+                    serviceCost == 0
+                        ? serviceCost.toString()
+                        : "............................",
+                serviceNum: service
+                    ? service.serviceNum.toString()
+                    : ".......................",
+                driverName: service
+                    ? service.driverName.toString()
+                    : "..........................",
+                driverPhone: service
+                    ? service.driverPhone.toString()
+                    : "........................",
+                driverCar: service
+                    ? service.driverCar.toString()
+                    : ".........................",
                 text: "",
             };
             data.text = replacePlaceholders(contractText.text, data);

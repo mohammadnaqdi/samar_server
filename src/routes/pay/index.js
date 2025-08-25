@@ -15,6 +15,7 @@ router.post("/VerifyPrePayment", controller.verifyPrePayment.bind(controller));
 router.post("/saderatCallback", controller.saderatCallback.bind(controller));
 router.post("/mellatCallback", controller.mellatCallback.bind(controller));
 router.post("/callBack", controller.callBack.bind(controller));
+router.get("/callBack", controller.callBack.bind(controller));
 router.get("/VerifyCo", controller.verifyCo.bind(controller));
 router.get("/VerifyCoCharge", controller.verifyCoCharge.bind(controller));
 router.post(

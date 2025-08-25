@@ -240,7 +240,7 @@ module.exports = new (class extends controller {
         } else {
             return this.response({
                 res,
-                code: 400,
+                code: 404,
                 message: "agency not find",
             });
         }
@@ -270,6 +270,7 @@ module.exports = new (class extends controller {
             await newTr.save();
 
             if (bankGate.type === "SADERAT") {
+                //**********************************************SADERAT******************************************************* */
                 let token = await generateSepehrToken(
                     amount + amount2,
                     newTr.authority,
@@ -288,6 +289,7 @@ module.exports = new (class extends controller {
                     message: `https://pay.samar-rad.ir?TerminalID=${bankGate.terminal}&token=${token}`,
                 });
             } else if (bankGate.type === "MELLAT") {
+                //**********************************************MELLAT******************************************************* */
                 let token = await generateMellatToken(
                     amount + amount2,
                     newTr.authority,
@@ -314,7 +316,38 @@ module.exports = new (class extends controller {
                         spl.split(",")[1]
                     }&MobileNo=${req.user.phone}`,
                 });
+            } else if (bankGate.type === "ZARIN") {
+                //**********************************************ZARIN******************************************************* */
+               const zarinpal = Zarin.create(bankGate.terminal, false);
+               
+                const response = await zarinpal.PaymentRequest({
+                    Amount: (amount + amount2) / 10,
+                    // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
+                    CallbackURL: `https://server.mysamar.ir/api/pay/callBack`,
+                    Description: desc,
+                    Email: "",
+                    Mobile: req.user.phone,
+                });
+                if (response.status === 100) {
+                    newTr.authorityZarin = response.authority;
+                    await newTr.save();
+                    // res.redirect(https://panel.${process.env.URL}/finance);
+                    res.json({
+                        message: response.url,
+                    });
+                    return;
+                }
+                res.status(201).json({
+                    status: "Error",
+                    message: "خطای بانک",
+                });
+                return;
             }
+            return this.response({
+                res,
+                code: 404,
+                message: "type of bank not find",
+            });
         } catch (e) {
             console.log("sepehr bank error", e);
             res.status(201).json({
@@ -1364,9 +1397,9 @@ module.exports = new (class extends controller {
                         await student.save();
                     }
                 }
-                payQueue.cardNumber='';
-                payQueue.refId='';
-                payQueue.isPaid=true;
+                payQueue.cardNumber = "";
+                payQueue.refId = "";
+                payQueue.isPaid = true;
                 await payQueue.save();
                 const prePayment = await this.PayQueue.findOne({
                     agencyId: agency._id,
@@ -1498,7 +1531,7 @@ module.exports = new (class extends controller {
                 note: desc,
                 accCode: costCode,
                 mId: doc.sanadId,
-                peigiri:payQueue.refId || '',
+                peigiri: payQueue.refId || "",
                 sanadDate: new Date(),
             });
             await docPaid.save();
@@ -1514,13 +1547,13 @@ module.exports = new (class extends controller {
                 mId: payQueue.code,
                 type: "invoice",
                 forCode: "003005" + student.studentCode,
-                peigiri:payQueue.cardNumber || '',
+                peigiri: payQueue.cardNumber || "",
                 sanadDate: new Date(),
             }).save();
             payQueue.isPaid = true;
             payQueue.payDate = new Date();
-            payQueue.cardNumber='';
-            payQueue.refId='';
+            payQueue.cardNumber = "";
+            payQueue.refId = "";
             await payQueue.save();
 
             // let payAction = new this.PayAction({
@@ -1873,6 +1906,7 @@ module.exports = new (class extends controller {
                         code: payQueue.code,
                         isPaid: false,
                         isSetAuto: true,
+                        agencyId: payQueue.agencyId,
                     },
                     {
                         amount,
@@ -2565,8 +2599,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 type: "registration",
                 active: true,
-            })
-                .session(session)
+            }).session(session)
                 .lean();
 
             let amountReg = invoice ? invoice.amount : 0;

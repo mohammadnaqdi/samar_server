@@ -1109,6 +1109,7 @@ module.exports = new (class extends controller {
             let page = parseInt(req.query.page);
 
             if (limit < 5) limit = 40;
+            if (page < 0) page = 0;
             var qr = [];
             qr.push({ levelType: { $ne: 3 } });
             qr.push({ agencyId });

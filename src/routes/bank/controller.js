@@ -40,7 +40,7 @@ module.exports = new (class extends controller {
             const costCenter = req.body.costCenter.trim();
             const shMeli = req.body.nationalCode.trim();
             const editor = req.user.id;
-            if (id != undefined && id != Null) {
+            if (id !== undefined && id !== null) {
                 const bankInfo = await this.BankInfo.findByIdAndUpdate(
                     id,
                     {

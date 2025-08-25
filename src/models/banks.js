@@ -28,7 +28,7 @@ const costCenterSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const CostCenter = mongoose.model("CostCenter", costCenterSchema);
 
@@ -150,7 +150,7 @@ const bankGateSchema = new mongoose.Schema(
         bankCode: { type: String, default: "" },
         type: {
             type: String,
-            enum: ["CARD", "MELLAT", "SADERAT"],
+            enum: ["CARD", "MELLAT", "SADERAT", "ZARIN"],
             default: "MELLAT",
         },
         card: { type: String, default: "" },

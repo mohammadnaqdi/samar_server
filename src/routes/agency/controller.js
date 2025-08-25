@@ -526,17 +526,17 @@ module.exports = new (class extends controller {
             const tel = req.body.tel;
             const cityCode = req.body.cityCode;
             const registrationPrice = req.body.registrationPrice;
-            let city=await this.City.findOne({code:cityCode});
-            if(!city){
-                           return this.response({
-                        res,
-                        code: 404,
-                        message: "City not find ",
-                    });
+            let city = await this.City.findOne({ code: cityCode });
+            if (!city) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "City not find ",
+                });
             }
-            if(!city.location){
-                city.location={ type: "Point", coordinates: location },
-                await city.save();
+            if (!city.location) {
+                (city.location = { type: "Point", coordinates: location }),
+                    await city.save();
             }
             // if (
             //     code.toString().trim() === "0" ||
@@ -589,7 +589,7 @@ module.exports = new (class extends controller {
                     await agency.save({ session });
                     let invoice = new this.Invoice({
                         title: "هزینه ثبت نام",
-                        desc:'هزینه بیمه، پیامک، آوانک، اطلاع رسانی، مالی سمر و خدمات تشویقی ',
+                        desc: "هزینه بیمه، پیامک، آوانک، اطلاع رسانی، مالی سمر و خدمات تشویقی ",
                         confirmInfo: true,
                         agencyId: agency._id,
                         setter: userId,
@@ -1407,7 +1407,8 @@ module.exports = new (class extends controller {
                 {
                     $match: {
                         isPaid: true,
-                        cardNumber: { $ne: "", $ne: null },
+                        cardNumber: { $ne: "" },
+                        cardNumber: { $ne: null },
                         agencyId,
                         delete: false,
                     },
@@ -1421,6 +1422,7 @@ module.exports = new (class extends controller {
                     $count: "uniqueCount",
                 },
             ]);
+            // console.log("payCards",payCards);
 
             const count = payCards.length > 0 ? payCards[0].uniqueCount : 0;
             return this.response({
@@ -1441,7 +1443,7 @@ module.exports = new (class extends controller {
                     sanadCount2,
                     sanadCount3,
                     sanadCount4,
-                    payCards:count,
+                    payCards: count,
                 },
             });
         } catch (error) {
@@ -2218,12 +2220,14 @@ module.exports = new (class extends controller {
             const active = req.body.active;
             const text = req.body.text;
             const needService = req.body.needService;
+            const attachment = req.body.attachment;
             const contract = await this.ContractText.findOne({ agencyId });
             if (contract) {
                 await this.ContractText.findByIdAndUpdate(contract._id, {
                     text,
                     active,
                     needService,
+                    attachment,
                 });
             } else {
                 await new this.ContractText({
@@ -2231,6 +2235,7 @@ module.exports = new (class extends controller {
                     text,
                     active,
                     needService,
+                    attachment,
                 }).save();
             }
             return this.response({

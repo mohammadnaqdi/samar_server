@@ -1118,10 +1118,15 @@ module.exports = new (class extends controller {
                     message: "city inot find by phone",
                 });
             }
-            const pricingTable = await this.PricingTable.find({
+            let qr={
                 delete: false,
                 city: parseInt(city),
-            });
+            }
+            let cardId=req.query.cardId || '';
+            if(cardId.trim()!==''){
+                qr.carId=parseInt(cardId);
+            }
+            const pricingTable = await this.PricingTable.find(qr,'-updatedAt -createdAt -__v').lean();
             return this.response({ res, message: "ok", data: pricingTable });
         } catch (error) {
             console.error("Error in getAllPricing:", error);

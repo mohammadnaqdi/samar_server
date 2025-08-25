@@ -22,6 +22,7 @@ const transSchema = new mongoose.Schema(
         },
         bank: { type: String, default: "" },
         authority: { type: String, unique: true },
+        authorityZarin: { type: String, default: "" },
         rrn: { type: String, default: "" },
         tracenumber: { type: String, default: "" },
         issuerbank: { type: String, default: "" },
