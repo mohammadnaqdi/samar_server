@@ -873,12 +873,12 @@ module.exports = new (class extends controller {
                                         );
                                     const moeen =
                                         await this.LevelAccDetail.findOne(
-                                            { agencyId, accCode: hs.codeLev2 },
+                                            { agencyId, accCode: hs.codeLev2,levelNo: 2 },
                                             "accName"
                                         );
                                     const kol =
                                         await this.LevelAccDetail.findOne(
-                                            { agencyId, accCode: hs.codeLev1 },
+                                            { agencyId, accCode: hs.codeLev1 ,levelNo: 1},
                                             "accName"
                                         );
                                     if (!tafsily || !moeen || !kol) continue;

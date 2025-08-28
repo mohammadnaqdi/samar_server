@@ -318,8 +318,8 @@ module.exports = new (class extends controller {
                 });
             } else if (bankGate.type === "ZARIN") {
                 //**********************************************ZARIN******************************************************* */
-               const zarinpal = Zarin.create(bankGate.terminal, false);
-               
+                const zarinpal = Zarin.create(bankGate.terminal, false);
+
                 const response = await zarinpal.PaymentRequest({
                     Amount: (amount + amount2) / 10,
                     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
@@ -2561,6 +2561,29 @@ module.exports = new (class extends controller {
                     await payQueue.save();
                 }
             }
+            if (pays.length == 0) {
+                const invoice = await this.Invoice.findOne({
+                    agencyId,
+                    type: "registration",
+                    delete: false,
+                });
+                if (invoice) {
+                    let payQueue = new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        code: invoice.code,
+                        agencyId,
+                        studentId: student._id,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                        isPaid: false,
+                    });
+                    await payQueue.save();
+                    pays.push({ payQueue, doclistSanad: null });
+                }
+            }
 
             return this.response({
                 res,
@@ -2578,6 +2601,8 @@ module.exports = new (class extends controller {
         try {
             const { agencyId, studentId, cardNumber, refId, amount, payDate } =
                 req.body;
+            const isSheba = req.body.isSheba || false;
+            console.log("isSheba", isSheba);
 
             let student = await this.Student.findById(studentId).session(
                 session
@@ -2599,7 +2624,8 @@ module.exports = new (class extends controller {
                 agencyId,
                 type: "registration",
                 active: true,
-            }).session(session)
+            })
+                .session(session)
                 .lean();
 
             let amountReg = invoice ? invoice.amount : 0;
@@ -2653,6 +2679,7 @@ module.exports = new (class extends controller {
                         isSetAuto: true,
                         payDate,
                         cardNumber,
+                        isSheba,
                         refId,
                     });
                 } else {
@@ -2660,6 +2687,7 @@ module.exports = new (class extends controller {
                     payQueue.isSetAuto = true;
                     payQueue.payDate = payDate;
                     payQueue.cardNumber = cardNumber;
+                    payQueue.isSheba = isSheba;
                     payQueue.refId = refId;
                 }
                 await payQueue.save({ session });
@@ -2688,6 +2716,7 @@ module.exports = new (class extends controller {
                         isSetAuto: true,
                         payDate,
                         cardNumber,
+                        isSheba,
                         refId,
                     });
                 } else {
@@ -2695,6 +2724,7 @@ module.exports = new (class extends controller {
                     prePayment.isSetAuto = true;
                     prePayment.payDate = payDate;
                     prePayment.cardNumber = cardNumber;
+                    prePayment.isSheba = isSheba;
                     prePayment.refId = refId;
                 }
                 await prePayment.save({ session });

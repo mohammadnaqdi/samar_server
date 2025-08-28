@@ -686,7 +686,7 @@ module.exports = new (class extends controller {
             }
             let match={
                         isPaid: true,
-                        cardNumber: { $nin: ["", null] },
+                        cardNumber: { $nin: ["", null,' '] },
                         agencyId: ObjectId.createFromHexString(agencyId),
                         delete: false,
                     };
@@ -720,7 +720,7 @@ module.exports = new (class extends controller {
 
             let pays = [];
             for (var card of payCards) {
-                console.log("card", card);
+                // console.log("card", card);
                 const docs = card["docs"];
                 const ccc = card["_id"];
                 let payDate = docs[0].payDate;
@@ -760,6 +760,7 @@ module.exports = new (class extends controller {
                     pays.push({
                         cardNumber: ccc["cardNumber"],
                         refId: ccc["refId"],
+                        isSheba:  docs[0]["isSheba"] || false,
                         payDate,
                         cardPays,studentId
                     });

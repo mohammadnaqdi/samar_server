@@ -96,6 +96,7 @@ const payQueueSchema = new mongoose.Schema(
         },
         isPaid: { type: Boolean, default: false },
         cardNumber:{ type: String, default: "" },
+        isSheba: { type: Boolean, required: false },
         refId:{ type: String, default: "" },
         amount:{ type: Number, default: 0 },
         payDate: { type: Date, default: null },

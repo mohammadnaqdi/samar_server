@@ -1407,8 +1407,7 @@ module.exports = new (class extends controller {
                 {
                     $match: {
                         isPaid: true,
-                        cardNumber: { $ne: "" },
-                        cardNumber: { $ne: null },
+                        cardNumber: { $nin: ["", null,' '] },
                         agencyId,
                         delete: false,
                     },
