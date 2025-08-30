@@ -25,6 +25,7 @@ const transSchema = new mongoose.Schema(
         authorityZarin: { type: String, default: "" },
         rrn: { type: String, default: "" },
         tracenumber: { type: String, default: "" },
+        phone:{ type: String, default: "" },
         issuerbank: { type: String, default: "" },
         cardnumber: { type: String, default: "" },
         refID: { type: String, default: "" },

@@ -266,6 +266,7 @@ module.exports = new (class extends controller {
                 queueCode: 0,
                 stCode: student.studentCode,
                 agencyId,
+                phone: req.user.phone,
             });
             await newTr.save();
 
@@ -474,6 +475,7 @@ module.exports = new (class extends controller {
                     queueCode: queueCode,
                     stCode: stCode,
                     agencyId,
+                    phone: mobile,
                 });
                 await newTr.save();
                 let token = await generateMellatToken(
@@ -515,6 +517,7 @@ module.exports = new (class extends controller {
                     queueCode: queueCode,
                     stCode: stCode,
                     agencyId,
+                    phone: mobile,
                 });
                 await newTr.save();
                 let token = await generateSepehrToken(
@@ -543,6 +546,7 @@ module.exports = new (class extends controller {
                 queueCode,
                 stCode,
                 agencyId,
+                phone: mobile,
             });
             await newTr.save();
             let token = await generateSepehrToken(amount, newTr.authority);
@@ -839,6 +843,7 @@ module.exports = new (class extends controller {
                     queueCode,
                     stCode,
                     agencyId,
+                    phone: req.user.phone,
                 });
                 await newTr.save();
                 // res.redirect(https://panel.${process.env.URL}/finance);
@@ -931,6 +936,7 @@ module.exports = new (class extends controller {
                     queueCode: 0,
                     stCode: bankListAcc,
                     agencyId,
+                    phone: mobile,
                 });
                 await newTr.save();
                 // res.redirect(response.url);
@@ -1015,6 +1021,7 @@ module.exports = new (class extends controller {
                     queueCode: -1,
                     stCode: bankListAcc,
                     agencyId,
+                    phone: mobile,
                 });
                 await newTr.save();
                 // res.redirect(response.url);

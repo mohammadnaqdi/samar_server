@@ -1477,9 +1477,8 @@ module.exports = new (class extends controller {
 
                     //send sms
                     var tarikh = new persianDate().format("YY/M/D");
-                    var saat = new persianDate().format("H:m");
+                    // var saat = new persianDate().format("H:m");
                     const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
-                    ساعت ${saat}
                     مبلغ ${transAction.amount} انجام گردید`;
 
                     const postData = {
@@ -1520,10 +1519,8 @@ module.exports = new (class extends controller {
                         agency.admin,
                         "phone lastName"
                     );
-                    if (user) {
-                        const text2 = `آقا/ خانم ${user.lastName} گرامی
-            پنل سرویس مدارس سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید
-            `;
+                   if (transAction.phone && transAction.phone.length===11) {
+                      const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
 
                         const postData = {
                             UserName: amootUser,
@@ -1531,7 +1528,7 @@ module.exports = new (class extends controller {
                             SendDateTime: getFormattedDateTime(new Date()),
                             SMSMessageText: text2,
                             LineNumber: "service",
-                            Mobiles: user.phone,
+                            Mobiles: transAction.phone,
                         };
 
                         let config = {
@@ -1919,9 +1916,8 @@ module.exports = new (class extends controller {
                     responseData.Status === "Duplicate"
                 ) {
                     var tarikh = new persianDate().format("YY/M/D");
-                    var saat = new persianDate().format("H:m");
+                    // var saat = new persianDate().format("H:m");
                     const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
-                    ساعت ${saat}
                     مبلغ ${transAction.amount} انجام گردید`;
 
                     const postData = {
@@ -1955,10 +1951,8 @@ module.exports = new (class extends controller {
                         agency.admin,
                         "phone lastName"
                     ).session(session);
-                    if (user) {
-                        const text2 = `آقا/ خانم ${user.lastName} گرامی
-            پنل سرویس مدارس سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید
-            `;
+                    if (transAction.phone && transAction.phone.length===11) {
+                        const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
 
                         const postData = {
                             UserName: amootUser,
@@ -1966,7 +1960,7 @@ module.exports = new (class extends controller {
                             SendDateTime: getFormattedDateTime(new Date()),
                             SMSMessageText: text2,
                             LineNumber: "service",
-                            Mobiles: user.phone,
+                            Mobiles: transAction.phone,
                         };
 
                         let config = {
@@ -2224,7 +2218,6 @@ module.exports = new (class extends controller {
                     var tarikh = new persianDate().format("YY/M/D");
                     var saat = new persianDate().format("H:m");
                     const text = `شارژ پنل ${agency.name} در تاریخ ${tarikh}
-                    ساعت ${saat}
                     مبلغ ${transAction.amount} انجام گردید`;
 
                     const postData = {
@@ -2251,10 +2244,8 @@ module.exports = new (class extends controller {
                         agency.admin,
                         "phone lastName"
                     ).session(session);
-                    if (user) {
-                        const text2 = `آقا/ خانم ${user.lastName} گرامی
-            پنل سرویس مدارس سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید
-            `;
+                    if (tr.phone && tr.phone.length===11) {
+                        const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
 
                         const postData = {
                             UserName: amootUser,
@@ -2262,7 +2253,7 @@ module.exports = new (class extends controller {
                             SendDateTime: getFormattedDateTime(new Date()),
                             SMSMessageText: text2,
                             LineNumber: "service",
-                            Mobiles: user.phone,
+                            Mobiles: tr.phone,
                         };
 
                         let config = {
@@ -2354,7 +2345,7 @@ module.exports = new (class extends controller {
                 desc: desc,
                 queueCode: 0,
                 stCode: bankListAcc,
-                agencyId,
+                agencyId,phone:mobile
             });
             await newTr.save();
             let token = await generateMellatToken(
