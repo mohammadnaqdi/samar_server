@@ -978,19 +978,19 @@ module.exports = new (class extends controller {
                 });
             }
 
-            const checkExist = await this.CheckInfo.findOne({
-                agencyId,
-                type,
-                serial,
-            }).session(session);
+            // const checkExist = await this.CheckInfo.findOne({
+            //     agencyId,
+            //     type,
+            //     serial,
+            // }).session(session);
 
-            if (checkExist) {
-                await session.abortTransaction();
-                session.endSession();
-                return res
-                    .status(503)
-                    .json({ error: "the serial is duplicated" });
-            }
+            // if (checkExist) {
+            //     await session.abortTransaction();
+            //     session.endSession();
+            //     return res
+            //         .status(503)
+            //         .json({ error: "the serial is duplicated" });
+            // }
 
             persianDate.toLocale("en");
             const SalMali = new persianDate().format("YY");

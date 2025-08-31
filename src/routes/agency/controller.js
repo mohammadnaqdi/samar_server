@@ -806,6 +806,7 @@ module.exports = new (class extends controller {
             let level2 = await this.LevelAccDetail.findOne({
                 accCode: listacc2.codeLev3,
                 agencyId,
+                levelNo: 1,
             });
             let level3 = await this.LevelAccDetail.findOne({
                 accCode: listacc3.codeLev3,
@@ -1080,7 +1081,7 @@ module.exports = new (class extends controller {
                 });
             }
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
-            console.log("agencyId", agencyId);
+
             const agency = await this.Agency.findOne(
                 {
                     $and: [
@@ -1187,7 +1188,6 @@ module.exports = new (class extends controller {
                     pic: driversList[s].pic,
                 });
             }
-            console.log("driversList", driversList);
             const payCards = await this.PayQueue.find({
                 isPaid: true,
                 cardNumber: { $ne: "" },
@@ -1206,7 +1206,6 @@ module.exports = new (class extends controller {
         }
     }
     async dashboardAgency(req, res) {
-        console.log("dashboardAgencydashboardAgencydashboardAgency");
         try {
             if (
                 req.query.agencyId === undefined ||
@@ -1275,7 +1274,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 delete: false,
             });
-            console.log("serviceCount", serviceCount);
+            // console.log("serviceCount", serviceCount);
             // console.log("schools", JSON.stringify(schools));
             // const services = await this.Service.find(
             //     { agencyId, delete: false },
@@ -1407,8 +1406,8 @@ module.exports = new (class extends controller {
                 {
                     $match: {
                         isPaid: true,
-                        cardNumber: { $nin: ["", null,' '] },
-                        agencyId,
+                        cardNumber: { $nin: ["", null] },
+                        agencyId: agencyId,
                         delete: false,
                     },
                 },
@@ -1421,7 +1420,36 @@ module.exports = new (class extends controller {
                     $count: "uniqueCount",
                 },
             ]);
-            // console.log("payCards",payCards);
+            const payCards2 = await this.PayQueue.aggregate([
+                {
+                    $match: {
+                        isPaid: true,
+                        cardNumber: { $nin: ["", null, " "] },
+                        agencyId: agencyId,
+                        delete: false,
+                    },
+                },
+                {
+                    $group: {
+                        _id: {
+                            cardNumber: "$cardNumber",
+                            refId: "$refId",
+                        },
+                        docs: { $push: "$$ROOT" }, // keep full documents
+                    },
+                },
+                {
+                    $project: {
+                        "docs.isPaid": 0,
+                        "docs.delete": 0,
+                        "docs.authority": 0,
+                        "docs.createdAt": 0,
+                        "docs.updatedAt": 0,
+                        "docs.__v": 0,
+                    },
+                },
+            ]);
+            // console.log("payCards2", JSON.stringify(payCards2));
 
             const count = payCards.length > 0 ? payCards[0].uniqueCount : 0;
             return this.response({
@@ -2368,7 +2396,6 @@ module.exports = new (class extends controller {
             ).lean();
             let amount2 = 0;
 
-            console.log("distance", distance);
             if (invoice2) {
                 if (
                     invoice2.distancePrice &&

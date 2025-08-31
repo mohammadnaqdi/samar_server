@@ -837,7 +837,7 @@ module.exports = new (class extends controller {
         ]);
 
         mandeh = result[0]?.total || 0;
-        console.log("mandeh", mandeh);
+        // console.log("mandeh", mandeh);
       }
 
       const docList = await this.DocListSanad.find(

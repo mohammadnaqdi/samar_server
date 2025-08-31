@@ -4,6 +4,7 @@ const https = require("https");
 const persianDate = require("persian-date");
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
+const { Session } = require("inspector/promises");
 const amoot_t = process.env.AMOOT_SMS;
 const amootUser = process.env.AMOOT_USER;
 const amootPass = process.env.AMOOT_PASS;
@@ -348,14 +349,24 @@ module.exports = new (class extends controller {
   }
 
   async sayadTransfersChainInquiry(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const { sayadId, nid } = req.query;
+      const { sayadId, nid, agencyId } = req.query;
 
-      if (!sayadId || sayadId == "" || !nid || nid == "") {
+      if (
+        !sayadId ||
+        sayadId.trim() === "" ||
+        !nid ||
+        nid.trim() === "" ||
+        !agencyId ||
+        agencyId.trim() === ""
+      ) {
+        await session.abortTransaction();
         return this.response({
           res,
           code: 204,
-          message: "Invalid sayadId or nid!",
+          message: "Invalid sayadId or nid or agencyId",
         });
       }
 
@@ -363,6 +374,7 @@ module.exports = new (class extends controller {
 
       const { token, refresh_token } = await getToken();
       if (!token || !refresh_token) {
+        await session.abortTransaction();
         console.log("Faild to generate auth token!");
         return res.status(500).json({ error: "Internal Server Error." });
       }
@@ -386,29 +398,51 @@ module.exports = new (class extends controller {
       });
 
       if (response.data.status === "DONE") {
+        await this.FinnotechUsage.create({
+          agencyId,
+          endpoint: "sayadTransfersChainInquiry",
+          trackId: trackId,
+          api: url,
+          price: 0,
+          usedBy: req.user._id,
+        });
+
+        await session.commitTransaction();
         return res.json({ chain: response.data.result.chain });
       } else {
+        await session.abortTransaction();
         console.error("Error while sayadTransfersChainInquiry:", response.data);
         return res.status(400).json({ message: "Bank Error" });
       }
     } catch (error) {
+      await session.abortTransaction();
       console.error(
         "Error while sayadTransfersChainInquiry:",
         error.response.data
       );
       return res.status(500).json({ error: "Internal Server Error." });
+    } finally {
+      await session.endSession();
     }
   }
 
   async sendSMSAuthorization(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const { phone } = req.query;
+      const { phone, agencyId } = req.query;
 
-      if (!phone || phone == "") {
+      if (
+        !phone ||
+        phone.trim() === "" ||
+        !agencyId ||
+        agencyId.trim() === ""
+      ) {
+        await session.abortTransaction();
         return this.response({
           res,
           code: 204,
-          message: "Invalid phone!",
+          message: "Invalid phone or agencyId",
         });
       }
 
@@ -416,19 +450,22 @@ module.exports = new (class extends controller {
       const now = new Date();
       const expiry = new Date(user.cheque.fin_token_expiry);
       if (expiry > now) {
+        await session.abortTransaction();
         return res.status(400).json({ error: "Token still valid!" });
       }
 
-      const url = `https://api.finnotech.ir/dev/v2/oauth2/authorize?client_id=${CLIENT}&response_type=code&redirect_uri=${REDIRECT_URL}&scope=${SMS_SCOPES}&mobile=${phone}&auth_type=SMS`;
+      const trackId = uuidv4();
+      const url = `https://api.finnotech.ir/dev/v2/oauth2/authorize?client_id=${CLIENT}&response_type=code&redirect_uri=${REDIRECT_URL}&scope=${SMS_SCOPES}&mobile=${phone}&auth_type=SMS&trackId=${trackId}`;
 
       const response = await makeHttpsGet(url, ENCODED_TOKEN);
 
-      console.log("Raw response:", response.data);
+      // console.log("Raw response:", response.data);
 
       let parsed;
       try {
         parsed = JSON.parse(response.data);
       } catch (err) {
+        await session.abortTransaction();
         console.error(
           "Failed to parse response from sendSMSAuthorization:",
           err
@@ -437,23 +474,37 @@ module.exports = new (class extends controller {
       }
 
       if (parsed.responseCode === "FN-BRFH-20000000000") {
+        await this.FinnotechUsage.create({
+          agencyId,
+          endpoint: "authorize",
+          trackId,
+          api: url,
+          price: 0,
+          usedBy: req.user._id,
+        });
         return res.json({
           message: "Done",
           trackId: parsed.result.trackId,
         });
       } else {
-        console.error("Error while SendSMSAuthorization:", parsed);
+        await session.abortTransaction();
+        console.error("Error while sendSMSAuthorization:", parsed);
         return res
           .status(400)
           .json({ message: "Could not send code", trackId: null });
       }
     } catch (error) {
+      await session.abortTransaction();
       console.error("Error while sendSMSAuthorization:", error);
       return res.status(500).json({ error: "Internal Server Error." });
+    } finally {
+      await session.endSession();
     }
   }
 
   async verifySMSAuthorization(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const { code, mobile, nid, trackId } = req.body;
       if (
@@ -466,17 +517,22 @@ module.exports = new (class extends controller {
         !trackId ||
         trackId == ""
       ) {
+        await session.abortTransaction();
         return this.response({
           res,
           code: 204,
           message: "Invalid input!",
         });
       }
-      const userCheck = await this.User.findOne({ phone: mobile });
+      const userCheck = await this.User.findOne({
+        phone: mobile,
+      }).session(session);
       if (!userCheck) {
+        await session.abortTransaction();
         return res.status(404).json({ message: "user not found" });
       }
       if (userCheck.cheque.fin_token) {
+        await session.abortTransaction();
         return res.status(400).json({
           message: "Invalid request!",
         });
@@ -485,12 +541,14 @@ module.exports = new (class extends controller {
       const now = new Date();
       const expiry = new Date(userCheck.cheque.fin_token_expiry);
       if (expiry > now) {
+        await session.abortTransaction();
         return res.status(400).json({ error: "Token still valid!" });
       }
 
       const generated_token = await verifySMS(code, mobile, nid, trackId);
       // console.log(generated_token);
       if (!generated_token.token || !generated_token.refresh_token) {
+        await session.abortTransaction();
         console.log("Faild to generate sms token!");
         return res.status(400).json({ error: "Faild to generate sms token." });
       }
@@ -502,10 +560,14 @@ module.exports = new (class extends controller {
       userCheck.cheque.fin_token_expiry = timeAdded;
       await userCheck.save();
 
+      await session.commitTransaction();
       return res.json({ message: "Token saved." });
     } catch (error) {
+      await session.abortTransaction();
       console.error("Error while verifying SMS Authorization:", error);
       return res.status(500).json({ error: "Internal Server Error." });
+    } finally {
+      await session.endSession();
     }
   }
 
@@ -594,7 +656,9 @@ module.exports = new (class extends controller {
         return res.status(404).json({ message: "chequeHesab not found" });
       }
 
-      const url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/users/${user.nationalCode}/sms/sayadChequeInquiry?sayadId=${sayadId}&idType=${idType}`;
+      const trackId = uuidv4();
+
+      const url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/users/${user.nationalCode}/sms/sayadChequeInquiry?sayadId=${sayadId}&idType=${idType}&trackId=${trackId}`;
       const parsedUrl = new URL(url);
       const options = {
         hostname: parsedUrl.hostname,
@@ -615,6 +679,14 @@ module.exports = new (class extends controller {
       let parsed = JSON.parse(apiResponse.data);
       const getTrackId = JSON.parse(apiResponse.data);
       if (parsed.status === "DONE") {
+        await this.FinnotechUsage.create({
+          agencyId,
+          endpoint: "sayadChequeInquiry",
+          trackId,
+          api: url,
+          price: 0,
+          usedBy: req.user._id,
+        });
         parsed = parsed.result;
 
         if (checkSayad) {
@@ -929,6 +1001,15 @@ module.exports = new (class extends controller {
           console.log("error axios service sendSmsAndSAve", error);
         });
 
+      await this.FinnotechUsage.create({
+        agencyId: agency._id,
+        type: "SMS",
+        price: 2013,
+        description: text,
+        mobiles: sayadCheque.parentPhone,
+      });
+      await session.commitTransaction();
+
       return res.json({
         message: "Cancelled.",
       });
@@ -946,7 +1027,6 @@ module.exports = new (class extends controller {
     session.startTransaction();
     try {
       const { sayadId } = req.query;
-      console.log(req.query);
       if (!sayadId || sayadId == "") {
         await session.abortTransaction();
         return res.status(400).json({
@@ -1007,6 +1087,14 @@ module.exports = new (class extends controller {
       });
 
       if (response.data.status === "DONE") {
+        await this.FinnotechUsage.create({
+          agencyId: sayadCheque.agencyId,
+          endpoint: "sayadAcceptCheque",
+          trackId,
+          api: url,
+          price: 0,
+          usedBy: req.user._id,
+        });
         sayadCheque.status = "Accepted";
         sayadCheque.confirmationReferenceId = response.data.result.referenceId;
         await sayadCheque.save({ session });
@@ -1035,12 +1123,16 @@ module.exports = new (class extends controller {
   }
 
   async chequeColorInquiry(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const { nid } = req.query;
 
       const token = await getToken();
 
-      let url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/chequeColorInquiry?idCode=${nid}`;
+      const trackId = uuidv4();
+
+      let url = `https://api.finnotech.ir/credit/v2/clients/${CLIENT}/chequeColorInquiry?idCode=${nid}&trackId=${trackId}`;
 
       const response = await axios.get(url, {
         headers: {
@@ -1054,12 +1146,21 @@ module.exports = new (class extends controller {
       if (response.data.status === "DONE") {
         const code = response.data.result.chequeColor;
         const status = getChequeColorDescription(code);
+        await this.FinnotechUsage.create({
+          endpoint: "chequeColorInquiry",
+          trackId,
+          api: url,
+          price: 0,
+          usedBy: req.user._id,
+        });
+        await session.commitTransaction();
         return res.json({
           message: "Done",
           nid: nid,
           status,
         });
       } else {
+        await session.abortTransaction();
         return res.status(400).json({
           message: "Failed",
           nid: nid,
@@ -1067,25 +1168,34 @@ module.exports = new (class extends controller {
         });
       }
     } catch (error) {
+      await session.abortTransaction();
       console.error(
         "Error while chequeColorInquiry:",
         error.response.data || error
       );
       return res.status(500).json({ error: "Internal Server Error." });
+    } finally {
+      await session.endSession();
     }
   }
 
   async confirmShahabCode(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const { agencyId } = req.query;
 
       const agency = await this.Agency.findById(agencyId).lean();
       if (!agency) {
+        await session.abortTransaction();
         return res.status(204).json({ message: "Agency not found" });
       }
 
-      const adminCheque = await this.User.findById(agency.adminCheque);
+      const adminCheque = await this.User.findById(agency.adminCheque).session(
+        session
+      );
       if (!adminCheque) {
+        await session.abortTransaction();
         return res.status(204).json({ message: "adminCheque not found" });
       }
 
@@ -1093,6 +1203,7 @@ module.exports = new (class extends controller {
         adminCheque.cheque.shahabId != "" &&
         adminCheque.cheque.shahabId != null
       ) {
+        await session.abortTransaction();
         return res.status(200).json({
           message: "shahabCode already confirmed!",
           shahab: adminCheque.cheque.shahabId,
@@ -1103,31 +1214,39 @@ module.exports = new (class extends controller {
       let toPersian = new persianDate(adminCheque.birthDate).format("YYYYMMDD");
 
       const shahab = await getShahabCode(
+        agencyId,
         adminCheque.nationalCode,
         toPersian,
         adminCheque.identityNo
       );
       if (!shahab.shahab) {
+        await session.abortTransaction();
         return res.status(400).json({ message: "Invalid data" });
       }
 
       adminCheque.cheque.shahabId = shahab.shahab;
       await adminCheque.save();
 
+      await session.commitTransaction();
+
       return res.json({ shahab: shahab.shahab });
     } catch (error) {
+      await session.abortTransaction();
       console.error(
         "Error while chequeColorInquiry:",
         error.response.data || error
       );
       return res.status(500).json({ error: "Internal Server Error." });
+    } finally {
+      await session.endSession();
     }
   }
 
   async getParentShahab(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const { nid, phone, identityNo, birthDate } = req.query;
-      console.log(req.query);
 
       const cheque = await this.SayadCheque.findOne({
         parentPhone: phone,
@@ -1136,7 +1255,7 @@ module.exports = new (class extends controller {
       if (cheque) {
         return res.json({ message: true });
       } else {
-        let parent = await this.Parent.findOne({ phone });
+        let parent = await this.Parent.findOne({ phone }).session(session);
         if (!parent) {
           parent = new this.Parent({
             phone,
@@ -1144,7 +1263,7 @@ module.exports = new (class extends controller {
             identityNo,
             nationalCode: nid,
           });
-          await parent.save();
+          await parent.save({ session });
         }
 
         if (parent.shahabId != "" && parent.shahabId != null) {
@@ -1155,7 +1274,7 @@ module.exports = new (class extends controller {
         const newD = new Date(birthDate);
         let toPersian = new persianDate(newD).format("YYYYMMDD");
 
-        const shahab = await getShahabCode(nid, toPersian, identityNo);
+        const shahab = await getShahabCode(null, nid, toPersian, identityNo);
         if (!shahab.shahab) {
           return res.status(400).json({ message: "Invalid data" });
         }
@@ -1164,16 +1283,21 @@ module.exports = new (class extends controller {
         parent.identityNo = identityNo;
         parent.birthDate = birthDate;
         parent.nationalCode = nid;
-        await parent.save();
+        await parent.save({ session });
+        await session.commitTransaction();
 
         return res.json({ message: true });
       }
     } catch (error) {
+      await session.abortTransaction();
+
       console.error(
         "Error while chequeColorInquiry:",
         error.response.data || error
       );
       return res.status(500).json({ error: "Internal Server Error." });
+    } finally {
+      await session.endSession();
     }
   }
 
@@ -1182,8 +1306,9 @@ module.exports = new (class extends controller {
       const { card } = req.query;
 
       const token = await getToken();
+      const trackId = uuidv4();
 
-      const url = "https://api.finnotech.ir/mpg/v2/clients/samar/cards/" + card;
+      const url = `https://api.finnotech.ir/mpg/v2/clients/samar/cards/${card}/?trackId=${trackId}`;
 
       const response = await axios.get(url, {
         headers: {
@@ -1195,6 +1320,13 @@ module.exports = new (class extends controller {
       });
 
       if (response.data.status === "DONE") {
+        await this.FinnotechUsage.create({
+          endpoint: "cards",
+          trackId,
+          api: url,
+          price: 0,
+          usedBy: req.user._id,
+        });
         return res.json({
           message: "Done",
           card: response.data.result,
@@ -1212,13 +1344,18 @@ module.exports = new (class extends controller {
   }
 
   async checkSMSToken(userId) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       let token = "";
       const now = new Date();
-      const user = await this.User.findById(userId);
+      const user = await this.User.findById(userId).session(session);
       const expiry = new Date(user.cheque.fin_token_expiry);
 
       if (!expiry) {
+        await session.abortTransaction();
+
         return { success: false, token: null };
       }
 
@@ -1231,6 +1368,8 @@ module.exports = new (class extends controller {
         );
         console.log(generated_token);
         if (!generated_token.token || !generated_token.refresh_token) {
+          await session.abortTransaction();
+
           console.log("Faild to generate sms token!");
           return { success: false, token: null };
         }
@@ -1241,14 +1380,19 @@ module.exports = new (class extends controller {
         user.cheque.fin_refresh_token = generated_token.refresh_token;
         user.cheque.fin_token_expiry = timeAdded;
         await user.save();
+        await session.commitTransaction();
 
         token = generated_token.token;
       }
 
       return { success: true, token };
     } catch (error) {
+      await session.abortTransaction();
+
       console.error("Error while checking sms token:", error);
       return { success: false, token: null };
+    } finally {
+      await session.endSession();
     }
   }
 })();
@@ -1329,16 +1473,19 @@ function getChequeColorDescription(code) {
   return descriptions[code] || "کد وضعیت چک نامعتبر است.";
 }
 
-async function getShahabCode(nid, birthDate, identityNo) {
+async function getShahabCode(agencyId, nid, birthDate, identityNo) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const token = await getToken();
+    const trackId = uuidv4();
 
-    let url = `https://api.finnotech.ir/oak/v2/clients/samar/users/${nid}/shahabInquiry?birthDate=${birthDate}`;
+    let url = `https://api.finnotech.ir/oak/v2/clients/samar/users/${nid}/shahabInquiry?birthDate=${birthDate}&trackId=${trackId}`;
 
     const birthDateInt = parseInt(birthDate, 10);
 
     if (birthDateInt < 13680101) {
-      url = `https://api.finnotech.ir/oak/v2/clients/samar/users/${nid}/shahabInquiry?birthDate=${birthDate}&identityNo=${identityNo}`;
+      url = `https://api.finnotech.ir/oak/v2/clients/samar/users/${nid}/shahabInquiry?birthDate=${birthDate}&identityNo=${identityNo}&trackId=${trackId}`;
     }
 
     const response = await axios.get(url, {
@@ -1348,16 +1495,31 @@ async function getShahabCode(nid, birthDate, identityNo) {
     });
 
     if (response.data.status === "DONE") {
+      await this.FinnotechUsage.create({
+        agencyId,
+        endpoint: "shahabInquiry",
+        trackId,
+        api: url,
+        price: 0,
+        usedBy: req.user._id,
+      });
+      await session.commitTransaction();
       return {
         message: "Done",
         shahab: response.data.result.shahabCode,
       };
     } else {
+      await session.abortTransaction();
+
       return { message: "Failed", shahab: null };
     }
   } catch (error) {
+    await session.abortTransaction();
+
     console.error("Error while getShahabCode:", error.response.data || error);
     return { message: error, shahab: null };
+  } finally {
+    await session.endSession();
   }
 }
 
@@ -1385,6 +1547,9 @@ async function makeHttpsGet(url, authToken) {
 }
 
 async function verifySMS(code, mobile, nid, trackId) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const body = JSON.stringify({
       mobile,
@@ -1393,7 +1558,7 @@ async function verifySMS(code, mobile, nid, trackId) {
       trackId,
     });
 
-    const verifyUrl = "https://api.finnotech.ir/dev/v2/oauth2/verify/sms";
+    const verifyUrl = `https://api.finnotech.ir/dev/v2/oauth2/verify/sms?trackId=${trackId}`;
     const parsedVerifyUrl = new URL(verifyUrl);
 
     const verifyOptions = {
@@ -1427,11 +1592,15 @@ async function verifySMS(code, mobile, nid, trackId) {
     try {
       verifyParsed = JSON.parse(verifyResponse.data);
     } catch (err) {
+      await session.abortTransaction();
+
       console.error("Failed to parse verify SMS JSON:", err);
       return { token: null, refresh_token: null };
     }
 
     if (verifyParsed.status !== "DONE") {
+      await session.abortTransaction();
+
       console.error("Error while verifySMS:", verifyParsed);
       return { token: null, refresh_token: null };
     }
@@ -1480,26 +1649,34 @@ async function verifySMS(code, mobile, nid, trackId) {
     try {
       tokenParsed = JSON.parse(tokenResponse.data);
     } catch (err) {
+      await session.abortTransaction();
       console.error("Failed to parse token JSON:", err);
       return { token: null, refresh_token: null };
     }
 
     if (tokenParsed.status === "DONE") {
+      await session.commitTransaction();
       return {
         token: tokenParsed.result.value,
         refresh_token: tokenParsed.result.refreshToken,
       };
     } else {
+      await session.abortTransaction();
       console.error("Error while getting sms token:", tokenParsed);
       return { token: null, refresh_token: null };
     }
   } catch (error) {
+    await session.abortTransaction();
     console.error("Error while verifySMS:", error.message || error);
     return { token: null, refresh_token: null };
+  } finally {
+    await session.endSession();
   }
 }
 
 async function verifyRefreshToken(refresh) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const body = {
       grant_type: "refresh_token",
@@ -1508,9 +1685,8 @@ async function verifyRefreshToken(refresh) {
       auth_type: "SMS",
     };
 
-    console.log(body);
+    // console.log(body);
 
-    // Convert body object to JSON string
     const bodyString = JSON.stringify(body);
 
     const verifyUrl = "https://api.finnotech.ir/dev/v2/oauth2/token";
@@ -1523,7 +1699,7 @@ async function verifyRefreshToken(refresh) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${ENCODED_TOKEN}`,
-        "Content-Length": Buffer.byteLength(bodyString), // Use bodyString here
+        "Content-Length": Buffer.byteLength(bodyString),
       },
     };
 
@@ -1546,26 +1722,34 @@ async function verifyRefreshToken(refresh) {
     try {
       verifyParsed = JSON.parse(verifyResponse.data);
     } catch (err) {
+      await session.abortTransaction();
       console.error("Failed to parse verify SMS JSON:", err);
       return { token: null, refresh_token: null };
     }
 
     if (verifyParsed.status !== "DONE") {
+      await session.abortTransaction();
       console.error("Error while verifySMS:", verifyParsed);
       return { token: null, refresh_token: null };
     } else {
+      await session.commitTransaction();
       return {
         token: verifyParsed.result.value,
         refresh_token: verifyParsed.result.refreshToken,
       };
     }
   } catch (error) {
+    await session.abortTransaction();
     console.error("Error while verifySMS:", error || error);
     return { token: null, refresh_token: null };
+  } finally {
+    await session.endSession();
   }
 }
 
 async function getToken() {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const url = "https://api.finnotech.ir/dev/v2/oauth2/token";
 
@@ -1583,11 +1767,13 @@ async function getToken() {
     });
 
     if (response.data.responseCode === "FN-BRFH-20000000000") {
+      await session.commitTransaction();
       return {
         token: response.data.result.value,
         refresh_token: response.data.result.refreshToken,
       };
     } else {
+      await session.abortTransaction();
       console.error("Error while getting token:", response.data);
       return {
         token: null,
@@ -1595,10 +1781,13 @@ async function getToken() {
       };
     }
   } catch (err) {
+    await session.abortTransaction();
     console.error("Error while getting token:", err.response);
     return {
       token: null,
       refresh_token: null,
     };
+  } finally {
+    await session.endSession();
   }
 }

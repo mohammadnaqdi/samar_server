@@ -8,8 +8,6 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
 module.exports = new (class extends controller {
-    //for we dont need to create a new object only export directly a class
-
     async insertStudent(req, res) {
         const session = await this.Student.startSession();
         session.startTransaction();
@@ -151,285 +149,295 @@ module.exports = new (class extends controller {
         }
     }
 
-  async insertStudentByAgent(req, res) {
-    const session = await this.Student.startSession();
-    session.startTransaction();
-    try {
-        const {
-            name,
-            lastName,
-            parentId: parent,
-            school,
-            gradeId,
-            gradeTitle,
-            time,
-            fatherName,
-            distance,
-            parentReleation,
-            addressText,
-            details,
-            location,
-            isIranian,
-            gender,
-            nationalCode = ""
-        } = req.body;
+    async insertStudentByAgent(req, res) {
+        const session = await this.Student.startSession();
+        session.startTransaction();
+        try {
+            const {
+                name,
+                lastName,
+                parentId: parent,
+                school,
+                gradeId,
+                gradeTitle,
+                time,
+                fatherName,
+                distance,
+                parentReleation,
+                addressText,
+                details,
+                location,
+                isIranian,
+                gender,
+                nationalCode = ""
+            } = req.body;
 
-        // ✅ Duplication check
-        const studentCount = await this.Student.countDocuments(
-            { parent, name, lastName, delete: false },
-            { session }
-        );
-        if (studentCount > 0) {
-            await session.abortTransaction();
-            session.endSession();
-            return this.response({
-                res,
-                code: 403,
-                message: "student is duplicated",
-            });
-        }
-
-        let stateTitle = "در انتظار پیش پرداخت";
-        const state = 2;
-
-        // ✅ Find school
-        const sch = await this.School.findById(
-            school,
-            "name location.coordinates agencyId",
-            { session }
-        );
-        if (!sch) {
-            await session.abortTransaction();
-            session.endSession();
-            return this.response({
-                res,
-                code: 400,
-                message: "school not find",
-                data: { fa_m: "مدرسه پیدا نشد" },
-            });
-        }
-
-        // ✅ Distance calculation (external API call → outside transaction logic)
-        let serviceDistance = 0;
-        if (distance == -1) {
-            try {
-                let origin = location[0] + "," + location[1];
-                let dest =
-                    sch.location.coordinates[0] +
-                    "," +
-                    sch.location.coordinates[1];
-                const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
-                const options = {
-                    headers: { "Api-Key": neshan },
-                    timeout: 5500,
-                };
-                const response = await axios.get(url, options);
-                serviceDistance =
-                    response.data.routes[0].legs[0].distance.value;
-            } catch (error) {
-                console.log("Neshan error=", error);
-            }
-        } else {
-            serviceDistance = distance;
-        }
-
-        // ✅ Find agency
-        const agency = await this.Agency.findById(sch.agencyId, "settings", { session });
-        if (!agency) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(404).json({ msg: "agency not find" });
-        }
-        const agencyId = agency._id;
-
-        // ✅ Create Student
-        const studentDoc = new this.Student({
-            agencyId: sch.agencyId,
-            parent,
-            school,
-            time,
-            address: addressText,
-            addressDetails: details,
-            location: { type: "Point", coordinates: location },
-            gradeTitle,
-            gradeId,
-            name,
-            lastName,
-            fatherName,
-            gender,
-            parentReleation,
-            isIranian,
-            state,
-            stateTitle,
-            serviceDistance,
-            nationalCode,
-            setter: req.user._id,
-            setterISParent: false,
-        });
-        await studentDoc.save({ session });
-
-        // ✅ Registration invoice
-        const invoice = await this.Invoice.findOne(
-            { agencyId: sch.agencyId, type: "registration", delete: false },
-            null,
-            { session }
-        );
-
-        if (invoice) {
-            let payQueue = new this.PayQueue({
-                inVoiceId: invoice._id,
-                code: invoice.code,
-                agencyId: sch.agencyId,
-                studentId: studentDoc._id,
-                setter: req.user._id,
-                type: invoice.type,
-                amount: invoice.amount,
-                title: invoice.title,
-                maxDate: invoice.maxDate,
-                isPaid: false,
-            });
-            await payQueue.save({ session });
-
-            const amount = payQueue.amount;
-            const studentCode = studentDoc.studentCode;
-            const fullname = `${studentDoc.name} ${studentDoc.lastName} کد ${studentCode}`;
-
-            const wallet = agency.settings.find((obj) => obj.wallet)?.wallet;
-            const costCode = agency.settings.find((obj) => obj.cost)?.cost;
-
-            if (!costCode || !wallet) {
-                studentDoc.state = 0;
-                studentDoc.stateTitle = "ثبت شده توسط نماینده";
-                await studentDoc.save({ session });
-                await session.commitTransaction();
+            // ✅ Duplication check
+            const studentCount = await this.Student.countDocuments(
+                { parent, name, lastName, delete: false },
+                { session }
+            );
+            if (studentCount > 0) {
+                await session.abortTransaction();
                 session.endSession();
                 return this.response({
                     res,
-                    code: 203,
-                    message: "costCode || wallet not find",
+                    code: 403,
+                    message: "student is duplicated",
                 });
             }
 
-            // ✅ Check balance
-            const result = await this.DocListSanad.aggregate([
-                { $match: { accCode: wallet, agencyId: agencyId } },
+            let stateTitle = "در انتظار پیش پرداخت";
+            const state = 2;
+
+            // ✅ Find school
+            const sch = await this.School.findById(
+                school,
+                "name location.coordinates agencyId",
+                { session }
+            );
+            if (!sch) {
+                await session.abortTransaction();
+                session.endSession();
+                return this.response({
+                    res,
+                    code: 400,
+                    message: "school not find",
+                    data: { fa_m: "مدرسه پیدا نشد" },
+                });
+            }
+
+            // ✅ Distance calculation (external API call → outside transaction logic)
+            let serviceDistance = 0;
+            if (distance == -1) {
+                try {
+                    let origin = location[0] + "," + location[1];
+                    let dest =
+                        sch.location.coordinates[0] +
+                        "," +
+                        sch.location.coordinates[1];
+                    const url = `https://api.neshan.org/v4/direction/no-traffic?origin=${origin}&destination=${dest}`;
+                    const options = {
+                        headers: { "Api-Key": neshan },
+                        timeout: 5500,
+                    };
+                    const response = await axios.get(url, options);
+                    serviceDistance =
+                        response.data.routes[0].legs[0].distance.value;
+                } catch (error) {
+                    console.log("Neshan error=", error);
+                }
+            } else {
+                serviceDistance = distance;
+            }
+
+            // ✅ Find agency
+            const agency = await this.Agency.findById(
+                sch.agencyId,
+                "settings",
                 {
-                    $group: {
-                        _id: null,
-                        total: { $sum: { $subtract: ["$bed", "$bes"] } },
-                    },
-                },
-            ]).session(session);
-            const mandeh = result[0]?.total || 0;
-
-            if (amount > mandeh) {
-                studentDoc.state = 0;
-                studentDoc.stateTitle = "ثبت شده توسط نماینده";
-                await studentDoc.save({ session });
-                await session.commitTransaction();
+                    session,
+                }
+            );
+            if (!agency) {
+                await session.abortTransaction();
                 session.endSession();
-                return this.response({
-                    res,
-                    code: 203,
-                    message: "The account balance is insufficient",
-                });
+                return res.status(404).json({ msg: "agency not find" });
             }
+            const agencyId = agency._id;
 
-            const desc = `پرداخت ${payQueue.title} از کیف پول بابت دانش آموز ${fullname}`;
-
-            // ✅ Create DocSanad
-            const docObj = new this.DocSanad({
-                agencyId,
-                note: desc,
-                sanadDate: new Date(),
-                system: 3,
-                definite: false,
-                lock: true,
-                editor: req.user._id,
+            // ✅ Create Student
+            const studentDoc = new this.Student({
+                agencyId: sch.agencyId,
+                parent,
+                school,
+                time,
+                address: addressText,
+                addressDetails: details,
+                location: { type: "Point", coordinates: location },
+                gradeTitle,
+                gradeId,
+                name,
+                lastName,
+                fatherName,
+                gender,
+                parentReleation,
+                isIranian,
+                state,
+                stateTitle,
+                serviceDistance,
+                nationalCode,
+                setter: req.user._id,
+                setterISParent: false,
             });
-            await docObj.save({ session });
+            await studentDoc.save({ session });
 
-            // ✅ DocListSanad rows
-            await new this.DocListSanad({
-                agencyId,
-                titleId: docObj.id,
-                doclistId: docObj.sanadId,
-                row: 1,
-                bed: amount,
-                bes: 0,
-                note: desc,
-                accCode: costCode,
-                mId: docObj.sanadId,
-                peigiri: studentCode,
-                sanadDate: new Date(),
-            }).save({ session });
-
-            await new this.DocListSanad({
-                agencyId,
-                titleId: docObj.id,
-                doclistId: docObj.sanadId,
-                row: 2,
-                bed: 0,
-                bes: amount,
-                note: desc,
-                accCode: wallet,
-                mId: payQueue.code,
-                type: "invoice",
-                forCode: "003005" + studentCode,
-                peigiri: studentCode,
-                sanadDate: new Date(),
-            }).save({ session });
-
-            payQueue.isPaid = true;
-            payQueue.payDate = new Date();
-            await payQueue.save({ session });
-
-            // ✅ PrePayment invoice
-            const invoice2 = await this.Invoice.findOne(
-                { agencyId: sch.agencyId, type: "prePayment", delete: false },
+            // ✅ Registration invoice
+            const invoice = await this.Invoice.findOne(
+                { agencyId: sch.agencyId, type: "registration", delete: false },
                 null,
                 { session }
             );
-            if (invoice2) {
-                let amount2 = invoice2.amount;
-                if (invoice2.distancePrice?.length > 0) {
-                    const matchedPricing = invoice2.distancePrice.find(
-                        (p) => p.maxDistance * 1000 >= serviceDistance
-                    );
-                    amount2 = matchedPricing
-                        ? matchedPricing.amount
-                        : invoice2.distancePrice.at(-1).amount;
-                }
-                let payQueue2 = new this.PayQueue({
-                    inVoiceId: invoice2._id,
-                    code: invoice2.code,
+
+            if (invoice) {
+                let payQueue = new this.PayQueue({
+                    inVoiceId: invoice._id,
+                    code: invoice.code,
                     agencyId: sch.agencyId,
                     studentId: studentDoc._id,
                     setter: req.user._id,
-                    type: invoice2.type,
-                    amount: amount2,
-                    title: invoice2.title,
-                    maxDate: invoice2.maxDate,
+                    type: invoice.type,
+                    amount: invoice.amount,
+                    title: invoice.title,
+                    maxDate: invoice.maxDate,
                     isPaid: false,
                 });
-                await payQueue2.save({ session });
+                await payQueue.save({ session });
+
+                const amount = payQueue.amount;
+                const studentCode = studentDoc.studentCode;
+                const fullname = `${studentDoc.name} ${studentDoc.lastName} کد ${studentCode}`;
+
+                const wallet = agency.settings.find(
+                    (obj) => obj.wallet
+                )?.wallet;
+                const costCode = agency.settings.find((obj) => obj.cost)?.cost;
+
+                if (!costCode || !wallet) {
+                    studentDoc.state = 0;
+                    studentDoc.stateTitle = "ثبت شده توسط نماینده";
+                    await studentDoc.save({ session });
+                    await session.commitTransaction();
+                    session.endSession();
+                    return this.response({
+                        res,
+                        code: 203,
+                        message: "costCode || wallet not find",
+                    });
+                }
+
+                // ✅ Check balance
+                const result = await this.DocListSanad.aggregate([
+                    { $match: { accCode: wallet, agencyId: agencyId } },
+                    {
+                        $group: {
+                            _id: null,
+                            total: { $sum: { $subtract: ["$bed", "$bes"] } },
+                        },
+                    },
+                ]).session(session);
+                const mandeh = result[0]?.total || 0;
+
+                if (amount > mandeh) {
+                    studentDoc.state = 0;
+                    studentDoc.stateTitle = "ثبت شده توسط نماینده";
+                    await studentDoc.save({ session });
+                    await session.commitTransaction();
+                    session.endSession();
+                    return this.response({
+                        res,
+                        code: 203,
+                        message: "The account balance is insufficient",
+                    });
+                }
+
+                const desc = `پرداخت ${payQueue.title} از کیف پول بابت دانش آموز ${fullname}`;
+
+                // ✅ Create DocSanad
+                const docObj = new this.DocSanad({
+                    agencyId,
+                    note: desc,
+                    sanadDate: new Date(),
+                    system: 3,
+                    definite: false,
+                    lock: true,
+                    editor: req.user._id,
+                });
+                await docObj.save({ session });
+
+                // ✅ DocListSanad rows
+                await new this.DocListSanad({
+                    agencyId,
+                    titleId: docObj.id,
+                    doclistId: docObj.sanadId,
+                    row: 1,
+                    bed: amount,
+                    bes: 0,
+                    note: desc,
+                    accCode: costCode,
+                    mId: docObj.sanadId,
+                    peigiri: studentCode,
+                    sanadDate: new Date(),
+                }).save({ session });
+
+                await new this.DocListSanad({
+                    agencyId,
+                    titleId: docObj.id,
+                    doclistId: docObj.sanadId,
+                    row: 2,
+                    bed: 0,
+                    bes: amount,
+                    note: desc,
+                    accCode: wallet,
+                    mId: payQueue.code,
+                    type: "invoice",
+                    forCode: "003005" + studentCode,
+                    peigiri: studentCode,
+                    sanadDate: new Date(),
+                }).save({ session });
+
+                payQueue.isPaid = true;
+                payQueue.payDate = new Date();
+                await payQueue.save({ session });
+
+                // ✅ PrePayment invoice
+                const invoice2 = await this.Invoice.findOne(
+                    {
+                        agencyId: sch.agencyId,
+                        type: "prePayment",
+                        delete: false,
+                    },
+                    null,
+                    { session }
+                );
+                if (invoice2) {
+                    let amount2 = invoice2.amount;
+                    if (invoice2.distancePrice?.length > 0) {
+                        const matchedPricing = invoice2.distancePrice.find(
+                            (p) => p.maxDistance * 1000 >= serviceDistance
+                        );
+                        amount2 = matchedPricing
+                            ? matchedPricing.amount
+                            : invoice2.distancePrice.at(-1).amount;
+                    }
+                    let payQueue2 = new this.PayQueue({
+                        inVoiceId: invoice2._id,
+                        code: invoice2.code,
+                        agencyId: sch.agencyId,
+                        studentId: studentDoc._id,
+                        setter: req.user._id,
+                        type: invoice2.type,
+                        amount: amount2,
+                        title: invoice2.title,
+                        maxDate: invoice2.maxDate,
+                        isPaid: false,
+                    });
+                    await payQueue2.save({ session });
+                }
             }
+
+            // ✅ Commit
+            await session.commitTransaction();
+            session.endSession();
+
+            return this.response({ res, data: studentDoc._id });
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error("Error while insertStudent:", error);
+            return res.status(500).json({ error: "insertstudent error" });
         }
-
-        // ✅ Commit
-        await session.commitTransaction();
-        session.endSession();
-
-        return this.response({ res, data: studentDoc._id });
-    } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error("Error while insertStudent:", error);
-        return res.status(500).json({ error: "insertstudent error" });
     }
-}
-
-
 
     async setStudent(req, res) {
         try {
@@ -1306,7 +1314,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type"
+                        "title isPaid maxDate type cardNumber"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1571,7 +1579,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type"
+                        "title isPaid maxDate type cardNumber"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -3416,7 +3424,7 @@ module.exports = new (class extends controller {
         try {
             const id = ObjectId.createFromHexString(req.body.id);
             const phone = req.body.phone || "";
-            console.log("setOtherStudentData", phone);
+            // console.log("setOtherStudentData", phone);
             const name = req.body.name || "";
             const del = req.body.del || false;
             const physicalCondition = req.body.physicalCondition;

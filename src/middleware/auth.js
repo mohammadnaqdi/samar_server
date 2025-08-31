@@ -28,15 +28,16 @@ async function isLoggined(req, res, next) {
     try {
         const decodedX = jwt.decode(token);
         let userSalt;
-        const checkSalt=!(decodedX.isParent || decodedX.isDriver);
+        const checkSalt=!(decodedX.isParent || decodedX.isDriver || 
+            decodedX._id==='687c9d3d904f4eb1bcb5179c' // superAdmin user
+        );
         if (checkSalt) {
             userSalt = await getUserSalt(decodedX._id);
             if (!userSalt) {
                 return res.status(401).json({ message: "Invalid token salt" });
             }
         }
-        // console.log("userSalt",userSalt)
-        // console.log("decodedX.isParent",decodedX.isParent)
+        
         const dynamicKey = !checkSalt
             ? process.env.JWT_KEY
             : process.env.JWT_KEY + userSalt;

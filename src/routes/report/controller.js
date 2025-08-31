@@ -66,7 +66,7 @@ module.exports = new (class extends controller {
             }
 
             let isOpen = false;
-            console.log("agSet.openOpinion", agSet.openOpinion);
+            // console.log("agSet.openOpinion", agSet.openOpinion);
             const n = month.toString();
             if (agSet.openOpinion[n]) {
                 const myOp = await this.Opinion.findOne({
@@ -253,7 +253,7 @@ module.exports = new (class extends controller {
                 });
             }
             let myRt = [];
-            console.log("agSet.openOpinion", agSet.openOpinion);
+            // console.log("agSet.openOpinion", agSet.openOpinion);
             for (var i = 1; i <= 12; i++) {
                 const n = i.toString();
                 if (agSet.openOpinion[n]) {

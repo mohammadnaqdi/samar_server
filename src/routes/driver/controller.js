@@ -242,6 +242,14 @@ module.exports = new (class extends controller {
                     },
                 };
                 await axios.request(config);
+
+                await this.FinnotechUsage.create({
+                    agencyId,
+                    type: "SMS",
+                    price: 6039,
+                    description: PatternValues.toString(),
+                    mobiles: phone,
+                });
             } catch (err) {
                 console.log("cant sent sms!!!:", err);
             }
@@ -592,7 +600,6 @@ module.exports = new (class extends controller {
     async updateEmptyDriver(req, res) {
         try {
             const id = req.body.id;
-            console.log("serial", req.body.serial);
             let driver = await this.Driver.findById(id);
             if (!driver) {
                 return this.response({
@@ -1046,7 +1053,7 @@ module.exports = new (class extends controller {
             }
 
             let drivers = await this.Driver.find({ $and: qr });
-            console.log("drivers len=", drivers.length);
+
             for (var i = 0; i < drivers.length; i++) {
                 // console.log(JSON.stringify(students[i]));
                 const user = await this.User.findById(
@@ -2599,7 +2606,6 @@ module.exports = new (class extends controller {
 
     async driverListPageDocument(req, res) {
         try {
-            console.log("driverListPageDocument");
             if (
                 req.query.agencyId === undefined ||
                 req.query.agencyId.trim() === "" ||
@@ -3291,6 +3297,61 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error while driverListSimple:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async findDriversByNameOrPhone(req, res) {
+        try {
+            const { agencyId, s } = req.query;
+            if (!agencyId || !s) {
+                return res
+                    .status(204)
+                    .json({ message: "Invalid agencyId or s" });
+            }
+            const agency = await this.Agency.findById(agencyId).lean();
+            if (!agency) {
+                return res.status(204).json({ message: "Agency not found" });
+            }
+
+            const drivers = await this.Driver.find({ agencyId })
+                .distinct("userId")
+                .lean();
+            if (drivers.length === 0) {
+                return res.status(204).json({ message: "No driver found" });
+            }
+
+            let users = await this.User.find(
+                {
+                    $and: [
+                        {
+                            _id: { $in: drivers },
+                        },
+                        {
+                            $or: [
+                                {
+                                    name: { $regex: ".*" + s + ".*" },
+                                },
+                                { lastName: { $regex: ".*" + s + ".*" } },
+                                { phone: { $regex: ".*" + s + ".*" } },
+                            ],
+                        },
+                    ],
+                },
+                "-_id name lastName code phone"
+            ).limit(20);
+            users = users.map((doc) => {
+                return {
+                    name: `${doc.name} ${doc.lastName}`,
+                    driverCode: agency.code + doc.code,
+                    phone: doc.phone,
+                };
+            });
+            console.log("users", users);
+
+            return res.json(users);
+        } catch (error) {
+            console.error("Error while findDriversByNameOrPhone:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

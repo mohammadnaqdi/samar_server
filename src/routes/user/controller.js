@@ -152,7 +152,6 @@ module.exports = new (class extends controller {
             let id = req.body.id;
             const isParent = req.body.isParent || false;
             let user;
-            console.log("id=", id);
             if (id.toString().trim() === "") {
                 if (req.body.phone === undefined) {
                     return res
@@ -794,7 +793,6 @@ module.exports = new (class extends controller {
                 // user.ban = banList;
                 user.userName = userName;
                 if (changePass) user.password = password;
-                console.log("isAdmin", isAdmin);
                 if (isAdmin) {
                     await this.Agency.findByIdAndUpdate(agencyId, {
                         $push: { users: user._id },
@@ -827,7 +825,6 @@ module.exports = new (class extends controller {
             });
             await user.save();
             await this.updateRedisDocument(`user:${user._id}`, user.toObject());
-            console.log("isAdmin", isAdmin);
             if (isAdmin) {
                 await this.Agency.findByIdAndUpdate(agencyId, {
                     $push: { users: user._id },

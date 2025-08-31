@@ -66,7 +66,7 @@ const {
 } = require("./../models/banks");
 const Rule = require("./../models/rules");
 const { Feedback, OperationLog } = require("./../models/feedback");
-// const { FinnotechUsage } = require("./../models/finnotech");
+const { FinnotechUsage } = require("./../models/finnotech");
 const {
     ContractText,
     SignedContract,
@@ -77,7 +77,7 @@ const { redisClient } = require("../../startup/redis");
 
 module.exports = class {
     constructor() {
-        // this.FinnotechUsage = FinnotechUsage;
+        this.FinnotechUsage = FinnotechUsage;
         this.BankGate = BankGate;
         this.SayadCheque = SayadCheque;
         this.Opinion = Opinion;

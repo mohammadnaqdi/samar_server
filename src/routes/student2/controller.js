@@ -137,7 +137,6 @@ module.exports = new (class extends controller {
                 });
             }
             const { studentId } = req.query;
-            console.log("studentId", studentId);
 
             const reports = await this.DDS.find({
                 "service.students.id": studentId,
@@ -271,8 +270,8 @@ module.exports = new (class extends controller {
                 delete: false,
                 state: 4,
             }).distinct("_id");
-            console.log("studentIds", studentIds.length);
-            console.log("monthLen", monthLen);
+            // console.log("studentIds", studentIds.length);
+            // console.log("monthLen", monthLen);
 
             let rp = [];
             for (var st of studentIds) {
@@ -356,7 +355,6 @@ module.exports = new (class extends controller {
     async studentCondition(req, res) {
         try {
             const { studentId } = req.query;
-            console.log("studentId", studentId);
 
             const consition = await this.Student.findById(
                 studentId,
@@ -504,7 +502,6 @@ module.exports = new (class extends controller {
                 });
             }
             const { studentId } = req.query;
-            console.log("studentId", studentId);
 
             const reports = await this.DDS.find({
                 "service.students.id": studentId,
@@ -582,7 +579,6 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-
     async applyStudentPrePayment(req, res) {
         try {
             if (
@@ -711,6 +707,55 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error in applyStudentPrePayment:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async findStudentsByNameOrPhone(req, res) {
+        try {
+            const { agencyId, s } = req.query;
+            if (!agencyId || !s) {
+                return res
+                    .status(204)
+                    .json({ message: "Invalid agencyId or s" });
+            }
+            const agency = await this.Agency.findById(agencyId).lean();
+            if (!agency) {
+                return res.status(204).json({ message: "Agency not found" });
+            }
+
+            const students = await this.Student.find(
+                {
+                    $and: [
+                        {
+                            agencyId,
+                        },
+                        { active: true },
+                        { delete: false },
+                        {
+                            $or: [
+                                {
+                                    name: { $regex: ".*" + s + ".*" },
+                                },
+                                { lastName: { $regex: ".*" + s + ".*" } },
+                                { phone: { $regex: ".*" + s + ".*" } },
+                            ],
+                        },
+                    ],
+                },
+                "name lastName parent studentCode"
+            )
+                .limit(15)
+                .populate("parent", "name lastName phone")
+                .lean();
+            if (students.length === 0) {
+                return res.status(204).json({ message: "No student found" });
+            }
+            console.log("students", students);
+
+            return res.json(students);
+        } catch (error) {
+            console.error("Error while findStudentsByNameOrPhone:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

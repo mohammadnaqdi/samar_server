@@ -1241,11 +1241,11 @@ module.exports = new (class extends controller {
                     if (hesabs && hesabs.length != 0) {
                         for (var hs of hesabs) {
                             const moeen = await this.LevelAccDetail.findOne(
-                                { agencyId, accCode: hs.codeLev2,levelNo: 2 },
+                                { agencyId, accCode: hs.codeLev2, levelNo: 2 },
                                 "accName"
                             );
                             const kol = await this.LevelAccDetail.findOne(
-                                { agencyId, accCode: hs.codeLev1,levelNo: 1 },
+                                { agencyId, accCode: hs.codeLev1, levelNo: 1 },
                                 "accName"
                             );
                             sarafsl.push({
@@ -1295,11 +1295,19 @@ module.exports = new (class extends controller {
                         if (hesabs && hesabs.length != 0) {
                             for (var hs of hesabs) {
                                 const moeen = await this.LevelAccDetail.findOne(
-                                    { agencyId, accCode: hs.codeLev2,levelNo: 2 },
+                                    {
+                                        agencyId,
+                                        accCode: hs.codeLev2,
+                                        levelNo: 2,
+                                    },
                                     "accName"
                                 );
                                 const kol = await this.LevelAccDetail.findOne(
-                                    { agencyId, accCode: hs.codeLev1,levelNo: 1 },
+                                    {
+                                        agencyId,
+                                        accCode: hs.codeLev1,
+                                        levelNo: 1,
+                                    },
                                     "accName"
                                 );
                                 sarafsl.push({
@@ -1449,7 +1457,7 @@ module.exports = new (class extends controller {
                     message: "doc not found",
                 });
             }
-           if(mId!=0) doc.mId = mId;
+            if (mId != 0) doc.mId = mId;
             doc.type = type;
             if (days != 0) {
                 doc.days = days;
@@ -1464,11 +1472,11 @@ module.exports = new (class extends controller {
                     },
                     {
                         isPaid: true,
-                        cardNumber:'',
-                        refId:'',
+                        cardNumber: "",
+                        refId: "",
                         setter: req.user._id,
                         payDate: new Date(),
-                        amount:doc.bes
+                        amount: doc.bes,
                     }
                 );
                 if (payQueue && payQueue.type === "prePayment") {
@@ -1515,11 +1523,11 @@ module.exports = new (class extends controller {
                         "accName"
                     ),
                     this.LevelAccDetail.findOne(
-                        { agencyId, accCode: hs.codeLev2,levelNo: 2 },
+                        { agencyId, accCode: hs.codeLev2, levelNo: 2 },
                         "accName"
                     ),
                     this.LevelAccDetail.findOne(
-                        { agencyId, accCode: hs.codeLev1,levelNo: 1 },
+                        { agencyId, accCode: hs.codeLev1, levelNo: 1 },
                         "accName"
                     ),
                 ]);
@@ -1568,11 +1576,11 @@ module.exports = new (class extends controller {
                         "accName"
                     ),
                     this.LevelAccDetail.findOne(
-                        { agencyId, accCode: hs.codeLev2,levelNo: 2 },
+                        { agencyId, accCode: hs.codeLev2, levelNo: 2 },
                         "accName"
                     ),
                     this.LevelAccDetail.findOne(
-                        { agencyId, accCode: hs.codeLev1,levelNo: 1 },
+                        { agencyId, accCode: hs.codeLev1, levelNo: 1 },
                         "accName"
                     ),
                 ]);
@@ -1624,11 +1632,11 @@ module.exports = new (class extends controller {
                         "accName accCode levelType desc"
                     ),
                     this.LevelAccDetail.findOne(
-                        { agencyId, accCode: acc.codeLev2,levelNo: 2 },
+                        { agencyId, accCode: acc.codeLev2, levelNo: 2 },
                         "accName"
                     ),
                     this.LevelAccDetail.findOne(
-                        { agencyId, accCode: acc.codeLev1,levelNo: 1 },
+                        { agencyId, accCode: acc.codeLev1, levelNo: 1 },
                         "accName"
                     ),
                 ]);
@@ -1653,7 +1661,6 @@ module.exports = new (class extends controller {
             const name = req.body.name;
             const mainId = req.body.mainId;
             const desc = req.body.desc ?? "";
-            console.log("name", name);
 
             if (!ObjectId.isValid(id)) {
                 const lastGroup = await this.GroupAcc.find(
@@ -1679,7 +1686,7 @@ module.exports = new (class extends controller {
                     data: gp,
                 });
             }
-            console.log("id", id);
+
             const gp = await this.GroupAcc.findByIdAndUpdate(id, {
                 name: name,
                 desc: desc,

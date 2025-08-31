@@ -185,7 +185,7 @@ module.exports = new (class extends controller {
                 invoice = await new this.Invoice({
                     title: "هزینه سرویس",
                     confirmInfo: true,
-                    agencyId: agency._id,
+                    agencyId: agencyId,
                     setter: req.user._id,
                     type: "serviceCost",
                     amount: 0,
@@ -242,6 +242,13 @@ module.exports = new (class extends controller {
             service.driverName = driverName;
             service.driverPic = driverPic;
             service.driverCarPelak = driverCarPelak;
+
+            const studentSer = await this.Student.find({
+                service: service._id,
+            }).lean();
+            if (studentSer.length === 0) {
+                service.delete = true;
+            }
 
             await service.save();
 
@@ -340,7 +347,6 @@ module.exports = new (class extends controller {
                     },
                 });
             }
-            console.log("agencyId", agencyId);
 
             let invoice = await this.Invoice.findOne({
                 agencyId,
@@ -609,7 +615,7 @@ module.exports = new (class extends controller {
                 ).lean();
                 let students = [];
                 for (let st of studentService) {
-                    if(st.state != 4) {
+                    if (st.state != 4) {
                         st.state = 4;
                         st.stateTitle = "دارای سرویس";
                         await this.Student.findByIdAndUpdate(st._id, {
@@ -1118,15 +1124,18 @@ module.exports = new (class extends controller {
                     message: "city inot find by phone",
                 });
             }
-            let qr={
+            let qr = {
                 delete: false,
                 city: parseInt(city),
+            };
+            let cardId = req.query.cardId || "";
+            if (cardId.trim() !== "") {
+                qr.carId = parseInt(cardId);
             }
-            let cardId=req.query.cardId || '';
-            if(cardId.trim()!==''){
-                qr.carId=parseInt(cardId);
-            }
-            const pricingTable = await this.PricingTable.find(qr,'-updatedAt -createdAt -__v').lean();
+            const pricingTable = await this.PricingTable.find(
+                qr,
+                "-updatedAt -createdAt -__v"
+            ).lean();
             return this.response({ res, message: "ok", data: pricingTable });
         } catch (error) {
             console.error("Error in getAllPricing:", error);
@@ -1157,28 +1166,31 @@ module.exports = new (class extends controller {
             const service = await this.Service.findByIdAndUpdate(id, {
                 delete: true,
             });
+            const st = await this.Student.updateMany(
+                {
+                    service: service._id,
+                },
+                {
+                    service: null,
+                    serviceNum: -1,
+                    serviceCost: 0,
+                    driverCode: "",
+                    driverCost: 0,
+                    state: 3,
+                    stateTitle: "حذف سرویس درانتظار",
+                }
+            );
             await new this.OperationLog({
                 userId: req.user._id,
                 name: req.user.name + " " + req.user.lastName,
                 agencyId: service.agencyId,
-                targetIds: service.student,
+                targetIds: st.map((s) => s._id),
                 targetTable: "student",
                 sanadId: 0,
                 actionName: "deleteService",
                 actionNameFa: `حذف سرویس ${service.serviceNum}`,
                 desc: `حذف کامل سرویس شماره ${service.serviceNum} از راننده ${service.driverName} به مبلغ ${service.cost} ریال`,
             }).save();
-            for (let i = 0; i < service.student.length; i++) {
-                await this.Student.findByIdAndUpdate(service.student[i], {
-                    service: null,
-                    serviceNum: -1,
-                    driverCode: "",
-                    serviceCost: 0,
-                    state: 3,
-                    stateTitle: "حذف سرویس درانتظار",
-                });
-            }
-
             return this.response({ res, message: "delete" });
         } catch (error) {
             console.error("Error in deleteService:", error);

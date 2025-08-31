@@ -1,5 +1,8 @@
+var soap = require("soap");
+const { promisify } = require("util");
 const express = require("express");
 const router = express.Router();
+const axios = require("axios");
 const authRouter = require("./auth");
 const userRouter = require("./user");
 const studentRouter = require("./student");
@@ -68,28 +71,28 @@ const { redisClient } = require("../../startup/redis");
 
 router.get("/getApp", getLatest);
 async function getLatest(req, res) {
-  let type = req.query.type;
+    let type = req.query.type;
 
-  if (type != 1 && type != 2 && type != 3) {
-    type = 1;
-  }
+    if (type != 1 && type != 2 && type != 3) {
+        type = 1;
+    }
 
-  // if (!type) {
-  //     return res.status(400).json({ error: "Invalid type." });
-  // }
+    // if (!type) {
+    //     return res.status(400).json({ error: "Invalid type." });
+    // }
 
-  type = !type ? 1 : type;
+    type = !type ? 1 : type;
 
-  const version = await Versionsoft.Versionsoft.findOne({ type }, "url -_id")
-    .sort({ _id: -1 })
-    .then((doc) => doc.url);
-  // let version = await redisClient.get(`software:${type}`);
-  if (!version) {
-    return res.status(404).json({ error: "App not found." });
-  }
-  // version = JSON.parse(version);
-  return res.redirect(version);
+    const version = await Versionsoft.Versionsoft.findOne({ type }, "url -_id")
+        .sort({ _id: -1 })
+        .then((doc) => doc.url);
+    // let version = await redisClient.get(`software:${type}`);
+    if (!version) {
+        return res.status(404).json({ error: "App not found." });
+    }
+    // version = JSON.parse(version);
+    return res.redirect(version);
 }
 
-router.use(error);
+// router.use(error);
 module.exports = router;

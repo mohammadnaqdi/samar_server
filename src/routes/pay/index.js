@@ -28,5 +28,4 @@ router.post(
 );
 router.get("/PaymentCoBank", controller.paymentCoBank.bind(controller));
 
-
 module.exports = router;

@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const Zarin = require("zarinpal-checkout");
 const soap = require("soap");
+const { promisify } = require("util");
 
 function getDate() {
     const now = new Date();
@@ -121,6 +122,95 @@ async function generateSepehrToken(
         return null;
     } catch (error) {
         console.error("Error while generating sepehr bank token:", error);
+        return null;
+    }
+}
+
+async function generateMehrToken(
+    amount,
+    reserveNum,
+    username,
+    password,
+    mobileNo
+) {
+    try {
+        if (!amount || amount < 10000) {
+            amount = 10000;
+        }
+
+        const body = {
+            WSContext: { UserId: username, Password: password },
+            TransType: "EN_GOODS",
+            ReserveNum: reserveNum,
+            Amount: amount,
+            RedirectUrl: "http://hoshmand-seir.ir/callback.php",
+            MobileNo: mobileNo,
+            UserId: mobileNo,
+        };
+
+        const response = await axios.post(
+            "https://fcp.shaparak.ir/ref-payment/RestServices/mts/generateTokenWithNoSign/",
+            body
+        );
+
+        const token = response.data.Token;
+        if (token && token !== "") {
+            return token;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error while generating mehr bank token:", error);
+        return null;
+    }
+}
+
+async function generateSamanToken(amount, reserveNum, terminalId) {
+    try {
+        if (!amount || amount < 10000) {
+            amount = 10000;
+        }
+
+        const merchantID = terminalId;
+        const resNum = reserveNum;
+        amount = amount.toString();
+        const redirectUrl = "https://server.mysamar.ir/api/pay/callback";
+
+        const wsdlUrl =
+            "https://sep.shaparak.ir/Payments/InitPayment.asmx?WSDL";
+
+        const params = {
+            TermID: merchantID,
+            ResNum: resNum,
+            TotalAmount: amount,
+            SegAmount1: 0,
+            SegAmount2: 0,
+            SegAmount3: 0,
+            SegAmount4: 0,
+            SegAmount5: 0,
+            SegAmount6: 0,
+            AdditionalData1: 0,
+            AdditionalData2: 0,
+            Wage: 0,
+            RedirectUrl: redirectUrl,
+        };
+
+        const createClientAsync = promisify(soap.createClient);
+        const client = await createClientAsync(wsdlUrl);
+
+        const requestTokenAsync = promisify(client.RequestToken.bind(client));
+        const result = await requestTokenAsync(params);
+
+        console.log("Result from Shaparak:", result);
+
+        const token = result?.result?.$value;
+        if (!token) {
+            return null;
+        }
+        return token;
+
+        // return res.redirect(`https://pay.mysamar.ir/saman.html?Token=${token}`);
+    } catch (error) {
+        console.error("Error while generating saman bank token:", error);
         return null;
     }
 }
@@ -257,6 +347,10 @@ module.exports = new (class extends controller {
         console.log("amount", amount);
         console.log("amount2", amount2);
         console.log("desc", desc);
+        if (bankGate.type === "MEHR" || bankGate.type === "SAMAN") {
+            amount = 5000;
+            amount2 = 5000;
+        }
         try {
             let newTr = new this.Transactions({
                 userId: req.user._id,
@@ -320,7 +414,6 @@ module.exports = new (class extends controller {
             } else if (bankGate.type === "ZARIN") {
                 //**********************************************ZARIN******************************************************* */
                 const zarinpal = Zarin.create(bankGate.terminal, false);
-
                 const response = await zarinpal.PaymentRequest({
                     Amount: (amount + amount2) / 10,
                     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
@@ -338,11 +431,49 @@ module.exports = new (class extends controller {
                     });
                     return;
                 }
-                res.status(201).json({
+                return res.status(201).json({
                     status: "Error",
                     message: "خطای بانک",
                 });
-                return;
+            } else if (bankGate.type === "MEHR") {
+                //**********************************************MEHR******************************************************* */
+                let token = await generateMehrToken(
+                    amount + amount2,
+                    newTr.authority,
+                    bankGate.userName,
+                    bankGate.userPass,
+                    "callBack",
+                    req.user.phone
+                );
+                console.log("token mehr", token);
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    message: `https://fcp.shaparak.ir/_ipgw_/payment/?token=${token}&lang=fa`,
+                });
+            } else if (bankGate.type === "SAMAN") {
+                //**********************************************SAMAN******************************************************* */
+                let token = await generateSamanToken(
+                    amount + amount2,
+                    newTr.authority,
+                    bankGate.terminal
+                );
+                console.log("token saman", token);
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    message: `https://pay.mysamar.ir/saman.html?Token=${token}`,
+                });
             }
             return this.response({
                 res,
@@ -350,12 +481,11 @@ module.exports = new (class extends controller {
                 message: "type of bank not find",
             });
         } catch (e) {
-            console.log("sepehr bank error", e);
-            res.status(201).json({
+            console.log("bank error", e);
+            return res.status(201).json({
                 status: "Error",
                 message: "خطای بانک",
             });
-            return;
         }
         // } catch (error) {
         //     console.error("Error while 00020:", error);
@@ -1851,8 +1981,8 @@ module.exports = new (class extends controller {
             const isDelete = req.body.delete;
             const fixPrice = req.body.fixPrice;
 
-            console.log("distancePrice", distancePrice);
-            console.log("id", id);
+            // console.log("distancePrice", distancePrice);
+            // console.log("id", id);
             const agencyId =
                 req.body.agencyId.trim() === "" ? null : req.body.agencyId;
             const counter = req.body.counter || 0;
@@ -1960,7 +2090,6 @@ module.exports = new (class extends controller {
             let qu = [
                 { agencyId: ObjectId.createFromHexString(req.query.agencyId) },
             ];
-            console.log("type", type);
             if (type === "other") {
                 qu.push({ $or: [{ type: "optional" }, { type: "force" }] });
             } else {
@@ -1990,7 +2119,6 @@ module.exports = new (class extends controller {
             let qu = [
                 { agencyId: ObjectId.createFromHexString(req.query.agencyId) },
             ];
-            console.log("type", type);
             if (type === "other") {
                 qu.push({ $or: [{ type: "optional" }, { type: "force" }] });
             } else {
@@ -2568,7 +2696,7 @@ module.exports = new (class extends controller {
                     await payQueue.save();
                 }
             }
-            if (pays.length == 0) {
+            if (pays.length === 0) {
                 const invoice = await this.Invoice.findOne({
                     agencyId,
                     type: "registration",

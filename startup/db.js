@@ -37,19 +37,18 @@ module.exports = async function (mongoose) {
         .catch(() => console.log("mongodb dont Connected!!"));
 
     if (true) {
-        const authority=await CounterKey.findOne({ name: "authority" });
+        const authority = await CounterKey.findOne({ name: "authority" });
         if (!authority) {
             await new CounterKey({
                 name: "authority",
                 seq: 11111111,
             }).save();
             console.log("CounterKey for authority created");
-        } else if(authority.seq < 11111111) {
+        } else if (authority.seq < 11111111) {
             authority.seq = 11111111;
             await authority.save();
             console.log("CounterKey for authority updated");
-        }
-         else {
+        } else {
             console.log("CounterKey for authority already exists");
         }
     }
@@ -148,7 +147,7 @@ module.exports = async function (mongoose) {
     if (true) {
         const countkey = await Keys.countDocuments();
         console.log("countkey", countkey);
-        if (countkey <4) {
+        if (countkey < 4) {
             await new Keys({
                 title: "مهدکودک",
                 cityCode: 0,
@@ -751,34 +750,39 @@ module.exports = async function (mongoose) {
                 sign: "CBI",
             });
             await bank.save();
-
+            bank = new Bank({
+                name: "زرین پال",
+                logo: "api/file/files/banks/BSP.png",
+                sign: "BSP",
+            });
+            await bank.save();
             console.log("Banks added succsefully");
         }
     }
     if (true) {
-        const count=await LevelAcc.countDocuments();
-         if (count < 3) {
-                    let level = new LevelAcc({
-                        levelNo: 1,
-                        name: "کل",
-                        count: 3,
-                    });
-                    await level.save();
+        const count = await LevelAcc.countDocuments();
+        if (count < 3) {
+            let level = new LevelAcc({
+                levelNo: 1,
+                name: "کل",
+                count: 3,
+            });
+            await level.save();
 
-                    level = new LevelAcc({
-                        levelNo: 2,
-                        name: "معین",
-                        count: 3,
-                    });
-                    await level.save();
+            level = new LevelAcc({
+                levelNo: 2,
+                name: "معین",
+                count: 3,
+            });
+            await level.save();
 
-                    level = new LevelAcc({
-                        levelNo: 3,
-                        name: "تفضیلی",
-                        count: 9,
-                    });
-                    await level.save();
-                    console.log("level added succsefully");
-                }
+            level = new LevelAcc({
+                levelNo: 3,
+                name: "تفضیلی",
+                count: 9,
+            });
+            await level.save();
+            console.log("level added succsefully");
+        }
     }
 };

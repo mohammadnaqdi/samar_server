@@ -17,34 +17,34 @@ router.post(
     isAgencyAdmin,
     validator.setEmptyDriverValidator(),
     controller.validate.bind(controller),
-    controller.setEmptyDriver.bind(controller),
+    controller.setEmptyDriver.bind(controller)
 );
 router.post(
     "/DuplicateDriver",
     isAgencyAdmin,
     validator.duplicateDriverValidator(),
     controller.validate.bind(controller),
-    controller.duplicateDriver.bind(controller),
+    controller.duplicateDriver.bind(controller)
 );
 router.post(
     "/SendSMSRequest",
     isAgencyAdmin,
     validator.sendSMSRequestValidator(),
     controller.validate.bind(controller),
-    controller.sendSMSRequest.bind(controller),
+    controller.sendSMSRequest.bind(controller)
 );
 router.post(
     "/CheckRequestCode",
     isAgencyAdmin,
     validator.checkRequestCodeValidator(),
     controller.validate.bind(controller),
-    controller.checkRequestCode.bind(controller),
+    controller.checkRequestCode.bind(controller)
 );
 router.post(
     "/UpdateEmptyDriver",
     validator.updateEmptyDriverValidator(),
     controller.validate.bind(controller),
-    controller.updateEmptyDriver.bind(controller),
+    controller.updateEmptyDriver.bind(controller)
 );
 // router.post(
 //   '/UpdateDriver',
@@ -58,106 +58,140 @@ router.post(
     isAgencyAdmin,
     validator.updateEmptyDriverValidator(),
     controller.validate.bind(controller),
-    controller.updateConfirmDriver.bind(controller),
+    controller.updateConfirmDriver.bind(controller)
 );
 
 router.get("/DriverList", isEnyAdmin, controller.driverList.bind(controller));
 router.get("/DriverList3", controller.driverList3.bind(controller));
 router.get("/DriverList2", isEnyAdmin, controller.driverList2.bind(controller));
-router.get("/DriverListPage", isEnyAdmin, controller.driverListPage.bind(controller));
-router.get("/DriverListSearch", isEnyAdmin, controller.driverListSearch.bind(controller));
+router.get(
+    "/DriverListPage",
+    isEnyAdmin,
+    controller.driverListPage.bind(controller)
+);
+router.get(
+    "/DriverListSearch",
+    isEnyAdmin,
+    controller.driverListSearch.bind(controller)
+);
 router.get("/DriverById", controller.driverById.bind(controller));
 router.get(
     "/DriverByUserId",
     isEnyAdmin,
-    controller.driverByUserId.bind(controller),
+    controller.driverByUserId.bind(controller)
 );
 router.post(
     "/DriversByUserIds",
     isEnyAdmin,
     validator.driversByUserIdsValidator(),
     controller.validate.bind(controller),
-    controller.driversByUserIds.bind(controller),
+    controller.driversByUserIds.bind(controller)
 );
 
 router.get(
     "/CountAndCheckCompanyByUserId",
     isEnyAdmin,
-    controller.countAndCheckCompanyByUserId.bind(controller),
+    controller.countAndCheckCompanyByUserId.bind(controller)
 );
 router.get(
     "/DriverListSimple",
     isEnyAdmin,
-    controller.driverListSimple.bind(controller),
+    controller.driverListSimple.bind(controller)
 );
 router.get(
     "/DriverListService",
     isEnyAdmin,
-    controller.driverListService.bind(controller),
+    controller.driverListService.bind(controller)
 );
 router.get(
     "/GetActService",
     isEnyAdmin,
-    controller.getActService.bind(controller),
+    controller.getActService.bind(controller)
 );
 router.get(
     "/LastActServices",
     isEnyAdmin,
-    controller.lastActServices.bind(controller),
+    controller.lastActServices.bind(controller)
 );
 router.get(
     "/DriverByPelak",
     isEnyAdmin,
-    controller.driverByPelak.bind(controller),
+    controller.driverByPelak.bind(controller)
 );
 router.get(
     "/DriverByPhoneName",
     isEnyAdmin,
-    controller.driverByPhoneName.bind(controller),
+    controller.driverByPhoneName.bind(controller)
 );
 router.get(
     "/DriverListTafsily",
     isAgencyAdmin,
-    controller.driverListTafsily.bind(controller),
+    controller.driverListTafsily.bind(controller)
 );
 router.post("/GetMyInfo", controller.getMyInfo.bind(controller));
 router.post("/GetMyInfo2", controller.getMyInfo2.bind(controller));
 
-
 router.get(
     "/LocationDriver",
     isEnyAdmin,
-    controller.locationDriver.bind(controller),
+    controller.locationDriver.bind(controller)
 );
 router.delete(
     "/DeleteDriver",
     isAgencyAdmin,
-    controller.deleteDriver.bind(controller),
+    controller.deleteDriver.bind(controller)
 );
 router.get(
     "/ActivateDriver",
     isAgencyAdmin,
-    controller.activateDriver.bind(controller),
+    controller.activateDriver.bind(controller)
 );
 
-router.post("/StartService", 
+router.post(
+    "/StartService",
     validator.startServiceValidator(),
     controller.validate.bind(controller),
-    controller.startService.bind(controller));
+    controller.startService.bind(controller)
+);
 
-    router.get("/DriverListPageDocument", isEnyAdmin, controller.driverListPageDocument.bind(controller));    
-    router.get("/DriverListSearchDocument", isEnyAdmin, controller.driverListSearchDocument.bind(controller));
-    router.get("/DriverListPageScore", isEnyAdmin, controller.driverListPageScore.bind(controller));
-    router.get("/DriverListSearchScore", isEnyAdmin, controller.driverListSearchScore.bind(controller));
+router.get(
+    "/DriverListPageDocument",
+    isEnyAdmin,
+    controller.driverListPageDocument.bind(controller)
+);
+router.get(
+    "/DriverListSearchDocument",
+    isEnyAdmin,
+    controller.driverListSearchDocument.bind(controller)
+);
+router.get(
+    "/DriverListPageScore",
+    isEnyAdmin,
+    controller.driverListPageScore.bind(controller)
+);
+router.get(
+    "/DriverListSearchScore",
+    isEnyAdmin,
+    controller.driverListSearchScore.bind(controller)
+);
 
+router.get("/UpdateAgent", isEnyAdmin, controller.updateAgent.bind(controller));
+router.post(
+    "/GetDriverBankInfo",
+    isEnyAdmin,
+    controller.getDriverBankInfo.bind(controller)
+);
 
-    router.get("/UpdateAgent", isEnyAdmin, controller.updateAgent.bind(controller));
-    router.post("/GetDriverBankInfo", isEnyAdmin, controller.getDriverBankInfo.bind(controller));
-
-    router.get("/DriverDetails", controller.driverDetails.bind(controller));
-    router.get("/DriverListSimpleWithService",isEnyAdmin, controller.driverListSimpleWithService.bind(controller));
-    router.get("/DriverServiceNum",controller.driverServiceNum.bind(controller));
-
-
+router.get("/DriverDetails", controller.driverDetails.bind(controller));
+router.get(
+    "/DriverListSimpleWithService",
+    isEnyAdmin,
+    controller.driverListSimpleWithService.bind(controller)
+);
+router.get("/DriverServiceNum", controller.driverServiceNum.bind(controller));
+router.get(
+    "/findDriversByNameOrPhone",
+    controller.findDriversByNameOrPhone.bind(controller)
+);
 
 module.exports = router;

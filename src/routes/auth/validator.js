@@ -45,9 +45,7 @@ module.exports = new (class {
     }
     adminPhoneCheckValidator() {
         return [
-            check("phone")
-                .isLength({ min: 11, max: 11 })
-                .withMessage("phone length wrong"),
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
         ];
     }
     // registerValidator(){
@@ -71,9 +69,7 @@ module.exports = new (class {
     // }
     phoneCheckValidator() {
         return [
-            check("phone")
-                .isLength({ min: 11, max: 11 })
-                .withMessage("phone length wrong"),
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
         ];
     }
     loginAdminValidator() {
@@ -90,17 +86,13 @@ module.exports = new (class {
     }
     codeValidator() {
         return [
-            check("phone")
-                .isLength({ min: 11, max: 11 })
-                .withMessage("phone length wrong"),
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
             check("code").not().isEmpty().withMessage("code cant be empty"),
         ];
     }
     selectOneClubValidator() {
         return [
-            check("phone")
-                .isLength({ min: 11, max: 11 })
-                .withMessage("phone length wrong"),
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
             check("id").not().isEmpty().withMessage("id cant be empty"),
             check("code").not().isEmpty().withMessage("code cant be empty"),
             check("clubId").not().isEmpty().withMessage("clubId cant be empty"),

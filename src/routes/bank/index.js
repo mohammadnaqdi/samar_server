@@ -57,7 +57,10 @@ router.post(
 );
 
 router.get("/getBankGate", controller.getBankGate.bind(controller));
-router.get("/GetBankGateOnlyCard", controller.getBankGateOnlyCard.bind(controller));
+router.get(
+    "/GetBankGateOnlyCard",
+    controller.getBankGateOnlyCard.bind(controller)
+);
 router.get(
     "/GetBankGate4Parent",
     controller.getBankGate4Parent.bind(controller)
@@ -72,6 +75,10 @@ router.get(
     isAgencyAdmin,
     controller.rejectPayCard.bind(controller)
 );
+router.get(
+    "/getBankCreds",
+    isAgencyAdmin,
+    controller.getBankCreds.bind(controller)
+);
 
 module.exports = router;
-

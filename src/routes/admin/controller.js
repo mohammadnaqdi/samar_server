@@ -8,7 +8,6 @@ module.exports = new (class extends controller {
     async checkLogin(req, res) {
         try {
             const user = req.user;
-            console.log("user", user);
             if (user.delete) {
                 return this.response({
                     res,
@@ -48,7 +47,7 @@ module.exports = new (class extends controller {
                 const agencyId = ObjectId.createFromHexString(
                     req.query.agencyId
                 );
-                console.log("agencyId", agencyId);
+
                 agency = await this.Agency.findOne(
                     {
                         $and: [
@@ -65,7 +64,7 @@ module.exports = new (class extends controller {
 
                     "code name cityId settings"
                 );
-                console.log("agency", agency);
+
                 if (!agency) {
                     return this.response({
                         res,
@@ -76,11 +75,9 @@ module.exports = new (class extends controller {
                 listCode = await this.ListAcc.countDocuments({
                     agencyId: agencyId,
                 });
-                console.log("listCode", listCode);
                 const conL = await this.LevelAccDetail.countDocuments({
                     agencyId: agencyId,
                 });
-                console.log("conL", conL);
                 if (conL < listCode) {
                     listCode = conL;
                 }

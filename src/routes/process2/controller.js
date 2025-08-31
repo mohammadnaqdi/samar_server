@@ -60,7 +60,6 @@ module.exports = new (class extends controller {
                     drivers[i].userId,
                     "phone name lastName nationalCode"
                 );
-                // console.log("user",user)
                 const car = await this.Car.findById(
                     drivers[i].carId,
                     "carModel colorCar"

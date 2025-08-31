@@ -294,7 +294,6 @@ module.exports = new (class extends controller {
                 console.log("search", search);
                 if (search === "") continue;
                 for (const id of targets) {
-                    console.log("id", id);
 
                     // else {
                     //     search =

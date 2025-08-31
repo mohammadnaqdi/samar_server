@@ -137,13 +137,11 @@ module.exports = new (class extends controller {
 
             const qr = [{ delete: false }];
             if (districtId !== 0) qr.push({ districtId });
-            if (search !== "")
+            if (search !== "") {
                 qr.push({
-                    $or: [
-                        { code: { $regex: ".*" + search + ".*" } },
-                        { name: { $regex: ".*" + search + ".*" } },
-                    ],
+                    name: { $regex: ".*" + search + ".*" },
                 });
+            }
 
             let schools;
             if (agencyId !== 0) {
@@ -222,8 +220,6 @@ module.exports = new (class extends controller {
             const search = req.body.search.trim();
             const location = req.body.location;
             let gradeId = req.body.gradeId;
-            console.log("req.body.gradeId=", req.body.gradeId);
-            console.log("gradeId=", gradeId);
 
             const gradePreSchool = await this.Keys.findOne(
                 { titleEn: "Preschool" },
@@ -265,7 +261,6 @@ module.exports = new (class extends controller {
             if (page < 0) page = 0;
 
             const qr = [{ delete: false }];
-            console.log("grade=", grade);
             if (grade < kindergarten.keyId + 3) {
                 qr.push({ grade });
             } else {
@@ -280,7 +275,6 @@ module.exports = new (class extends controller {
                 qr.push({ agencyId: ObjectId.createFromHexString(agencyId) });
             } else {
                 qr.push({ agencyId: { $ne: null } });
-                console.log("agencyId=", agencyId);
             }
             if (districtId !== 0) qr.push({ districtId });
             if (search !== "")
@@ -333,10 +327,7 @@ module.exports = new (class extends controller {
                                 response.data.routes[0].duration;
                             schools[i].geometry =
                                 response.data.routes[0].geometry;
-                            console.log(
-                                "distance",
-                                response.data.routes[0].distance
-                            );
+                            // console.log("distance", response.data.routes[0].distance);
                             // const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${location}&destination=${schools[i].location.coordinates}`;
                             // const options = {
                             //     headers: { "Api-Key": neshan },
@@ -994,7 +985,10 @@ module.exports = new (class extends controller {
                 studentFirstName: data.studentFirstName,
                 studentLastName: data.studentLastName,
                 studentGrade: data.studentGrade,
-                studentNationalCode: data.studentNationalCode,
+                studentNationalCode: ".......................",
+                // student.nationalCode.trim() === ""
+                //   ? "......................."
+                //   : student.nationalCode,
                 schoolName: data.schoolName,
                 contractStart: data.contractStart,
                 contractEnd: data.contractEnd,

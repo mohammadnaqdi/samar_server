@@ -21,6 +21,58 @@ function getFormattedDateTime(date) {
     return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 module.exports = new (class extends controller {
+    async getBankCreds(req, res) {
+        try {
+            const Banks = [
+                {
+                    name: "صادرات",
+                    sign: "BSI",
+                    eng: "SADERAT",
+                    terminal: true,
+                    username: false,
+                    password: false,
+                },
+                {
+                    name: "ملت",
+                    sign: "MEL",
+                    eng: "MELLAT",
+                    terminal: true,
+                    username: true,
+                    password: true,
+                },
+                {
+                    name: "زرین پال",
+                    sign: "ZAR",
+                    eng: "ZARIN",
+                    terminal: true,
+                    username: false,
+                    password: false,
+                },
+                {
+                    name: "مهر",
+                    sign: "MHR",
+                    eng: "MEHR",
+                    terminal: true,
+                    username: true,
+                    password: true,
+                },
+                {
+                    name: "سامان",
+                    sign: "SAM",
+                    eng: "SAMAN",
+                    terminal: true,
+                    username: false,
+                    password: false,
+                },
+            ];
+
+            return res.json({ banks: Banks });
+        } catch (error) {
+            console.error("Error while getting bank credentials:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
     async bnkBanksInsert(req, res) {
         try {
             const id = req.body.id;
@@ -116,7 +168,6 @@ module.exports = new (class extends controller {
     async bnkBanksById(req, res) {
         try {
             const id = req.query.id;
-            console.log("id", id);
             const bankInfo = await this.BankInfo.findById(id);
             console.log("bankInfo", bankInfo);
 
@@ -653,7 +704,10 @@ module.exports = new (class extends controller {
                 return res.status(404).json({ message: "Invalid agencyId!" });
             }
 
-            const find = await this.BankGate.findOne({ agencyId,type:"CARD" }).lean();
+            const find = await this.BankGate.findOne({
+                agencyId,
+                type: "CARD",
+            }).lean();
             return res.json(find);
         } catch (error) {
             console.error("Error in getBankGateOnlyCard:", error);
@@ -684,14 +738,16 @@ module.exports = new (class extends controller {
             if (!agencyId) {
                 return res.status(404).json({ message: "Invalid agencyId!" });
             }
-            let match={
-                        isPaid: true,
-                        cardNumber: { $nin: ["", null,' '] },
-                        agencyId: ObjectId.createFromHexString(agencyId),
-                        delete: false,
-                    };
-            if(req.query.studentId && req.query.studentId.trim()!=''){
-                match.studentId=ObjectId.createFromHexString(req.query.studentId);
+            let match = {
+                isPaid: true,
+                cardNumber: { $nin: ["", null, " "] },
+                agencyId: ObjectId.createFromHexString(agencyId),
+                delete: false,
+            };
+            if (req.query.studentId && req.query.studentId.trim() != "") {
+                match.studentId = ObjectId.createFromHexString(
+                    req.query.studentId
+                );
             }
             const payCards = await this.PayQueue.aggregate([
                 {
@@ -760,9 +816,10 @@ module.exports = new (class extends controller {
                     pays.push({
                         cardNumber: ccc["cardNumber"],
                         refId: ccc["refId"],
-                        isSheba:  docs[0]["isSheba"] || false,
+                        isSheba: docs[0]["isSheba"] || false,
                         payDate,
-                        cardPays,studentId
+                        cardPays,
+                        studentId,
                     });
                 }
             }
@@ -877,6 +934,14 @@ ${agency.name} - ${agency.tel}
                             error.message || error
                         );
                     });
+
+                await this.FinnotechUsage.create({
+                    agencyId,
+                    type: "SMS",
+                    price: 4026,
+                    description: text,
+                    mobiles: parentPhone,
+                });
             }
 
             return res.json({ message: "ok" });

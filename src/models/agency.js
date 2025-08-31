@@ -48,6 +48,7 @@ const agencySchema = new mongoose.Schema(
         pack: { type: String, default: "free" },
         expire: { type: Date, default: new Date() },
         startPack: { type: Date, default: new Date() },
+        contract: { type: String, default: "" },
     },
     {
         timestamps: true,
@@ -93,6 +94,16 @@ const agencySetSchema = new mongoose.Schema(
                 11: false,
                 12: false,
             },
+        },
+        activeDDS: { type: Boolean, default: true },
+        offDDSTimes: {
+            type: [
+                {
+                    start: { type: Date, required: true },
+                    end: { type: Date, required: true },
+                },
+            ],
+            default: [],
         },
     },
     {

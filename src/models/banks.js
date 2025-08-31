@@ -150,7 +150,7 @@ const bankGateSchema = new mongoose.Schema(
         bankCode: { type: String, default: "" },
         type: {
             type: String,
-            enum: ["CARD", "MELLAT", "SADERAT", "ZARIN"],
+            enum: ["CARD", "MELLAT", "SADERAT", "ZARIN", "MEHR", "SAMAN"],
             default: "MELLAT",
         },
         card: { type: String, default: "" },

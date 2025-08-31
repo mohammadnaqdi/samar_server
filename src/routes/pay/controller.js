@@ -105,8 +105,10 @@ async function varifyPaidBank(
     typeBank,
     digitalreceipt,
     terminalID,
+    rrn,
     userName,
-    userPassword
+    userPassword,
+    amount
 ) {
     try {
         if (typeBank === "SADERAT") {
@@ -182,6 +184,70 @@ async function varifyPaidBank(
                 return true;
             }
             return false;
+        } else if (typeBank === "MEHR") {
+            const verifyUrl =
+                "https://fcp.shaparak.ir/ref-payment/RestServices/mts/verifyMerchantTrans/";
+            const body = {
+                WSContext: { UserId: userName, Password: userPassword },
+                Token: rrn,
+                RefNum: digitalreceipt,
+            };
+
+            const res = await axios.post(verifyUrl, body);
+            console.log("MEHR bank response:", res);
+
+            if (res.data.Result === "erSucceed" && res.data.Amount !== "") {
+                return true;
+            }
+            console.log("MEHR bank response:", res);
+            console.error(
+                "Error while verifying MEHR bank transaction:",
+                res.data
+            );
+            return false;
+        } else if (typeBank === "SAMAN") {
+            const url =
+                "https://sep.shaparak.ir/payments/referencepayment.asmx?WSDL";
+            const params = { String_1: digitalreceipt, String_2: terminalID };
+
+            return new Promise((resolve, reject) => {
+                soap.createClient(url, function (err, client) {
+                    if (err) {
+                        console.error(
+                            "Error while creating SAMAN client:",
+                            err
+                        );
+                        return resolve(false);
+                    }
+                    client.verifyTransaction(params, function (err, res) {
+                        try {
+                            if (err) {
+                                console.error(
+                                    "Error while verifying SAMAN transaction:",
+                                    err
+                                );
+                                return resolve(false);
+                            }
+                            console.log(res);
+                            const value = res.result.$value;
+                            console.log("Amount:", amount);
+                            if (value.toString() === amount.toString()) {
+                                console.log("Equal");
+                                return resolve(true);
+                            } else {
+                                console.error(
+                                    "Transaction amount mismatch:",
+                                    res.result
+                                );
+                                return resolve(false);
+                            }
+                        } catch (e) {
+                            console.error("Error inside verifyTransaction:", e);
+                            return resolve(false);
+                        }
+                    });
+                });
+            });
         }
         console.log("varify paid  not find typeBank", typeBank);
         return false;
@@ -597,7 +663,6 @@ module.exports = new (class extends controller {
             issuerbank,
             respcode,
         } = req.body;
-        console.log(req.body);
 
         const transAction = await this.Transactions.findOne({
             authority: invoiceid.toString(),
@@ -987,7 +1052,6 @@ module.exports = new (class extends controller {
             issuerbank,
             respcode,
         } = req.body;
-        console.log(req.body);
 
         const session = await this.Transactions.startSession();
         let transAction;
@@ -1030,7 +1094,7 @@ module.exports = new (class extends controller {
                 ).session(session);
                 let tid = 99018831;
                 let bankCode = "";
-                console.log("agencySet", agencySet);
+
                 if (agencySet && agencySet.tId) {
                     tid = agencySet.tId;
                 }
@@ -1519,8 +1583,8 @@ module.exports = new (class extends controller {
                         agency.admin,
                         "phone lastName"
                     );
-                   if (transAction.phone && transAction.phone.length===11) {
-                      const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
+                    if (transAction.phone && transAction.phone.length === 11) {
+                        const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
 
                         const postData = {
                             UserName: amootUser,
@@ -1951,7 +2015,7 @@ module.exports = new (class extends controller {
                         agency.admin,
                         "phone lastName"
                     ).session(session);
-                    if (transAction.phone && transAction.phone.length===11) {
+                    if (transAction.phone && transAction.phone.length === 11) {
                         const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
 
                         const postData = {
@@ -2244,7 +2308,7 @@ module.exports = new (class extends controller {
                         agency.admin,
                         "phone lastName"
                     ).session(session);
-                    if (tr.phone && tr.phone.length===11) {
+                    if (tr.phone && tr.phone.length === 11) {
                         const text2 = `پنل سمر شما در تاریخ ${tarikh} به مبلغ ${transAction.amount} ریال شارژ گردید`;
 
                         const postData = {
@@ -2345,7 +2409,8 @@ module.exports = new (class extends controller {
                 desc: desc,
                 queueCode: 0,
                 stCode: bankListAcc,
-                agencyId,phone:mobile
+                agencyId,
+                phone: mobile,
             });
             await newTr.save();
             let token = await generateMellatToken(
@@ -2793,6 +2858,60 @@ module.exports = new (class extends controller {
                 res.end(html);
                 return;
             }
+        } else if ("ResNum" in req.query && "transactionAmount" in req.query) {
+            console.log("Req body from callback", req.query);
+
+            const {
+                ResNum,
+                RefNum,
+                TraceNo,
+                CardMaskPan,
+                State,
+                transactionAmount,
+                token,
+            } = req.query;
+
+            typeBank = "MEHR";
+            amount = transactionAmount;
+            authority = ResNum;
+            cardNumber = CardMaskPan;
+            traceNumber = TraceNo;
+            digitalReceipt = RefNum;
+            rrn = token;
+            if (!(State === "OK" || State === "ok" || State === "Ok")) {
+                res.writeHead(404, { "Content-Type": "text/html" });
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                return res.end(html);
+            }
+        } else if ("website" in req.body && "MID" in req.body) {
+            console.log("Req body from callback saman", req.body);
+
+            const {
+                State,
+                StateCode,
+                ResNum,
+                MID,
+                RefNum,
+                CID,
+                TRACENO,
+                RRN,
+                Amount,
+                website,
+                SecurePan,
+            } = req.body;
+
+            typeBank = "SAMAN";
+            amount = Amount;
+            authority = ResNum;
+            cardNumber = SecurePan;
+            traceNumber = TRACENO;
+            digitalReceipt = RefNum;
+            rrn = RRN;
+            // if (!(State === "OK" || State === "ok" || State === "Ok")) {
+            //     res.writeHead(404, { "Content-Type": "text/html" });
+            //     var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+            //     return res.end(html);
+            // }
         } else {
             return res.status(400).json({ error: "Invalid request body" });
         }
@@ -2875,7 +2994,6 @@ module.exports = new (class extends controller {
                 async () => {
                     const agencyId = transAction.agencyId;
 
-                    // Fetch agency and bankGate in parallel with session
                     const [agency, bankGate] = await Promise.all([
                         this.Agency.findById(agencyId, "settings").session(
                             session
@@ -3200,8 +3318,10 @@ module.exports = new (class extends controller {
                             typeBank,
                             digitalreceipt,
                             tid,
+                            rrn,
                             bankGate.userName,
-                            bankGate.userPass
+                            bankGate.userPass,
+                            tr.amount
                         );
 
                         if (!done) {
