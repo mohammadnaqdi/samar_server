@@ -2021,13 +2021,14 @@ module.exports = new (class extends controller {
     async agencyList(req, res) {
         try {
             const cityId = req.query.cityId || "0";
-            const agencies = await this.Agency.find({
+            let agencies = await this.Agency.find({
                 delete: false,
                 cityId: parseInt(cityId),
             }).lean();
 
             for (var i = 0; i < agencies.length; i++) {
                 // console.log(JSON.stringify(students[i]));
+
                 let user = await this.User.findById(agencies[i].admin);
                 if (user) {
                     agencies[i].userData = {
@@ -2044,6 +2045,22 @@ module.exports = new (class extends controller {
                         lastName: "",
                     };
                 }
+                if (agencies[i].manager && agencies[i].manager != null) {
+                    let manager = await this.User.findById(
+                        agencies[i].manager,
+                        "name lastName phone userName"
+                    ).lean();
+                    if (manager) {
+                        agencies[i].manager = {
+                            id: manager._id,
+                            phone: manager.phone,
+                            userName: manager.userName,
+                            name: manager.name,
+                            lastName: manager.lastName,
+                        };
+                    }
+                }
+
                 const invoice = await this.Invoice.findOne({
                     agencyId: agencies[i]._id,
                     type: "registration",

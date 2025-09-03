@@ -1,267 +1,292 @@
 <!DOCTYPE html>
 <html lang="fa">
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>پرداخت موفق</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        direction: rtl;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      .payment-result {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: clamp(15px, 4vw, 40px);
+        width: min(95%, 480px); /* Default width for larger screens */
+        margin: 0.5rem;
+        animation: slideUp 0.5s ease-out;
+        display: flex; /* Added for better content alignment */
+        flex-direction: column; /* Stack children vertically */
+      }
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(50px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .success-icon {
+        width: clamp(50px, 12vw, 80px);
+        height: clamp(50px, 12vw, 80px);
+        background: #00a537;
+        border-radius: 50%;
+        margin: 0 auto clamp(10px, 3vw, 20px);
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+
+      .success-icon::after {
+        content: "✓";
+        color: white;
+        font-size: clamp(24px, 6vw, 40px);
+        font-weight: bold;
+      }
+
+      .payment-result h2 {
+        color: #00a537;
+        font-size: clamp(18px, 5vw, 28px);
+        margin-bottom: clamp(15px, 4vw, 25px);
+        text-align: center;
+        line-height: 1.4;
+      }
+
+      .data-container {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: clamp(10px, 3vw, 20px);
+        margin: clamp(10px, 3vw, 20px) 0;
+        border: 1px solid #e5e7eb;
+        flex-grow: 1; /* Allow it to expand if needed */
+      }
+
+      .data-item {
+        margin: clamp(8px, 2vw, 15px) 0;
+        color: #1f2937;
+        font-size: clamp(12px, 3.5vw, 16px);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .data-item span {
+        font-weight: 600;
+        color: #00a537;
+      }
+
+      .app-button {
+        background: linear-gradient(45deg, #2f65ca, #4f86ff);
+        color: white;
+        padding: clamp(10px, 2.5vw, 14px) clamp(16px, 4vw, 32px);
+        border: none;
+        border-radius: 50px;
+        font-size: clamp(12px, 3.5vw, 16px);
+        cursor: pointer;
+        width: 100%;
+        margin-top: clamp(10px, 3vw, 20px);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .app-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(47, 101, 202, 0.3);
+      }
+
+      @media (hover: none) {
+        .app-button:hover {
+          transform: none;
+          box-shadow: none;
+        }
+        .app-button:active {
+          transform: scale(0.98);
+          background: linear-gradient(45deg, #1f55ba, #3f76ef);
+        }
+      }
+
+      .app-button::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.6s ease, height 0.6s ease;
+      }
+
+      .app-button:hover::before {
+        width: 200px;
+        height: 200px;
+      }
+
+      /* Mobile adjustments */
+      @media (max-width: 480px) {
+        /* Adjusted to cover typical mobile screen widths */
         body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            direction: rtl;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
+          padding: 0; /* Remove extra padding */
+          align-items: flex-start; /* Align to top for full height usage */
         }
 
         .payment-result {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            padding: clamp(15px, 4vw, 40px);
-            width: min(95%, 480px); /* Default width for larger screens */
-            margin: 0.5rem;
-            animation: slideUp 0.5s ease-out;
-            display: flex; /* Added for better content alignment */
-            flex-direction: column; /* Stack children vertically */
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+          width: 100%; /* Full width */
+          min-height: 100vh; /* Full height of the viewport */
+          border-radius: 0; /* Remove border radius for edge-to-edge look */
+          margin: 0; /* Remove margins */
+          padding: clamp(10px, 3vw, 20px); /* Slightly reduced padding */
+          box-shadow: none; /* Optional: Remove shadow for a flat look */
+          justify-content: space-between; /* Distribute content vertically */
         }
 
         .success-icon {
-            width: clamp(50px, 12vw, 80px);
-            height: clamp(50px, 12vw, 80px);
-            background: #00a537;
-            border-radius: 50%;
-            margin: 0 auto clamp(10px, 3vw, 20px);
-            display: grid;
-            place-items: center;
-            position: relative;
+          width: clamp(40px, 10vw, 60px);
+          height: clamp(40px, 10vw, 60px);
         }
 
         .success-icon::after {
-            content: "✓";
-            color: white;
-            font-size: clamp(24px, 6vw, 40px);
-            font-weight: bold;
-        }
-
-        .payment-result h2 {
-            color: #00a537;
-            font-size: clamp(18px, 5vw, 28px);
-            margin-bottom: clamp(15px, 4vw, 25px);
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        .data-container {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: clamp(10px, 3vw, 20px);
-            margin: clamp(10px, 3vw, 20px) 0;
-            border: 1px solid #e5e7eb;
-            flex-grow: 1; /* Allow it to expand if needed */
+          font-size: clamp(20px, 5vw, 30px);
         }
 
         .data-item {
-            margin: clamp(8px, 2vw, 15px) 0;
-            color: #1f2937;
-            font-size: clamp(12px, 3.5vw, 16px);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
+          flex-direction: column;
+          align-items: flex-end;
+          text-align: right;
         }
+      }
 
-        .data-item span {
-            font-weight: 600;
-            color: #00a537;
+      /* Extra small screens */
+      @media (max-width: 320px) {
+        html {
+          font-size: 12px;
         }
-
-        .app-button {
-            background: linear-gradient(45deg, #2f65ca, #4f86ff);
-            color: white;
-            padding: clamp(10px, 2.5vw, 14px) clamp(16px, 4vw, 32px);
-            border: none;
-            border-radius: 50px;
-            font-size: clamp(12px, 3.5vw, 16px);
-            cursor: pointer;
-            width: 100%;
-            margin-top: clamp(10px, 3vw, 20px);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
+        .payment-result {
+          padding: 10px;
         }
-
-        .app-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 15px rgba(47, 101, 202, 0.3);
-        }
-
-        @media (hover: none) {
-            .app-button:hover {
-                transform: none;
-                box-shadow: none;
-            }
-            .app-button:active {
-                transform: scale(0.98);
-                background: linear-gradient(45deg, #1f55ba, #3f76ef);
-            }
-        }
-
-        .app-button::before {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.6s ease, height 0.6s ease;
-        }
-
-        .app-button:hover::before {
-            width: 200px;
-            height: 200px;
-        }
-
-        /* Mobile adjustments */
-        @media (max-width: 480px) { /* Adjusted to cover typical mobile screen widths */
-            body {
-                padding: 0; /* Remove extra padding */
-                align-items: flex-start; /* Align to top for full height usage */
-            }
-
-            .payment-result {
-                width: 100%; /* Full width */
-                min-height: 100vh; /* Full height of the viewport */
-                border-radius: 0; /* Remove border radius for edge-to-edge look */
-                margin: 0; /* Remove margins */
-                padding: clamp(10px, 3vw, 20px); /* Slightly reduced padding */
-                box-shadow: none; /* Optional: Remove shadow for a flat look */
-                justify-content: space-between; /* Distribute content vertically */
-            }
-
-            .success-icon {
-                width: clamp(40px, 10vw, 60px);
-                height: clamp(40px, 10vw, 60px);
-            }
-
-            .success-icon::after {
-                font-size: clamp(20px, 5vw, 30px);
-            }
-
-            .data-item {
-                flex-direction: column;
-                align-items: flex-end;
-                text-align: right;
-            }
-        }
-
-        /* Extra small screens */
-        @media (max-width: 320px) {
-            html {
-                font-size: 12px;
-            }
-            .payment-result {
-                padding: 10px;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="payment-result">
-        <div class="success-icon"></div>
-        <h2>پرداخت با موفقیت انجام شد</h2>
-        <div id="dataContainer" class="data-container" style="display: none"></div>
-        <button class="app-button" onclick="openApp()">باز کردن اپ سمر</button>
+      <div class="success-icon"></div>
+      <h2>پرداخت با موفقیت انجام شد</h2>
+      <div
+        id="dataContainer"
+        class="data-container"
+        style="display: none"
+      ></div>
+      <button class="app-button" onclick="openApp()">باز کردن اپ سمر</button>
     </div>
 
     <script>
-        function getUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            return Object.fromEntries(params);
+      function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        return Object.fromEntries(params);
+      }
+
+      function toPersianNum(num) {
+        const persianDigits = [
+          "۰",
+          "۱",
+          "۲",
+          "۳",
+          "۴",
+          "۵",
+          "۶",
+          "۷",
+          "۸",
+          "۹",
+        ];
+        return num.toString().replace(/\d/g, (d) => persianDigits[d]);
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const params = getUrlParams();
+        const dataContainer = document.getElementById("dataContainer");
+
+        if (params.amount || params.transaction) {
+          dataContainer.style.display = "block";
+          let content = "";
+
+          if (params.amount) {
+            const amountInPersian = toPersianNum(params.amount);
+            content += `<div class="data-item">مبلغ:<span>${amountInPersian} ریال</span></div>`;
+          }
+
+          if (params.transaction) {
+            const transactionInPersian = toPersianNum(params.transaction);
+            content += `<div class="data-item">کد تراکنش:<span>${transactionInPersian}</span></div>`;
+          }
+
+          dataContainer.innerHTML = content;
         }
+      });
 
-        function toPersianNum(num) {
-            const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-            return num.toString().replace(/\d/g, d => persianDigits[d]);
-        }
+      function openApp() {
+        const params = getUrlParams();
+        const id = params.id || "0";
+        const appScheme = `schoolparent://open/link?data=success&id=${encodeURIComponent(
+          id
+        )}`;
+        const fallbackUrl = `https://app.mysamar.ir`;
+        const timeout = 2000;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const params = getUrlParams();
-            const dataContainer = document.getElementById("dataContainer");
+        let iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = appScheme;
+        document.body.appendChild(iframe);
 
-            if (params.amount || params.transaction) {
-                dataContainer.style.display = "block";
-                let content = "";
+        let isAppOpened = false;
+        const startTime = Date.now();
 
-                if (params.amount) {
-                    const amountInPersian = toPersianNum(params.amount);
-                    content += `<div class="data-item">مبلغ:<span>${amountInPersian} ریال</span></div>`;
-                }
+        window.addEventListener(
+          "blur",
+          () => {
+            isAppOpened = true;
+          },
+          { once: true }
+        );
 
-                if (params.transaction) {
-                    const transactionInPersian = toPersianNum(params.transaction);
-                    content += `<div class="data-item">کد تراکنش:<span>${transactionInPersian}</span></div>`;
-                }
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          if (!isAppOpened && Date.now() - startTime < timeout + 500) {
+            window.location = fallbackUrl;
+          }
+        }, timeout);
 
-                dataContainer.innerHTML = content;
-            }
-        });
-
-        function openApp() {
-            const params = getUrlParams();
-            const id = params.id || "0";
-            const appScheme = `schoolparent://open/link?data=success&id=${encodeURIComponent(id)}`;
-            const fallbackUrl = `https://app.mysamar.ir/travelPage?data=success&id=${encodeURIComponent(id)}`;
-            const timeout = 2000;
-
-            let iframe = document.createElement("iframe");
-            iframe.style.display = "none";
-            iframe.src = appScheme;
-            document.body.appendChild(iframe);
-
-            let isAppOpened = false;
-            const startTime = Date.now();
-
-            window.addEventListener('blur', () => {
-                isAppOpened = true;
-            }, { once: true });
-
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-                if (!isAppOpened && Date.now() - startTime < timeout + 500) {
-                    window.location = fallbackUrl;
-                }
-            }, timeout);
-
-            window.location = appScheme;
-        }
+        window.location = appScheme;
+      }
     </script>
-</body>
+  </body>
 </html>

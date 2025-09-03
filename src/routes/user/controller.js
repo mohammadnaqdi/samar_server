@@ -727,6 +727,7 @@ module.exports = new (class extends controller {
             const password = req.body.password;
             const changePass = req.body.changePass;
             const agencyId = req.body.agencyId;
+            const isManager = req.body.isManager || false;
             const banList = req.body.banList ?? [];
             const agency = await this.Agency.findById(agencyId, "users");
 
@@ -759,7 +760,7 @@ module.exports = new (class extends controller {
             let user = await this.User.findOne({ phone: phone });
             if (user) {
                 if (
-                    (!user && id != 0) ||
+                    (!user && id != 0 && id != "") ||
                     (user && user.id.toString() != id.toString()) ||
                     user.isAgencyAdmin ||
                     user.isSuperAdmin ||
@@ -804,6 +805,11 @@ module.exports = new (class extends controller {
                 }
 
                 await user.save();
+                if (isManager) {
+                    await this.Agency.findByIdAndUpdate(agency._id, {
+                        manager: user._id,
+                    });
+                }
                 await this.updateRedisDocument(
                     `user:${user._id}`,
                     user.toObject()
@@ -832,6 +838,11 @@ module.exports = new (class extends controller {
             } else {
                 await this.Agency.findByIdAndUpdate(agencyId, {
                     $pull: { users: user._id },
+                });
+            }
+            if (isManager) {
+                await this.Agency.findByIdAndUpdate(agency._id, {
+                    manager: user._id,
                 });
             }
 

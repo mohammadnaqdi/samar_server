@@ -13,6 +13,7 @@ const agencySchema = new mongoose.Schema(
         code: { type: String, unique: true },
         name: { type: String, required: true },
         admin: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        manager: { type: mongoose.Schema.Types.ObjectId, ref: "User",default:null },
         acceptCheque: { type: Boolean, default: false },
         adminCheque: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         tel: { type: String },

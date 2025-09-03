@@ -39,7 +39,7 @@ router.post(
 );
 router.post(
     "/SetUserOperator",
-    isOnlyAgencyAdmin,
+    isEnyAdmin,
     validator.setUserOperatorValidator(),
     controller.validate.bind(controller),
     controller.setUserOperator.bind(controller),

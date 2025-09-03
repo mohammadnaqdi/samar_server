@@ -21,12 +21,10 @@ module.exports = new (class {
     }
     setNewUserValidator() {
         return [
+            check("phone").not().isEmpty().withMessage("phone cant be empty"),
             check("phone")
-                .not()
-                .isEmpty()
-                .withMessage("phone cant be empty"),
-            check("phone")
-                .isLength({ min: 11, max: 11 }).withMessage("phone length is 11"),
+                .isLength({ min: 11, max: 11 })
+                .withMessage("phone length is 11"),
             check("name")
                 .isLength({ min: 1, max: 120 })
                 .withMessage("name cant be empty max 120"),
@@ -67,7 +65,6 @@ module.exports = new (class {
     }
     setUserOperatorValidator() {
         return [
-            check("id").not().isEmpty().withMessage("id cant be empty"),
             check("isAdmin")
                 .not()
                 .isEmpty()
