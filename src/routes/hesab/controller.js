@@ -1011,7 +1011,7 @@ module.exports = new (class extends controller {
                 bankName,
                 serial,
                 type,
-                rowCount: rows.length+1,
+                rowCount: rows.length + 1,
                 infoDate,
                 infoMoney: price,
                 accCode: checkHesab,
@@ -1103,6 +1103,83 @@ module.exports = new (class extends controller {
             await session.abortTransaction();
             session.endSession();
             console.error("insertCheck function error:", err);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async driverInfoForSalarySlip(req, res) {
+        try {
+            const ids = req.body.ids;
+            const month = req.body.month;
+            console.log("month", month);
+            const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30];
+            let firstDay=0;
+            let lastDay=0;
+            for(var x=0;x<month;x++){
+                firstDay=lastDay+1;
+                lastDay=lastDay+monthsDays[x];
+            }
+            console.log("firstDay",firstDay);
+            console.log("lastDay",lastDay);
+            let result = [];
+            for (var id of ids) {
+                const driver = await this.Driver.findById(
+                    id,
+                    "driverCode carId hesab shaba nationalCode"
+                ).lean();
+                if (!driver) {
+                    continue;
+                }
+                const car = await this.Car.findById(
+                    driver.carId,
+                    "carModel colorCar"
+                ).lean();
+                let carName = "";
+                if (car) {
+                    carName = car.carModel + " " + car.colorCar;
+                }
+                const docList = await this.DocListSanad.aggregate([
+                    {
+                        $match: {
+                            accCode: "004006" + driver.driverCode,
+                            days: month,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: "$type",
+                            total: {
+                                $sum: {
+                                    $subtract: ["$bed", "$bes"],
+                                },
+                            },
+                        },
+                    },
+                ]);
+                const dds =await this.DDS.aggregate([
+                    {
+                        $match: {
+                            driverId: ObjectId.createFromHexString(id),
+                            day: { $gte: firstDay, $lte: lastDay },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalServices: { $sum: 1 },
+                            totalStudents: {
+                                $sum: { $size: "$service.students" },
+                            },
+                        },
+                    },
+                    { $project: { _id: 0 } },
+                ]);
+
+                result.push({ driver, carName, docList,dds,len:(lastDay-firstDay+1) });
+            }
+
+            return res.json(result);
+        } catch (err) {
+            console.error("driverInfoForSalarySlip function error:", err);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

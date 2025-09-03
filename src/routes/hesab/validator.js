@@ -43,7 +43,7 @@ module.exports = new (class {
                 .withMessage("rows.days must be a Number")
                 .notEmpty()
                 .withMessage("rows.days cannot be empty"),
-            check("rows.*.mId")//month & SanadId && serviceNum && invoice Number
+            check("rows.*.mId") //month & SanadId && serviceNum && invoice Number
                 .isInt()
                 .withMessage("rows.mId must be a Number")
                 .notEmpty()
@@ -155,61 +155,14 @@ module.exports = new (class {
     //             .withMessage("invoice cant be empty"),
     //     ];
     // }
-    // setCheck4DriverValidator() {
-    //     return [
-    //         check("mode").not().isEmpty().withMessage("mode cant be empty"),
-    //         check("agencyId")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("agencyId cant be empty"),
-    //         check("bankName")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("bankName cant be empty"),
-    //         check("branchName")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("branchName cant be empty"),
-    //         check("docExp").not().isEmpty().withMessage("docExp cant be empty"),
-    //         check("centers")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("centers cant be empty"),
-    //         check("checkType")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("checkType cant be empty"),
-    //         check("date").not().isEmpty().withMessage("date cant be empty"),
-    //         check("price").not().isEmpty().withMessage("price cant be empty"),
-    //         check("desc").not().isEmpty().withMessage("desc cant be empty"),
-    //         check("ownerHesab")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("ownerHesab cant be empty"),
-    //         check("serial").not().isEmpty().withMessage("serial cant be empty"),
-    //         check("type").not().isEmpty().withMessage("type cant be empty"),
-    //         check("checkHesab")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("checkHesab cant be empty"),
-    //         check("listCode")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("listCode cant be empty"),
-    //         check("listDesc")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("listDesc cant be empty"),
-    //         check("listPrice")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("listPrice cant be empty"),
-    //         check("driverCode")
-    //             .not()
-    //             .isEmpty()
-    //             .withMessage("driverCode cant be empty"),
-    //     ];
-    // }
+    driverInfoForSalarySlipValidator() {
+        return [
+            check("ids").not().isEmpty().withMessage("ids cant be empty"),
+            check("ids").isArray().withMessage("ids be array"),
+            check("month").not().isEmpty().withMessage("month cant be empty"),
+            check("month").isInt().withMessage("month be int"),
+        ];
+    }
     insertCheckValidator() {
         return [
             check("mode").not().isEmpty().withMessage("mode cant be empty"),
@@ -241,10 +194,12 @@ module.exports = new (class {
                 .isEmpty()
                 .withMessage("ownerHesab cant be empty"),
             check("serial").not().isEmpty().withMessage("serial cant be empty"),
-            check("checkHesab").isString().withMessage("checkHesab must be a string")
+            check("checkHesab")
+                .isString()
+                .withMessage("checkHesab must be a string")
                 .notEmpty()
                 .withMessage("checkHesab cant be empty"),
-                check("rows").not().isEmpty().withMessage("rows must be an array"),
+            check("rows").not().isEmpty().withMessage("rows must be an array"),
             check("rows.*.note")
                 .isString()
                 .withMessage("rows.note must be a string")
@@ -267,7 +222,7 @@ module.exports = new (class {
                 .withMessage("rows.days must be a Number")
                 .notEmpty()
                 .withMessage("rows.days cannot be empty"),
-            check("rows.*.mId")//month & SanadId && serviceNum && invoice Number
+            check("rows.*.mId") //month & SanadId && serviceNum && invoice Number
                 .isInt()
                 .withMessage("rows.mId must be a Number")
                 .notEmpty()
@@ -276,7 +231,7 @@ module.exports = new (class {
                 .isString()
                 .withMessage("rows.type must be a String")
                 .notEmpty()
-                .withMessage("rows.type cannot be empty"),    
+                .withMessage("rows.type cannot be empty"),
             // check("listCode")
             //     .notEmpty()
             //     .withMessage("listCode cant be empty"),

@@ -1,0 +1,37 @@
+<html>
+    <body
+        onload="updateFormValues(); document.getElementById('paymentForm').submit();"
+    >
+        <form
+            id="paymentForm"
+            action="https://sep.shaparak.ir/payment.aspx"
+            method="POST"
+        >
+            <input type="hidden" id="Token" name="Token" />
+            <input
+                type="hidden"
+                id="RedirectURL"
+                name="RedirectURL"
+                value="https://server.mysamar.ir/api/callback"
+            />
+            <noscript>
+                <input
+                    type="submit"
+                    value="Click here if you are not redirected"
+                />
+            </noscript>
+        </form>
+
+        <script>
+            function updateFormValues() {
+                const urlParams = new URLSearchParams(window.location.search);
+
+                const Token = urlParams.get("Token");
+                console.log("RedirectURL from URL:", Token);
+                if (Token) {
+                    document.getElementById("Token").value = Token;
+                }
+            }
+        </script>
+    </body>
+</html>

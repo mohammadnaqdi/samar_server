@@ -169,7 +169,7 @@ module.exports = new (class extends controller {
                 location,
                 isIranian,
                 gender,
-                nationalCode = ""
+                nationalCode = "",
             } = req.body;
 
             // ✅ Duplication check
@@ -2734,11 +2734,11 @@ module.exports = new (class extends controller {
             await this.Pack.deleteMany({ points: { $size: 0 } }).session(
                 session
             );
+            await this.SayadCheque.deleteMany({
+                studentId: student._id,
+            }).session(session);
 
             await Promise.all([
-                this.LevelAccDetail.deleteMany({
-                    accCode: student.studentCode,
-                }).session(session),
                 this.Holiday.deleteMany({
                     studentId: student.studentCode,
                 }).session(session),
@@ -2746,6 +2746,19 @@ module.exports = new (class extends controller {
                     studentId: student.studentCode,
                 }).session(session),
             ]);
+
+            const paySanad = await this.DocListSanad.find({
+                forCode: "003005" + student.studentCode,
+            }).session(session);
+
+            for (const doc of paySanad) {
+                await this.DocSanad.findByIdAndDelete(doc.titleId).session(
+                    session
+                );
+                await this.DocListSanad.deleteMany({
+                    titleId: doc.titleId,
+                }).session(session);
+            }
 
             const doclist = await this.DocListSanad.find({
                 accCode: "003005" + student.studentCode,
