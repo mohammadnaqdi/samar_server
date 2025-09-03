@@ -230,7 +230,7 @@ module.exports = new (class extends controller {
                 data: stReport.id,
             });
         } catch (error) {
-            console.log("Error while insertInspectorReport:", error);
+            console.error("Error while insertInspectorReport:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -294,7 +294,6 @@ module.exports = new (class extends controller {
                 console.log("search", search);
                 if (search === "") continue;
                 for (const id of targets) {
-
                     // else {
                     //     search =
                     //         log.targetTable.charAt(0).toUpperCase() +

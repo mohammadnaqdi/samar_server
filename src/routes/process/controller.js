@@ -46,7 +46,7 @@ module.exports = new (class extends controller {
             );
             return newUser;
         } catch (error) {
-            console.log("Error while registering user:", error);
+            console.error("Error while registering user:", error);
         }
     }
 
@@ -1174,8 +1174,6 @@ module.exports = new (class extends controller {
                         serv.service,
                         "driverId serviceNum"
                     ).lean();
-                    console.log("service", service.serviceNum);
-                    console.log("service", service.serviceNum);
                     if (!service) {
                         await this.Student.findByIdAndUpdate(serv, {
                             state: 3,
@@ -2025,7 +2023,7 @@ module.exports = new (class extends controller {
                     }));
                     if (serviceNum === serv.serviceNum.toString()) {
                         const studentIds = serv.student;
-                        console.log(" serv.studen", serv.student.length);
+                        // console.log(" serv.studen", serv.student.length);
                         const studentDocs = await this.Student.find(
                             {
                                 $and: [
@@ -2080,7 +2078,7 @@ module.exports = new (class extends controller {
                             serv.driverSharing = driverShare;
                         }
                     } else {
-                        console.log("serv.cost", serv.cost);
+                        // console.log("serv.cost", serv.cost);
                         sc += serv.cost;
                         dds += serv.driverSharing;
                     }
@@ -2205,7 +2203,6 @@ module.exports = new (class extends controller {
                         }));
                         if (serviceNum === serv.serviceNum.toString()) {
                             const studentIds = serv.student;
-                            console.log(" serv.studen", serv.student.length);
                             const studentDocs = await this.Student.find(
                                 {
                                     $and: [
@@ -2262,7 +2259,6 @@ module.exports = new (class extends controller {
                                 serv.driverSharing = driverShare;
                             }
                         } else {
-                            console.log("serv.cost", serv.cost);
                             sc += serv.cost;
                             dds += serv.driverSharing;
                         }
@@ -2306,7 +2302,7 @@ module.exports = new (class extends controller {
                     serviceNum,
                 });
                 if (!serviceX) {
-                    console.log("not find service in editdds");
+                    console.error("not find service in editdds");
                     return null;
                 }
                 let existService = false;

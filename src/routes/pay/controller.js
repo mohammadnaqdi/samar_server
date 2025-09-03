@@ -108,7 +108,8 @@ async function varifyPaidBank(
     rrn,
     userName,
     userPassword,
-    amount
+    amount,
+    invoice
 ) {
     try {
         if (typeBank === "SADERAT") {
@@ -149,13 +150,24 @@ async function varifyPaidBank(
                 throw new Error("Payment verification failed");
             }
         } else if (typeBank === "MELLAT") {
+            console.log(
+                "Args",
+                typeBank,
+                digitalreceipt,
+                terminalID,
+                rrn,
+                userName,
+                userPassword,
+                amount,
+                invoice
+            );
             const args = {
                 terminalId: terminalID,
                 userName: userName,
                 userPassword: userPassword,
-                orderId: SaleOrderId,
-                saleOrderId: SaleOrderId,
-                saleReferenceId: transAction,
+                orderId: invoice,
+                saleOrderId: invoice,
+                saleReferenceId: rrn,
             };
 
             var options = {
@@ -171,7 +183,7 @@ async function varifyPaidBank(
                     (err, client) => {
                         client.bpVerifyRequest(args, (err, result, body) => {
                             if (err) {
-                                console.log("varify paid bank", err);
+                                console.error("varify paid bank", err);
                                 return reject(err);
                             }
                             return resolve(result);
@@ -230,9 +242,7 @@ async function varifyPaidBank(
                             }
                             console.log(res);
                             const value = res.result.$value;
-                            console.log("Amount:", amount);
                             if (value.toString() === amount.toString()) {
-                                console.log("Equal");
                                 return resolve(true);
                             } else {
                                 console.error(
@@ -708,7 +718,6 @@ module.exports = new (class extends controller {
             // const pq = await this.PayQueue.findOne({
             //     code: transAction.queueCode,
             // });
-            console.log("im here");
 
             try {
                 const url =
@@ -753,7 +762,6 @@ module.exports = new (class extends controller {
                         },
                     });
                     responseData = response.data;
-                    console.log("nok", response.data);
                     // console.log("response", response);
                 }
                 if (
@@ -773,7 +781,6 @@ module.exports = new (class extends controller {
                             state: 1,
                         }
                     );
-                    console.log("tr", tr);
 
                     const agencyId = tr.agencyId;
                     const payQueue = await this.PayQueue.findOne(
@@ -823,8 +830,6 @@ module.exports = new (class extends controller {
                             await student.save();
                         }
                     }
-
-                    console.log("ddddd");
 
                     let num = 0;
                     let id;
@@ -938,8 +943,6 @@ module.exports = new (class extends controller {
                             sanadNum: doc.sanadId,
                         }).save();
                     }
-
-                    console.log("before pay");
 
                     // await new this.PayAction({
                     //     setter: tr.userId,
@@ -1181,9 +1184,9 @@ module.exports = new (class extends controller {
                 if (invoice2) {
                     amount2 = invoice2.amount;
                 }
-                console.log("amount2", amount2);
-                console.log("student.state", student.state);
-                console.log("confirmInfo", confirmInfo);
+                // console.log("amount2", amount2);
+                // console.log("student.state", student.state);
+                // console.log("confirmInfo", confirmInfo);
 
                 if (confirmInfo && student.state < 2) {
                     student.state = 2;
@@ -1196,8 +1199,6 @@ module.exports = new (class extends controller {
                     student.stateTitle = "تایید پیش پرداخت";
                     await student.save({ session });
                 }
-                console.log("amountReg", amountReg);
-                console.log("amountpaid", amountpaid);
                 if (amountReg > 0 && amountpaid >= amountReg) {
                     amountpaid = amountpaid - amountReg;
                     let payQueue = await this.PayQueue.findOne({
@@ -1228,7 +1229,6 @@ module.exports = new (class extends controller {
 
                         await payQueue.save({ session });
                     }
-                    console.log("payQueue=", payQueue.code);
 
                     const wallet = agency.settings.find(
                         (obj) => obj.wallet != undefined
@@ -1239,7 +1239,7 @@ module.exports = new (class extends controller {
                     if (!costCode || !wallet) {
                         throw new Error("costCode || wallet not found");
                     }
-                    console.log("wallet", wallet);
+
                     const desc = `پرداخت ${payQueue.title} آنلاین بابت دانش آموز ${student.name} ${student.lastName}`;
                     let doc = new this.DocSanad({
                         agencyId,
@@ -1286,8 +1286,6 @@ module.exports = new (class extends controller {
                     }).save({ session });
                 }
 
-                console.log("ddddd amountpaid", amountpaid);
-
                 if (bankCode != "" && amountpaid > 0 && invoice2) {
                     let prePayment = await this.PayQueue.findOne({
                         agencyId: agency._id,
@@ -1331,7 +1329,7 @@ module.exports = new (class extends controller {
                     // if (checkExist > 0) {
                     //    console.error("checkExist",checkExist);
                     // }
-                    console.log("xxxxxxxxxxx22222222");
+                    // console.log("xxxxxxxxxxx22222222");
                     persianDate.toLocale("en");
                     var SalMali = new persianDate().format("YY");
                     const checkMax = await this.CheckInfo.find(
@@ -1365,8 +1363,8 @@ module.exports = new (class extends controller {
                         desc: tr.desc,
                     });
                     await checkInfo.save({ session });
-                    console.log("tr.desc", tr.desc);
-                    console.log("ddddd amountpaid", amountpaid);
+                    // console.log("tr.desc", tr.desc);
+                    // console.log("ddddd amountpaid", amountpaid);
                     let doc = new this.DocSanad({
                         agencyId,
                         note: tr.desc,
@@ -1408,8 +1406,8 @@ module.exports = new (class extends controller {
                         accCode: "003005" + student.studentCode,
                         peigiri: digitalreceipt,
                     }).save({ session });
-                    console.log("doc.sanadId", doc.sanadId);
-                    console.log("checkInfo.id", checkInfo.id);
+                    // console.log("doc.sanadId", doc.sanadId);
+                    // console.log("checkInfo.id", checkInfo.id);
                     await new this.CheckHistory({
                         agencyId,
                         infoId: checkInfo.id,
@@ -1446,7 +1444,7 @@ module.exports = new (class extends controller {
                         },
                     });
                     responseData = response.data;
-                    console.log("nok", response.data);
+                    // console.log("nok", response.data);
                     throw new Error("response shaparak verification failed");
                 }
 
@@ -1456,7 +1454,6 @@ module.exports = new (class extends controller {
                         responseData.Status === "Duplicate") &&
                     responseData.ReturnId.toString() === amount.toString()
                 ) {
-                    console.log("end pay");
                     res.redirect(
                         `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
                     );
@@ -1621,8 +1618,6 @@ module.exports = new (class extends controller {
                         (obj) => obj.wallet != undefined
                     ).wallet;
                     const bank = transAction.stCode;
-
-                    console.log("wallet", wallet);
 
                     const checkExist = await this.CheckInfo.countDocuments({
                         agencyId,
@@ -1971,7 +1966,6 @@ module.exports = new (class extends controller {
                         },
                     });
                     responseData = response.data;
-                    console.log("nok", response.data);
                 }
 
                 if (
@@ -2631,8 +2625,6 @@ module.exports = new (class extends controller {
                     ).charge;
                     const bank = transAction.stCode;
 
-                    console.log("charge", charge);
-
                     const checkExist = await this.CheckInfo.countDocuments({
                         agencyId,
                         type: 6,
@@ -2827,6 +2819,8 @@ module.exports = new (class extends controller {
                 CardHolderPan,
                 FinalAmount,
             } = req.body;
+
+            console.log("req.body", req.body);
             amount = FinalAmount;
             authority = SaleOrderId;
             cardNumber = CardHolderPan;
@@ -3321,7 +3315,8 @@ module.exports = new (class extends controller {
                             rrn,
                             bankGate.userName,
                             bankGate.userPass,
-                            tr.amount
+                            tr.amount,
+                            tr.authority
                         );
 
                         if (!done) {

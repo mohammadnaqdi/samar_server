@@ -37,7 +37,6 @@ docSanadSchema.index({ agencyId: 1, sanadId: 1 }, { unique: true });
 docSanadSchema.pre("save", async function (next) {
     if (this.isNew) {
         const num = await getNextSequence("sanad" + this.agencyId);
-        console.log("this.num", num);
         this.sanadId = num;
         this.atf = num.toString();
     }

@@ -528,13 +528,12 @@ module.exports = new (class extends controller {
                             newDDS += driverShare;
                             oldDDs.service[i].driverShare = driverShare;
                         }
-                        console.log("ex", ex);
                         if (!ex) {
                             newCost += oldDDs.service[i].serviceCost;
                             newDDS += oldDDs.service[i].driverShare;
                         }
                     }
-                    console.log("findService", findService);
+                    // console.log("findService", findService);
                     if (!findService) {
                         let driverShare = 0;
                         if (formulaForStudent) {
@@ -567,7 +566,7 @@ module.exports = new (class extends controller {
                     newDDS = Math.round(newDDS / month);
                     newCost = Math.round(newCost / month);
                     if (!newDDS) {
-                        console.log("oldzzzz222DDss", oldDDs._id);
+                        // console.log("oldzzzz222DDss", oldDDs._id);
                         newDDS = 0;
                         newCost = 0;
                     }
@@ -577,8 +576,6 @@ module.exports = new (class extends controller {
                     // oldDDs.desc = "بازنویسی شده dsc";
                     // console.log("oldDDs.service[i]", oldDDs.service[i]);
                     // await oldDDs.save();
-                    console.log("newDDS", newDDS);
-                    console.log("newCost", newCost);
                     await this.DDS.findByIdAndUpdate(oldDDs.id, {
                         dds: newDDS,
                         sc: newCost,
@@ -586,8 +583,6 @@ module.exports = new (class extends controller {
                         desc: "بازنویسی شده dsc",
                         service: oldDDs.service,
                     });
-
-                    console.log("oldDDs");
                 } else {
                     let driverShare = 0;
                     if (formulaForStudent) {
@@ -629,7 +624,6 @@ module.exports = new (class extends controller {
                         createdAt: day,
                     });
                     await dd.save();
-                    console.log("dd");
                 }
             }
 
@@ -1004,9 +998,9 @@ module.exports = new (class extends controller {
                     console.log("No code found.");
                 }
             }
-            console.log("stDel", stDel);
-            console.log("stNoExist", stNoExist);
-            console.log("stNoSchool", stNoSchool);
+            // console.log("stDel", stDel);
+            // console.log("stNoExist", stNoExist);
+            // console.log("stNoSchool", stNoSchool);
 
             return this.response({
                 res,
@@ -1382,7 +1376,7 @@ module.exports = new (class extends controller {
                     dds.sc -= serv.serviceCost / monthLen;
                     dds.dds -= serv.driverShare / monthLen;
                     let allStudents = [];
-                    console.log("serv.students", serv.students.length);
+                    // console.log("serv.students", serv.students.length);
                     serv.serviceCost = 0;
                     for (var st of serv.students) {
                         if (st.id != studentId) {
@@ -1393,7 +1387,6 @@ module.exports = new (class extends controller {
                             serv.serviceCost += st.cost;
                         }
                     }
-                    console.log("allStudents", allStudents.length);
                     if (allStudents.length === 0) {
                         dds.service[i].serviceCost = 0;
                         dds.service[i].driverShare = 0;
@@ -1486,7 +1479,6 @@ module.exports = new (class extends controller {
                 });
 
                 if (docList.length > 1) {
-                    console.log("docList", docList.length);
                     let count = 0;
                     for (var i = 0; i < docList.length; i++) {
                         if (docList[i].note.toString().includes(s)) {

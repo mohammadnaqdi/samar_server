@@ -55,7 +55,7 @@ module.exports = new (class extends controller {
                     // console.log("response", JSON.stringify(response.data));
                 })
                 .catch(function (error) {
-                    console.log("error axios service sendSmsAndSAve", error);
+                    console.error("Error axios service sendSmsAndSAve", error);
                 });
 
             //   let UserName = '09151156929';
@@ -124,7 +124,7 @@ module.exports = new (class extends controller {
             console.log("code=" + code);
             return true;
         } catch (error) {
-            console.log("Error while sending sms and save:", error);
+            console.error("Error while sending sms and save:", error);
             return false;
         }
     }
@@ -1098,7 +1098,7 @@ module.exports = new (class extends controller {
             return res.json();
             // return;
         } catch (error) {
-            console.log("error in updateDriverLocation", error);
+            console.error("Error in updateDriverLocation", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

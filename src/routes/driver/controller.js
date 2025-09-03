@@ -2599,7 +2599,7 @@ module.exports = new (class extends controller {
                 message: "ok",
             });
         } catch (e) {
-            console.log("Error while startService:", e);
+            console.error("Error while startService:", e);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

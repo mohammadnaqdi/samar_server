@@ -646,7 +646,6 @@ module.exports = new (class extends controller {
                         pay.amount = amount2;
                         pay.title = invoice.title;
                         pay.delete = invoice.delete;
-                        console.log("st save", st.name);
                         await pay.save();
                     }
                 } else if (st.state > 0) {
@@ -685,7 +684,6 @@ module.exports = new (class extends controller {
                         title: invoice.title,
                         maxDate: invoice.maxDate,
                     }).save();
-                    console.log("st add", st.name);
                 }
             }
 

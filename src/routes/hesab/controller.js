@@ -1112,14 +1112,14 @@ module.exports = new (class extends controller {
             const month = req.body.month;
             console.log("month", month);
             const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30];
-            let firstDay=0;
-            let lastDay=0;
-            for(var x=0;x<month;x++){
-                firstDay=lastDay+1;
-                lastDay=lastDay+monthsDays[x];
+            let firstDay = 0;
+            let lastDay = 0;
+            for (var x = 0; x < month; x++) {
+                firstDay = lastDay + 1;
+                lastDay = lastDay + monthsDays[x];
             }
-            console.log("firstDay",firstDay);
-            console.log("lastDay",lastDay);
+            console.log("firstDay", firstDay);
+            console.log("lastDay", lastDay);
             let result = [];
             for (var id of ids) {
                 const driver = await this.Driver.findById(
@@ -1155,7 +1155,7 @@ module.exports = new (class extends controller {
                         },
                     },
                 ]);
-                const dds =await this.DDS.aggregate([
+                const dds = await this.DDS.aggregate([
                     {
                         $match: {
                             driverId: ObjectId.createFromHexString(id),
@@ -1174,7 +1174,13 @@ module.exports = new (class extends controller {
                     { $project: { _id: 0 } },
                 ]);
 
-                result.push({ driver, carName, docList,dds,len:(lastDay-firstDay+1) });
+                result.push({
+                    driver,
+                    carName,
+                    docList,
+                    dds,
+                    len: lastDay - firstDay + 1,
+                });
             }
 
             return res.json(result);

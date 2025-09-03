@@ -531,7 +531,7 @@ module.exports = new (class extends controller {
     //                         console.log("successfully sent =", response);
     //                     })
     //                     .catch(function (err) {
-    //                         console.log("error sent =", err);
+    //                         console.error("Error sent =", err);
     //                     });
     //             }
     //             // const message = {

@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const { User } = require("./../models/user");
 const { Parent } = require("./../models/parent");
 const crypto = require("crypto");
-const {redisClient} = require('./../../startup/redis');
+const { redisClient } = require("./../../startup/redis");
 const mongoose = require("mongoose");
 // const getUserSalt = async (userId) => {
 //     const user = await User.findById(userId);
@@ -28,8 +28,12 @@ async function isLoggined(req, res, next) {
     try {
         const decodedX = jwt.decode(token);
         let userSalt;
-        const checkSalt=!(decodedX.isParent || decodedX.isDriver || 
-            decodedX._id==='687c9d3d904f4eb1bcb5179c' // superAdmin user
+        const checkSalt = !(
+            (
+                decodedX.isParent ||
+                decodedX.isDriver ||
+                decodedX._id === "687c9d3d904f4eb1bcb5179c"
+            ) // superAdmin user
         );
         if (checkSalt) {
             userSalt = await getUserSalt(decodedX._id);
@@ -37,7 +41,7 @@ async function isLoggined(req, res, next) {
                 return res.status(401).json({ message: "Invalid token salt" });
             }
         }
-        
+
         const dynamicKey = !checkSalt
             ? process.env.JWT_KEY
             : process.env.JWT_KEY + userSalt;
@@ -66,7 +70,7 @@ async function isLoggined(req, res, next) {
         user = JSON.parse(user);
         user.id = user._id;
         user._id = cnObjectId(user._id);
-        user.isParent=decodedX.isParent;
+        user.isParent = decodedX.isParent;
 
         if (user.agencyId) {
             user.agencyId = cnObjectId(user.agencyId);
@@ -94,7 +98,7 @@ async function isLoggined(req, res, next) {
         req.user = user;
         next();
     } catch (error) {
-        console.log("Error verifying token:", 'jwt expired');
+        console.error("Error verifying token:", "jwt expired");
         return res.status(401).json({ message: "Invalid token" });
     }
 }

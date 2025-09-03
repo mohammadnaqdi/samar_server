@@ -143,7 +143,7 @@ async function generateMehrToken(
             TransType: "EN_GOODS",
             ReserveNum: reserveNum,
             Amount: amount,
-            RedirectUrl: "http://hoshmand-seir.ir/callback.php",
+            RedirectUrl: "https://hoshmand-seir.ir/callback.php",
             MobileNo: mobileNo,
             UserId: mobileNo,
         };
@@ -347,10 +347,10 @@ module.exports = new (class extends controller {
         console.log("amount", amount);
         console.log("amount2", amount2);
         console.log("desc", desc);
-        if (bankGate.type === "MEHR" || bankGate.type === "SAMAN") {
-            amount = 5000;
-            amount2 = 5000;
-        }
+        // if (bankGate.type === "MEHR" || bankGate.type === "SAMAN") {
+        //     amount = 5000;
+        //     amount2 = 5000;
+        // }
         try {
             let newTr = new this.Transactions({
                 userId: req.user._id,
@@ -442,7 +442,6 @@ module.exports = new (class extends controller {
                     newTr.authority,
                     bankGate.userName,
                     bankGate.userPass,
-                    "callBack",
                     req.user.phone
                 );
                 console.log("token mehr", token);
@@ -2737,7 +2736,6 @@ module.exports = new (class extends controller {
             const { agencyId, studentId, cardNumber, refId, amount, payDate } =
                 req.body;
             const isSheba = req.body.isSheba || false;
-            console.log("isSheba", isSheba);
 
             let student = await this.Student.findById(studentId).session(
                 session

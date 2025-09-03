@@ -1668,7 +1668,7 @@ module.exports = new (class extends controller {
                             " " +
                             school.schoolTime[service[i].time].end;
                         var stt = "";
-                        console.log("school.schoolTime", school.schoolTime);
+                        // console.log("school.schoolTime", school.schoolTime);
                         for (var t in school.schoolTime) {
                             if (t == service[i].time) continue;
                             if (shiftName === school.schoolTime[t].name) {
@@ -1681,7 +1681,7 @@ module.exports = new (class extends controller {
                                     school.schoolTime[t].shiftdayTitle;
                             }
                         }
-                        console.log("school.schoolTimeXX", school.schoolTime);
+                        // console.log("school.schoolTimeXX", school.schoolTime);
                         if (stt != "") {
                             shiftType +=
                                 school.schoolTime[service[i].time]
@@ -1696,7 +1696,6 @@ module.exports = new (class extends controller {
                     }
                     moreInfo.shiftName = shiftName;
                     moreInfo.shiftType = shiftType;
-                    console.log("shiftType", shiftType);
                 } else {
                     moreInfo.schoolName = "پیدا نشد";
                     moreInfo.schoolLat = 0;

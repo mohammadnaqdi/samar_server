@@ -209,7 +209,7 @@ async function save_exception(exceptionPoint, groupId, agencyId) {
         { $set: { exception: true, packed: false } }
     );
     // } catch (err) {
-    //     console.log("Error while saving exception:", err);
+    //     console.error("Error while saving exception:", err);
     // }
 }
 

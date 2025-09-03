@@ -744,7 +744,7 @@ module.exports = new (class extends controller {
                 });
             }
         } catch (error) {
-            console.log("Error while set Agency:", error);
+            console.error("Error while set Agency:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -761,7 +761,7 @@ module.exports = new (class extends controller {
             await this.Agency.findByIdAndUpdate(agencyId, { settings });
             return true;
         } catch (error) {
-            console.log("Error while set Kol Moeen:", error);
+            console.error("Error while set Kol Moeen:", error);
             return false;
         }
     }
@@ -858,7 +858,7 @@ module.exports = new (class extends controller {
                 message: "ok",
             });
         } catch (error) {
-            console.log("Error while set Kol Moeen:", error);
+            console.error("Error while set Kol Moeen:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -904,7 +904,6 @@ module.exports = new (class extends controller {
                     agencyId,
                 });
 
-                console.log("title", title);
                 if (!listacc) {
                     return this.response({
                         res,
@@ -927,7 +926,7 @@ module.exports = new (class extends controller {
                 message: "ok",
             });
         } catch (error) {
-            console.log("Error while setDefHeaderLine:", error);
+            console.error("Error while setDefHeaderLine:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -952,7 +951,7 @@ module.exports = new (class extends controller {
                 data: agency,
             });
         } catch (error) {
-            console.log("Error while get Kol Moeen Agency:", error);
+            console.error("Error while get Kol Moeen Agency:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -983,7 +982,7 @@ module.exports = new (class extends controller {
                 message: "added",
             });
         } catch (error) {
-            console.log("Error while addschooltoagency:", error);
+            console.error("Error while addschooltoagency:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1017,7 +1016,7 @@ module.exports = new (class extends controller {
                 message: "added",
             });
         } catch (error) {
-            console.log("Error while addSchoolToMyAgency:", error);
+            console.error("Error while addSchoolToMyAgency:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1025,8 +1024,8 @@ module.exports = new (class extends controller {
         try {
             const agencyId = req.body.agencyId;
             const schoolId = req.body.schoolId;
-            console.log("removeSchoolFromAgency agencyId", agencyId);
-            console.log("removeSchoolFromAgency schoolId", schoolId);
+            // console.log("removeSchoolFromAgency agencyId", agencyId);
+            // console.log("removeSchoolFromAgency schoolId", schoolId);
             const student = await this.Student.findOne(
                 {
                     school: schoolId,
@@ -1063,7 +1062,7 @@ module.exports = new (class extends controller {
                 data: { fa_m: "دانش آموزی در این شرکت داری سرویس است" },
             });
         } catch (error) {
-            console.log("Error while remove school from Agency:", error);
+            console.error("Error while remove school from Agency:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

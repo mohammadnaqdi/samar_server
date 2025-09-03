@@ -1218,7 +1218,6 @@ module.exports = new (class extends controller {
                 //     ],
                 //   });
                 // }
-                console.log("qr2", qr2);
                 const hesabs = await this.ListAcc.find(
                     { $and: qr2 },
                     "code codeLev1 codeLev2 codeLev3 groupId type nature levelEnd"

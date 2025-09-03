@@ -94,7 +94,13 @@ module.exports = new (class extends controller {
             }
             let driverAct = new this.DriverAct({
                 driverCode: driver.driverCode,
-                location: { type: "Point", coordinates: [agency.location.coordinates[0], agency.location.coordinates[1]] },
+                location: {
+                    type: "Point",
+                    coordinates: [
+                        agency.location.coordinates[0],
+                        agency.location.coordinates[1],
+                    ],
+                },
                 model: 1,
                 serviceId: serviceNum,
                 isWarning: false,
@@ -152,7 +158,7 @@ module.exports = new (class extends controller {
                     }
                 }
             }
-            console.log("registrationTokens", registrationTokens);
+            // console.log("registrationTokens", registrationTokens);
             if (registrationTokens.length === 0) return;
             const registrationTokensBatches = chunkArray(
                 registrationTokens,
@@ -183,7 +189,7 @@ module.exports = new (class extends controller {
                                     );
                                 })
                                 .catch(function (err) {
-                                    console.log("error sent =", err);
+                                    console.error("Error sent =", err);
                                 });
                         });
                         await Promise.all(messages);
@@ -222,7 +228,7 @@ module.exports = new (class extends controller {
                 message: "ok",
             });
         } catch (e) {
-            console.log("Error while startService:", e);
+            console.error("Error while startService:", e);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
