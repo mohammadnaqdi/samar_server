@@ -151,7 +151,7 @@ module.exports = new (class extends controller {
                     const driver = await this.Driver.findOne({
                         userId: user.id,
                         delete: false,
-                    });
+                    }).lean();
                     if (!driver) {
                         return this.response({
                             res,

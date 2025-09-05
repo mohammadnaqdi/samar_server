@@ -84,6 +84,7 @@ module.exports = new (class extends controller {
                 this.RatingDriver.deleteMany({ driverId: id }).session(session),
                 this.Car.findByIdAndDelete(driver.carId).session(session),
                 this.ServicePack.deleteMany({ driverId: id }).session(session),
+                this.DriverInfo.deleteMany({ driverId: id }).session(session),
             ]);
 
             // Delete docs from DocListSanad & DocSanad
@@ -313,151 +314,161 @@ module.exports = new (class extends controller {
         }
     }
     async setEmptyDriver(req, res) {
+        const session = await this.Driver.startSession();
+        session.startTransaction();
+
         try {
-            const name = req.body.name;
-            const phone = req.body.phone;
-            const lastName = req.body.lastName;
-            const capacity = req.body.capacity;
+            const { name, phone, lastName, capacity } = req.body;
             const agencyId = ObjectId.createFromHexString(req.body.agencyId);
             let userId = req.body.userId;
 
+            // Validate agency
             const agency = await this.Agency.findOne(
                 {
-                    $and: [
-                        { delete: false },
-                        { _id: agencyId },
-                        {
-                            $or: [
-                                { admin: req.user._id },
-                                { users: { $in: req.user._id } },
-                            ],
-                        },
+                    delete: false,
+                    _id: agencyId,
+                    $or: [
+                        { admin: req.user._id },
+                        { users: { $in: req.user._id } },
                     ],
                 },
                 "settings code"
-            );
+            )
+                .session(session)
+                .lean();
+
             if (!agency) {
+                await session.abortTransaction();
+                session.endSession();
                 return this.response({
                     res,
                     code: 404,
-                    message: "somthing wrong your agency is delete maybe",
+                    message: "Agency not found or deleted",
                     data: {
                         fa_m: "خطایی پیش آمده ممکن است شرکت شما حذف شده باشد!",
                     },
                 });
             }
 
-            let kol = "004";
-            let moeen = "006";
             let userCode = "";
-            if (userId.trim() === "") {
-                let user = await this.User.findOne({ phone });
-                if (user) {
+
+            if (!userId || userId.trim() === "") {
+                // Case: New User
+                let existingUser = await this.User.findOne({ phone }).session(
+                    session
+                );
+                if (existingUser) {
+                    await session.abortTransaction();
+                    session.endSession();
                     return this.response({
                         res,
                         code: 221,
-                        message: "this user is exist",
+                        message: "this user exists",
                         data: {
                             fa_m: "این کاربر وجود دارد",
-                            name: user.name,
-                            lastName: user.lastName,
+                            name: existingUser.name,
+                            lastName: existingUser.lastName,
                         },
                     });
                 }
-                user = new this.User({
+
+                const newUser = new this.User({
                     phone,
                     name,
                     lastName,
                     userName: phone,
                 });
-                await user.save();
-                userCode = user.code;
-                await this.updateRedisDocument(`user:${user._id}`, user);
-                userId = user.id;
+
+                await newUser.save({ session });
+                userCode = newUser.code;
+                userId = newUser._id;
+
+                // ⚡ Updating Redis should be done **after commitTransaction**
+                req._redisUpdate = {
+                    key: `user:${newUser._id}`,
+                    value: newUser,
+                };
             } else {
+                // Case: Existing User
                 const drTest = await this.Driver.findOne({
-                    agencyId: agency.id,
-                    userId: userId,
-                });
-                console.log("drTest", drTest);
+                    agencyId: agency._id,
+                    userId,
+                }).session(session);
+
                 if (drTest) {
+                    await session.abortTransaction();
+                    session.endSession();
                     return this.response({
                         res,
                         code: 222,
-                        message: "this driver is exist",
-                        data: {
-                            fa_m: "این راننده وجود دارد",
-                        },
+                        message: "this driver exists",
+                        data: { fa_m: "این راننده وجود دارد" },
                     });
                 }
-                const user = await this.User.findByIdAndUpdate(userId, {
-                    name,
-                    lastName,
-                });
-                userCode = user.code;
-                await this.updateRedisDocument(`user:${userId}`, {
-                    name,
-                    lastName,
-                });
+
+                const updatedUser = await this.User.findByIdAndUpdate(
+                    userId,
+                    { name, lastName },
+                    { new: true, session }
+                );
+
+                if (!updatedUser) {
+                    await session.abortTransaction();
+                    session.endSession();
+                    return this.response({
+                        res,
+                        code: 404,
+                        message: "User not found",
+                    });
+                }
+
+                userCode = updatedUser.code;
+                req._redisUpdate = {
+                    key: `user:${userId}`,
+                    value: { name, lastName },
+                };
             }
 
-            let car = new this.Car({
+            // Create Car
+            const car = new this.Car({
                 pelak: "0",
                 capacity,
                 drivers: [userId],
             });
-            await car.save();
-            // console.log("fwefewff");
-            // let driverCode = 100000001;
-            // const lastLevelAccDet = await this.Driver.find()
-            //     .sort({ driverCode: -1 })
-            //     .limit(1);
-            // if (lastLevelAccDet.length > 0) {
-            //     driverCode = parseInt(lastLevelAccDet[0].driverCode) + 1;
-            // }
-            let driver = new this.Driver({
-                userId: userId,
+            await car.save({ session });
+
+            // Create Driver
+            const driver = new this.Driver({
+                userId,
                 agencyId,
-                carId: car.id,
+                carId: car._id,
                 driverCode: agency.code + userCode,
             });
-            await driver.save();
-            // let code = driverCode.toString();
-            // let desc = "";
-            // if (car) {
-            //     desc = phone;
-            // }
-            // await new this.LevelAccDetail({
-            //     agencyId,
-            //     levelNo: 3,
-            //     levelType: 2,
-            //     accCode: code,
-            //     accName: name + " " + lastName,
-            //     desc,
-            //     editor: req.user._id,
-            // }).save();
-            // await new this.ListAcc({
-            //     agencyId,
-            //     code: `${kol}${moeen}${code}`,
-            //     codeLev1: kol,
-            //     codeLev2: moeen,
-            //     codeLev3: code,
-            //     groupId: 1,
-            //     type: 1,
-            //     nature: 1,
-            //     levelEnd: 3,
-            //     canEdit: false,
-            //     editor: req.user._id,
-            // }).save();
+            await driver.save({ session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            // ✅ Update Redis AFTER successful commit
+            if (req._redisUpdate) {
+                await this.updateRedisDocument(
+                    req._redisUpdate.key,
+                    req._redisUpdate.value
+                );
+            }
+
             return this.response({
                 res,
                 data: driver,
             });
         } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
             console.error("Error while setEmptyDriver:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+
     async duplicateDriver(req, res) {
         try {
             const phone = req.body.phone;
@@ -540,52 +551,62 @@ module.exports = new (class extends controller {
                 agencyId,
                 carId: driver.carId,
                 driverCode: agency.code + user.code,
-                addressId: driver.addressId,
-                drivingLicence: driver.drivingLicence,
                 pic: driver.pic,
-                birthday: driver.birthday,
                 expireSh: driver.expireSh,
-                healthPic: driver.healthPic,
-                technicalDiagPic: driver.technicalDiagPic,
                 clearancesPic: driver.clearancesPic,
                 dLicencePic: driver.dLicencePic,
                 carDocPic: driver.carDocPic,
-                isDriverCarOwner: driver.isDriverCarOwner,
             });
             await newDriver.save();
+            let driverInfo = await this.DriverInfo.findOne({
+                driverId: driver._id,
+            });
+            if (!driverInfo) {
+                await new this.DriverInfo({
+                    driverId: driver._id,
+                }).save();
+                await new this.DriverInfo({
+                    driverId: newDriver._id,
+                }).save();
+            } else {
+                delete driverInfo._id;
+                driverInfo.driverId = newDriver._id;
+                await this.DriverInfo.insertOne(driverInfo);
+            }
+
             /////////////set level , sarfasl
             const car = await this.Car.findById(
                 driver.carId,
                 "carModel colorCar"
             );
-            let code = driverCode.toString();
-            let desc = "";
-            if (car) {
-                desc = car.carModel + " " + car.colorCar;
-            }
+            // let code = driverCode.toString();
+            // let desc = "";
+            // if (car) {
+            //     desc = car.carModel + " " + car.colorCar;
+            // }
             // code = pad(9, code, "0");
-            await new this.LevelAccDetail({
-                agencyId,
-                levelNo: 3,
-                levelType: 2,
-                accCode: code,
-                accName: user.name + " " + user.lastName,
-                desc,
-                editor: req.user._id,
-            }).save();
-            await new this.ListAcc({
-                agencyId,
-                code: `${kol}${moeen}${code}`,
-                codeLev1: kol,
-                codeLev2: moeen,
-                codeLev3: code,
-                groupId: 1,
-                type: 1,
-                nature: 1,
-                levelEnd: 3,
-                canEdit: false,
-                editor: req.user._id,
-            }).save();
+            // await new this.LevelAccDetail({
+            //     agencyId,
+            //     levelNo: 3,
+            //     levelType: 2,
+            //     accCode: code,
+            //     accName: user.name + " " + user.lastName,
+            //     desc,
+            //     editor: req.user._id,
+            // }).save();
+            // await new this.ListAcc({
+            //     agencyId,
+            //     code: `${kol}${moeen}${code}`,
+            //     codeLev1: kol,
+            //     codeLev2: moeen,
+            //     codeLev3: code,
+            //     groupId: 1,
+            //     type: 1,
+            //     nature: 1,
+            //     levelEnd: 3,
+            //     canEdit: false,
+            //     editor: req.user._id,
+            // }).save();
             /////////////
             return this.response({
                 res,
@@ -616,6 +637,15 @@ module.exports = new (class extends controller {
                     message: "driver is delete",
                     data: { fa_m: "راننده حذف شده است!" },
                 });
+            }
+            let driverInfo = await this.DriverInfo.findOne({
+                driverId: driver._id,
+            });
+            if (!driverInfo) {
+                driverInfo = new this.DriverInfo({
+                    driverId: driver._id,
+                });
+                await driverInfo.save();
             }
             let user = await this.User.findById(driver.userId);
             if (!user) {
@@ -670,10 +700,10 @@ module.exports = new (class extends controller {
             if (req.body.lastName != undefined) {
                 user.lastName = req.body.lastName;
                 const code = driver.driverCode.toString();
-                await this.LevelAccDetail.findOneAndUpdate(
-                    { accCode: code },
-                    { accName: user.name + " " + req.body.lastName }
-                );
+                // await this.LevelAccDetail.findOneAndUpdate(
+                //     { accCode: code },
+                //     { accName: user.name + " " + req.body.lastName }
+                // );
             }
 
             if (req.body.gender != undefined) {
@@ -686,10 +716,10 @@ module.exports = new (class extends controller {
                 if (car) {
                     desc = car.carModel + " " + req.body.colorCar;
                 }
-                await this.LevelAccDetail.findOneAndUpdate(
-                    { accCode: code },
-                    { desc: desc }
-                );
+                // await this.LevelAccDetail.findOneAndUpdate(
+                //     { accCode: code },
+                //     { desc: desc }
+                // );
             }
             if (req.body.pelak != undefined) {
                 car.pelak = req.body.pelak;
@@ -699,15 +729,15 @@ module.exports = new (class extends controller {
             }
             if (req.body.carModel != undefined) {
                 car.carModel = req.body.carModel;
-                const code = driver.driverCode.toString();
-                let desc = "";
-                if (car) {
-                    desc = req.body.carModel + " " + car.colorCar;
-                }
-                await this.LevelAccDetail.findOneAndUpdate(
-                    { accCode: code },
-                    { desc: desc }
-                );
+                // const code = driver.driverCode.toString();
+                // let desc = "";
+                // if (car) {
+                //     desc = req.body.carModel + " " + car.colorCar;
+                // }
+                // await this.LevelAccDetail.findOneAndUpdate(
+                //     { accCode: code },
+                //     { desc: desc }
+                // );
             }
             if (req.body.year != undefined) {
                 car.year = req.body.year;
@@ -728,16 +758,19 @@ module.exports = new (class extends controller {
                 driver.pic = req.body.pic;
             }
             if (req.body.birthday != undefined) {
-                driver.birthday = req.body.birthday;
+                driverInfo.birthday = req.body.birthday;
             }
             if (req.body.dLicencePic != undefined) {
-                if (driver.dLicencePic != req.body.dLicencePic) {
-                    driver.confirmDriverLcPic = 1;
+                if (driverInfo.dLicencePic != req.body.dLicencePic) {
+                    driverInfo.confirmDriverLcPic = 1;
                 }
-                driver.dLicencePic = req.body.dLicencePic;
+                driverInfo.dLicencePic = req.body.dLicencePic;
             }
             if (req.body.nationalCode != undefined) {
                 driver.nationalCode = req.body.nationalCode;
+            }
+            if (req.body.card != undefined) {
+                driver.card = req.body.card;
             }
             if (req.body.hesab != undefined) {
                 driver.hesab = req.body.hesab;
@@ -746,36 +779,61 @@ module.exports = new (class extends controller {
                 driver.shaba = req.body.shaba;
             }
             if (req.body.clearancesPic != undefined) {
-                if (driver.clearancesPic != req.body.clearancesPic) {
-                    driver.confirmClearPic = 1;
+                if (driverInfo.clearancesPic != req.body.clearancesPic) {
+                    driverInfo.confirmClearPic = 1;
                 }
-                driver.clearancesPic = req.body.clearancesPic;
+                driverInfo.clearancesPic = req.body.clearancesPic;
             }
             if (req.body.technicalDiagPic != undefined) {
-                if (driver.technicalDiagPic != req.body.technicalDiagPic) {
-                    driver.confirmTechincalPic = 1;
+                if (driverInfo.technicalDiagPic != req.body.technicalDiagPic) {
+                    driverInfo.confirmTechincalPic = 1;
                 }
-                driver.technicalDiagPic = req.body.technicalDiagPic;
+                driverInfo.technicalDiagPic = req.body.technicalDiagPic;
             }
             if (req.body.healthPic != undefined) {
-                if (driver.healthPic != req.body.healthPic) {
-                    driver.confirmHealthPic = 1;
+                if (driverInfo.healthPic != req.body.healthPic) {
+                    driverInfo.confirmHealthPic = 1;
                 }
-                driver.healthPic = req.body.healthPic;
+                driverInfo.healthPic = req.body.healthPic;
             }
             if (req.body.carDocPic != undefined) {
-                if (driver.carDocPic != req.body.carDocPic) {
-                    driver.confirmcarDocPic = 1;
+                if (driverInfo.carDocPic != req.body.carDocPic) {
+                    driverInfo.confirmcarDocPic = 1;
                 }
-                driver.carDocPic = req.body.carDocPic;
+                driverInfo.carDocPic = req.body.carDocPic;
+            }
+            if (req.body.insPic != undefined) {
+                if (driverInfo.insPic != req.body.insPic) {
+                    driverInfo.confirmInsPic = 1;
+                }
+                driverInfo.insPic = req.body.insPic;
+            }
+            if (req.body.backCarDocPic != undefined) {
+                if (driverInfo.backCarDocPic != req.body.backCarDocPic) {
+                    driverInfo.confirmBackCarDocPic = 1;
+                }
+                driverInfo.backCarDocPic = req.body.backCarDocPic;
+            }
+            if (req.body.dLicenceBackPic != undefined) {
+                if (driverInfo.dLicenceBackPic != req.body.dLicenceBackPic) {
+                    driverInfo.confirmDriverLcBackPic = 1;
+                }
+                driverInfo.dLicenceBackPic = req.body.dLicenceBackPic;
+            }
+            if (req.body.taxiDriverLicense != undefined) {
+                driverInfo.taxiDriverLicense = req.body.taxiDriverLicense;
             }
             if (req.body.expireSh != undefined) {
-                driver.expireSh = req.body.expireSh;
+                driverInfo.expireSh = req.body.expireSh;
+            }
+            if (req.body.isDriverCarOwner != undefined) {
+                driverInfo.isDriverCarOwner = req.body.isDriverCarOwner;
             }
             await user.save();
             await this.updateRedisDocument(`user:${user._id}`, user);
             await car.save();
             await driver.save();
+            await driverInfo.save();
 
             let sevices = await this.Service.find({ driverId: driver.id });
             sevices.forEach(async (ser) => {
@@ -816,33 +874,60 @@ module.exports = new (class extends controller {
                     data: { fa_m: "راننده حذف شده است!" },
                 });
             }
+            let driverInfo = await this.DriverInfo.findOne({
+                driverId: driver._id,
+            });
+            if (!driverInfo) {
+                driverInfo = new this.DriverInfo({
+                    driverId: driver._id,
+                });
+                await driverInfo.save();
+            }
 
             if (req.body.confirmPic != undefined) {
                 driver.confirmPic = req.body.confirmPic;
             }
             if (req.body.confirmHealthPic != undefined) {
-                driver.confirmHealthPic = req.body.confirmHealthPic;
+                driverInfo.confirmHealthPic = req.body.confirmHealthPic;
             }
             if (req.body.confirmTechincalPic != undefined) {
-                driver.confirmTechincalPic = req.body.confirmTechincalPic;
+                driverInfo.confirmTechincalPic = req.body.confirmTechincalPic;
             }
             if (req.body.confirmcarDocPic != undefined) {
-                driver.confirmcarDocPic = req.body.confirmcarDocPic;
+                driverInfo.confirmcarDocPic = req.body.confirmcarDocPic;
             }
             if (req.body.isDriverCarOwner != undefined) {
-                driver.isDriverCarOwner = req.body.isDriverCarOwner;
+                driverInfo.isDriverCarOwner = req.body.isDriverCarOwner;
             }
             if (req.body.confirmClearPic != undefined) {
-                driver.confirmClearPic = req.body.confirmClearPic;
+                driverInfo.confirmClearPic = req.body.confirmClearPic;
             }
             if (req.body.confirmDriverLcPic != undefined) {
-                driver.confirmDriverLcPic = req.body.confirmDriverLcPic;
+                driverInfo.confirmDriverLcPic = req.body.confirmDriverLcPic;
             }
+            if (req.body.confirmInsPic != undefined) {
+                driverInfo.confirmInsPic = req.body.confirmInsPic;
+            }
+            if (req.body.confirmBackCarDocPic != undefined) {
+                driverInfo.confirmBackCarDocPic = req.body.confirmBackCarDocPic;
+            }
+            if (req.body.confirmcarDocPic != undefined) {
+                driverInfo.confirmcarDocPic = req.body.confirmcarDocPic;
+            }
+            if (req.body.confirmDriverLcBackPic != undefined) {
+                driverInfo.confirmDriverLcBackPic =
+                    req.body.confirmDriverLcBackPic;
+            }
+            if (req.body.isDriverCarOwner != undefined) {
+                driverInfo.isDriverCarOwner = req.body.isDriverCarOwner;
+            }
+
             if (req.body.active != undefined) {
                 driver.active = req.body.active;
             }
 
             await driver.save();
+            await driverInfo.save();
 
             return this.response({
                 res,
@@ -907,9 +992,9 @@ module.exports = new (class extends controller {
                 qr.push({
                     drivingLicence: { $regex: /.+/ },
                 });
-                qr.push({
-                    dLicencePic: { $regex: /.+/ },
-                });
+                // qr.push({
+                //     dLicencePic: { $regex: /.+/ },
+                // });
             }
 
             let drivers = await this.Driver.find({ $and: qr });
@@ -984,6 +1069,43 @@ module.exports = new (class extends controller {
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;
                 delete drivers[i].__v;
+
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: drivers[i]._id,
+                });
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: drivers[i]._id,
+                    });
+                    await driverInfo.save();
+                } else {
+                    drivers[i].location = driverInfo.location;
+                    drivers[i].address = driverInfo.address;
+                    drivers[i].birthday = driverInfo.birthday;
+                    drivers[i].expireSh = driverInfo.expireSh;
+                    drivers[i].healthPic = driverInfo.healthPic;
+                    drivers[i].confirmHealthPic = driverInfo.confirmHealthPic;
+                    drivers[i].technicalDiagPic = driverInfo.technicalDiagPic;
+                    drivers[i].confirmTechincalPic =
+                        driverInfo.confirmTechincalPic;
+                    drivers[i].clearancesPic = driverInfo.clearancesPic;
+                    drivers[i].confirmClearPic = driverInfo.confirmClearPic;
+                    drivers[i].dLicencePic = driverInfo.dLicencePic;
+                    drivers[i].confirmDriverLcPic =
+                        driverInfo.confirmDriverLcPic;
+                    drivers[i].dLicenceBackPic = driverInfo.dLicenceBackPic;
+                    drivers[i].confirmDriverLcBackPic =
+                        driverInfo.confirmDriverLcBackPic;
+                    drivers[i].carDocPic = driverInfo.carDocPic;
+                    drivers[i].confirmcarDocPic = driverInfo.confirmcarDocPic;
+                    drivers[i].backCarDocPic = driverInfo.backCarDocPic;
+                    drivers[i].confirmBackCarDocPic =
+                        driverInfo.confirmBackCarDocPic;
+                    drivers[i].taxiDriverLicense = driverInfo.taxiDriverLicense;
+                    drivers[i].insPic = driverInfo.insPic;
+                    drivers[i].confirmInsPic = driverInfo.confirmInsPic;
+                    drivers[i].isDriverCarOwner = driverInfo.isDriverCarOwner;
+                }
             }
             return this.response({
                 res,
@@ -1047,9 +1169,9 @@ module.exports = new (class extends controller {
                 qr.push({
                     drivingLicence: { $regex: /.+/ },
                 });
-                qr.push({
-                    dLicencePic: { $regex: /.+/ },
-                });
+                // qr.push({
+                //     dLicencePic: { $regex: /.+/ },
+                // });
             }
 
             let drivers = await this.Driver.find({ $and: qr });
@@ -1197,6 +1319,18 @@ module.exports = new (class extends controller {
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;
                 delete drivers[i].__v;
+
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: drivers[i]._id,
+                });
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: drivers[i]._id,
+                    });
+                    await driverInfo.save();
+                }
+
+                drivers[i].moreData.driverInfo = driverInfo;
             }
             return this.response({
                 res,
@@ -1840,7 +1974,7 @@ module.exports = new (class extends controller {
             for (var car of cars) {
                 const drivers = await this.Driver.find(
                     { carId: car._id, delete: false },
-                    "userId agencyId driverCode drivingLicence pic dLicencePic active"
+                    "userId agencyId driverCode drivingLicence pic active"
                 );
                 for (var dr of drivers) {
                     const user = await this.User.findById(
@@ -1917,7 +2051,7 @@ module.exports = new (class extends controller {
             // console.log("ids", ids);
             const drivers = await this.Driver.find(
                 { userId: { $in: ids }, delete: false },
-                "userId agencyId driverCode drivingLicence pic dLicencePic active carId isAgent"
+                "userId agencyId driverCode drivingLicence pic active carId isAgent"
             );
             // console.log("drivers", drivers.length);
 
@@ -2109,7 +2243,7 @@ module.exports = new (class extends controller {
             const driver = await this.Driver.findOne({
                 userId: req.user._id,
                 delete: false,
-            });
+            }).lean();
             if (!driver) {
                 return this.response({
                     res,
@@ -2120,6 +2254,40 @@ module.exports = new (class extends controller {
                     },
                 });
             }
+            let driverInfo = await this.DriverInfo.findOne({
+                driverId: driver._id,
+            });
+            if (!driverInfo) {
+                driverInfo = new this.DriverInfo({
+                    driverId: driver._id,
+                });
+                await driverInfo.save();
+            } else {
+                driver.location = driverInfo.location;
+                driver.address = driverInfo.address;
+                driver.birthday = driverInfo.birthday;
+                driver.expireSh = driverInfo.expireSh;
+                driver.healthPic = driverInfo.healthPic;
+                driver.confirmHealthPic = driverInfo.confirmHealthPic;
+                driver.technicalDiagPic = driverInfo.technicalDiagPic;
+                driver.confirmTechincalPic = driverInfo.confirmTechincalPic;
+                driver.clearancesPic = driverInfo.clearancesPic;
+                driver.confirmClearPic = driverInfo.confirmClearPic;
+                driver.dLicencePic = driverInfo.dLicencePic;
+                driver.confirmDriverLcPic = driverInfo.confirmDriverLcPic;
+                driver.dLicenceBackPic = driverInfo.dLicenceBackPic;
+                driver.confirmDriverLcBackPic =
+                    driverInfo.confirmDriverLcBackPic;
+                driver.carDocPic = driverInfo.carDocPic;
+                driver.confirmcarDocPic = driverInfo.confirmcarDocPic;
+                driver.backCarDocPic = driverInfo.backCarDocPic;
+                driver.confirmBackCarDocPic = driverInfo.confirmBackCarDocPic;
+                driver.taxiDriverLicense = driverInfo.taxiDriverLicense;
+                driver.insPic = driverInfo.insPic;
+                driver.confirmInsPic = driverInfo.confirmInsPic;
+                driver.isDriverCarOwner = driverInfo.isDriverCarOwner;
+            }
+
             if (req.body.fcm != undefined && req.body.device != undefined) {
                 const firebaseToken = req.body.fcm;
                 const device = req.body.device;
@@ -2341,7 +2509,7 @@ module.exports = new (class extends controller {
                 userId: req.user._id,
                 delete: false,
                 active: true,
-            });
+            }).lean();
 
             // console.log("drivers", drivers);
             if (drivers.length === 0) {
@@ -2549,6 +2717,40 @@ module.exports = new (class extends controller {
 
                     // console.log("myStudents=",JSON.stringify(myStudents));
                 }
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: driver._id,
+                });
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: driver._id,
+                    });
+                    await driverInfo.save();
+                } else {
+                    driver.location = driverInfo.location;
+                    driver.address = driverInfo.address;
+                    driver.birthday = driverInfo.birthday;
+                    driver.expireSh = driverInfo.expireSh;
+                    driver.healthPic = driverInfo.healthPic;
+                    driver.confirmHealthPic = driverInfo.confirmHealthPic;
+                    driver.technicalDiagPic = driverInfo.technicalDiagPic;
+                    driver.confirmTechincalPic = driverInfo.confirmTechincalPic;
+                    driver.clearancesPic = driverInfo.clearancesPic;
+                    driver.confirmClearPic = driverInfo.confirmClearPic;
+                    driver.dLicencePic = driverInfo.dLicencePic;
+                    driver.confirmDriverLcPic = driverInfo.confirmDriverLcPic;
+                    driver.dLicenceBackPic = driverInfo.dLicenceBackPic;
+                    driver.confirmDriverLcBackPic =
+                        driverInfo.confirmDriverLcBackPic;
+                    driver.carDocPic = driverInfo.carDocPic;
+                    driver.confirmcarDocPic = driverInfo.confirmcarDocPic;
+                    driver.backCarDocPic = driverInfo.backCarDocPic;
+                    driver.confirmBackCarDocPic =
+                        driverInfo.confirmBackCarDocPic;
+                    driver.taxiDriverLicense = driverInfo.taxiDriverLicense;
+                    driver.insPic = driverInfo.insPic;
+                    driver.confirmInsPic = driverInfo.confirmInsPic;
+                    driver.isDriverCarOwner = driverInfo.isDriverCarOwner;
+                }
                 driversList.push({
                     driver,
                     car,
@@ -2630,7 +2832,8 @@ module.exports = new (class extends controller {
             let drivers = await this.Driver.find({ agencyId, delete: false })
                 .skip(page * 25)
                 .limit(25)
-                .sort({ active: -1, isAgent: -1, _id: 1 });
+                .sort({ active: -1, isAgent: -1, _id: 1 })
+                .lean();
             for (var i = 0; i < drivers.length; i++) {
                 const user = await this.User.findById(
                     drivers[i].userId,
@@ -2685,6 +2888,42 @@ module.exports = new (class extends controller {
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;
                 delete drivers[i].__v;
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: drivers[i]._id,
+                });
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: drivers[i]._id,
+                    });
+                    await driverInfo.save();
+                } else {
+                    drivers[i].location = driverInfo.location;
+                    drivers[i].address = driverInfo.address;
+                    drivers[i].birthday = driverInfo.birthday;
+                    drivers[i].expireSh = driverInfo.expireSh;
+                    drivers[i].healthPic = driverInfo.healthPic;
+                    drivers[i].confirmHealthPic = driverInfo.confirmHealthPic;
+                    drivers[i].technicalDiagPic = driverInfo.technicalDiagPic;
+                    drivers[i].confirmTechincalPic =
+                        driverInfo.confirmTechincalPic;
+                    drivers[i].clearancesPic = driverInfo.clearancesPic;
+                    drivers[i].confirmClearPic = driverInfo.confirmClearPic;
+                    drivers[i].dLicencePic = driverInfo.dLicencePic;
+                    drivers[i].confirmDriverLcPic =
+                        driverInfo.confirmDriverLcPic;
+                    drivers[i].dLicenceBackPic = driverInfo.dLicenceBackPic;
+                    drivers[i].confirmDriverLcBackPic =
+                        driverInfo.confirmDriverLcBackPic;
+                    drivers[i].carDocPic = driverInfo.carDocPic;
+                    drivers[i].confirmcarDocPic = driverInfo.confirmcarDocPic;
+                    drivers[i].backCarDocPic = driverInfo.backCarDocPic;
+                    drivers[i].confirmBackCarDocPic =
+                        driverInfo.confirmBackCarDocPic;
+                    drivers[i].taxiDriverLicense = driverInfo.taxiDriverLicense;
+                    drivers[i].insPic = driverInfo.insPic;
+                    drivers[i].confirmInsPic = driverInfo.confirmInsPic;
+                    drivers[i].isDriverCarOwner = driverInfo.isDriverCarOwner;
+                }
             }
 
             return this.response({
@@ -2745,7 +2984,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 delete: false,
                 userId: { $in: users },
-            });
+            }).lean();
 
             for (var i = 0; i < drivers.length; i++) {
                 // console.log(JSON.stringify(students[i]));
@@ -2782,6 +3021,42 @@ module.exports = new (class extends controller {
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;
                 delete drivers[i].__v;
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: drivers[i]._id,
+                });
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: drivers[i]._id,
+                    });
+                    await driverInfo.save();
+                } else {
+                    drivers[i].location = driverInfo.location;
+                    drivers[i].address = driverInfo.address;
+                    drivers[i].birthday = driverInfo.birthday;
+                    drivers[i].expireSh = driverInfo.expireSh;
+                    drivers[i].healthPic = driverInfo.healthPic;
+                    drivers[i].confirmHealthPic = driverInfo.confirmHealthPic;
+                    drivers[i].technicalDiagPic = driverInfo.technicalDiagPic;
+                    drivers[i].confirmTechincalPic =
+                        driverInfo.confirmTechincalPic;
+                    drivers[i].clearancesPic = driverInfo.clearancesPic;
+                    drivers[i].confirmClearPic = driverInfo.confirmClearPic;
+                    drivers[i].dLicencePic = driverInfo.dLicencePic;
+                    drivers[i].confirmDriverLcPic =
+                        driverInfo.confirmDriverLcPic;
+                    drivers[i].dLicenceBackPic = driverInfo.dLicenceBackPic;
+                    drivers[i].confirmDriverLcBackPic =
+                        driverInfo.confirmDriverLcBackPic;
+                    drivers[i].carDocPic = driverInfo.carDocPic;
+                    drivers[i].confirmcarDocPic = driverInfo.confirmcarDocPic;
+                    drivers[i].backCarDocPic = driverInfo.backCarDocPic;
+                    drivers[i].confirmBackCarDocPic =
+                        driverInfo.confirmBackCarDocPic;
+                    drivers[i].taxiDriverLicense = driverInfo.taxiDriverLicense;
+                    drivers[i].insPic = driverInfo.insPic;
+                    drivers[i].confirmInsPic = driverInfo.confirmInsPic;
+                    drivers[i].isDriverCarOwner = driverInfo.isDriverCarOwner;
+                }
             }
             return this.response({
                 res,
@@ -2821,7 +3096,8 @@ module.exports = new (class extends controller {
                 "driverCode userId score pic active moreData"
             )
                 .skip(page * 25)
-                .limit(25);
+                .limit(25)
+                .lean();
 
             for (var i = 0; i < drivers.length; i++) {
                 // console.log(JSON.stringify(students[i]));
@@ -3079,7 +3355,7 @@ module.exports = new (class extends controller {
             }
             const drivers = await this.Driver.find(
                 qr,
-                "hesab nationalCode shaba userId"
+                "hesab nationalCode shaba userId card"
             );
             let driversBank = [];
             for (var d of drivers) {

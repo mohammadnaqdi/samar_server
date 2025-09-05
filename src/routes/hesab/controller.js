@@ -1124,7 +1124,7 @@ module.exports = new (class extends controller {
             for (var id of ids) {
                 const driver = await this.Driver.findById(
                     id,
-                    "driverCode carId hesab shaba nationalCode"
+                    "driverCode carId hesab shaba nationalCode card"
                 ).lean();
                 if (!driver) {
                     continue;

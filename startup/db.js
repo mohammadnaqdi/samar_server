@@ -3,6 +3,7 @@ const Day = require("../src/models/days");
 const School = require("../src/models/school");
 const Student = require("../src/models/student");
 const { Agency } = require("../src/models/agency");
+const { DriverInfo, Driver } = require("../src/models/driver");
 const { Holiday } = require("../src/models/calendar");
 const Rule = require("../src/models/rules");
 const { LevelAcc, Bank } = require("../src/models/levels");
@@ -27,7 +28,7 @@ const textValues = [
 ];
 
 module.exports = async function (mongoose) {
-    const DB = process.env.DB_ADDRESS6;
+    const DB = process.env.DB_ADDRESS7;
     console.log("Database connected to :", DB);
     await mongoose
         .connect(DB)
@@ -36,7 +37,50 @@ module.exports = async function (mongoose) {
         })
         .catch(() => console.log("mongodb dont Connected!!"));
 
-    if (true) {
+    if (false) {
+        const drivers = await Driver.find();
+        await Promise.all(
+            drivers.map(async (dr) => {
+                let driverInfo = await DriverInfo.findOne({ driverId: dr._id });
+                if (!driverInfo) {
+                    await new DriverInfo({
+                        driverId: dr._id,
+                        location: dr.location,
+                        address: dr.address,
+                        birthday: dr.birthday,
+                        healthPic: dr.healthPic,
+                        confirmHealthPic: dr.confirmHealthPic,
+                        technicalDiagPic: dr.technicalDiagPic,
+                        confirmTechincalPic: dr.confirmTechincalPic,
+                        clearancesPic: dr.clearancesPic,
+                        confirmClearPic: dr.confirmClearPic,
+                        dLicencePic: dr.dLicencePic,
+                        confirmDriverLcPic: dr.confirmDriverLcPic,
+                        carDocPic: dr.carDocPic,
+                        confirmcarDocPic: dr.confirmcarDocPic,
+                        isDriverCarOwner: dr.isDriverCarOwner,
+                    }).save();
+                } else if (driverInfo.dLicencePic.trim() === "") {
+                    driverInfo.location = dr.location;
+                    driverInfo.address = dr.address;
+                    driverInfo.birthday = dr.birthday;
+                    driverInfo.healthPic = dr.healthPic;
+                    driverInfo.confirmHealthPic = dr.confirmHealthPic;
+                    driverInfo.technicalDiagPic = dr.technicalDiagPic;
+                    driverInfo.confirmTechincalPic = dr.confirmTechincalPic;
+                    driverInfo.clearancesPic = dr.clearancesPic;
+                    driverInfo.confirmClearPic = dr.confirmClearPic;
+                    driverInfo.dLicencePic = dr.dLicencePic;
+                    driverInfo.confirmDriverLcPic = dr.confirmDriverLcPic;
+                    driverInfo.carDocPic = dr.carDocPic;
+                    driverInfo.confirmcarDocPic = dr.confirmcarDocPic;
+                    driverInfo.isDriverCarOwner = dr.isDriverCarOwner;
+                    await driverInfo.save();
+                }
+            })
+        );
+    }
+    if (false) {
         const authority = await CounterKey.findOne({ name: "authority" });
         if (!authority) {
             await new CounterKey({

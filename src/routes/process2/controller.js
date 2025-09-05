@@ -51,7 +51,7 @@ module.exports = new (class extends controller {
             // console.log("qr",qr)
             const drivers = await this.Driver.find(
                 qr,
-                "userId carId driverCode nationalCode hesab shaba birthday"
+                "userId carId driverCode nationalCode hesab shaba birthday card"
             );
             // console.log("drivers",drivers.length)
             let driverList = [];
@@ -105,11 +105,20 @@ module.exports = new (class extends controller {
                 if (nationalCode.trim().length < 10) {
                     nationalCode = drivers[i].nationalCode;
                 }
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: drivers[i]._id,
+                },'birthday');
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: drivers[i]._id,
+                    });
+                    await driverInfo.save();
+                }
                 driverList.push({
                     driverCode: drivers[i].driverCode,
                     shaba: drivers[i].shaba,
                     hesab: drivers[i].hesab,
-                    birthday: drivers[i].birthday,
+                    birthday: driverInfo.birthday,
                     name,
                     lastName,
                     phone,

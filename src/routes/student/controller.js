@@ -1381,6 +1381,7 @@ module.exports = new (class extends controller {
                 // console.log("school.name", school.name);
                 // console.log("parent.lastName", parent.lastName);
                 let device = 0;
+                let parentDevice = "";
                 if (parent.fcm) {
                     if (parent.fcm.length > 0) {
                         var hasPhone = false;
@@ -1395,8 +1396,14 @@ module.exports = new (class extends controller {
                         if (hasPhone && hasWeb) device = 3;
                         else if (hasPhone) device = 1;
                         else if (hasWeb) device = 2;
+
+                        parentDevice = parent.fcm[0].device;
                     }
                 }
+                const contract = await this.SignedContract.exists({
+                    studentId: students[i]._id,
+                });
+
                 let moreInfo = {
                     agencyName: agencyName,
                     agencyCode: agencyCode,
@@ -1424,6 +1431,8 @@ module.exports = new (class extends controller {
                     parentName: parent.name ?? "",
                     parentLastName: parent.lastName ?? "",
                     parentPhone: parent.phone ?? "",
+                    parentFcm: parentDevice,
+                    contract: contract,
                     device,
                     payOff: payOff,
                     payment: payment,
@@ -1646,6 +1655,7 @@ module.exports = new (class extends controller {
                 // console.log("school.name", school.name);
                 // console.log("parent.lastName", parent.lastName);
                 let device = 0;
+                let parentDevice = "";
                 if (parent.fcm) {
                     if (parent.fcm.length > 0) {
                         var hasPhone = false;
@@ -1660,8 +1670,13 @@ module.exports = new (class extends controller {
                         if (hasPhone && hasWeb) device = 3;
                         else if (hasPhone) device = 1;
                         else if (hasWeb) device = 2;
+
+                        parentDevice = parent.fcm[0].device;
                     }
                 }
+                const contract = await this.SignedContract.exists({
+                    studentId: students[i]._id,
+                });
                 let moreInfo = {
                     agencyName: agencyName,
                     agencyCode: agencyCode,
@@ -1689,6 +1704,8 @@ module.exports = new (class extends controller {
                     parentName: parent.name ?? "",
                     parentLastName: parent.lastName ?? "",
                     parentPhone: parent.phone ?? "",
+                    parentFcm: parentDevice,
+                    contract: contract,
                     device,
                     payOff: payOff,
                     payment: payment,
@@ -2965,6 +2982,28 @@ module.exports = new (class extends controller {
                     data: { fa_m: "شرکت غیرفعال است یا حذف شده" },
                 });
             }
+            const agencySet = await this.AgencySet.findOne(
+                { agencyId },
+                "showPack"
+            );
+            if (agencySet) {
+                if (!agencySet.showPack) {
+                    if (
+                        !(
+                            req.user.isadmin ||
+                            req.user.isAgencyAdmin ||
+                            req.user.isSuperAdmin ||
+                            req.user.isSupport ||
+                            req.user.isSchoolAdmin
+                        )
+                    ) {
+                        return this.response({
+                            res,
+                            data: [],
+                        });
+                    }
+                }
+            }
             let onlySchool = [];
             const schs = await this.School.find({
                 delete: false,
@@ -2994,10 +3033,13 @@ module.exports = new (class extends controller {
                 const school = await this.School.findById(
                     students[i].school,
                     "name location.coordinates gender schoolTime"
-                );
+                ).lean();
                 if (!school) {
                     continue;
                 }
+                school.lat = school.location.coordinates[0];
+                school.lng = school.location.coordinates[1];
+                school.rotaryShift = false;
                 myStudent.push({
                     student: students[i],
                     address: {

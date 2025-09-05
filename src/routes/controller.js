@@ -12,7 +12,7 @@ const { Keys, CounterKey, City, SearchLog } = require("./../models/keys");
 const { Agency, AgencySet } = require("./../models/agency");
 // const Payoff = require("./../models/payoff");
 // const Payment = require("./../models/payment");
-const Driver = require("./../models/driver");
+const {Driver,DriverInfo} = require("./../models/driver");
 const Car = require("./../models/car");
 const {
     Service,
@@ -77,6 +77,7 @@ const { redisClient } = require("../../startup/redis");
 
 module.exports = class {
     constructor() {
+        this.DriverInfo = DriverInfo;
         this.FinnotechUsage = FinnotechUsage;
         this.BankGate = BankGate;
         this.SayadCheque = SayadCheque;

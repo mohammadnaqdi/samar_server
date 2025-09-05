@@ -54,6 +54,7 @@ const driverSchema = new mongoose.Schema(
         isAgent: { type: Boolean, default: false, required: false },
         hesab: { type: String, default: "" },
         shaba: { type: String, default: "" },
+        card: { type: String, default: "" },
         nationalCode: { type: String, default: "" },
         serial: { type: Number, default: 0, required: false },
     },
@@ -63,4 +64,51 @@ const driverSchema = new mongoose.Schema(
 );
 const Driver = mongoose.model("Driver", driverSchema);
 
-module.exports = Driver;
+const driverInfoSchema = new mongoose.Schema(
+    {
+        driverId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Driver",
+            required: true,
+        },
+        location: {
+            type: {
+                type: String,
+                enum: ["Point"],
+                default: "Point",
+                required: false,
+            },
+            coordinates: {
+                type: [Number],
+                index: "2dsphere",
+            },
+        },
+        address: { type: String, required: false, default: "" },
+        birthday: { type: Date, default: Date.now, required: false },
+        expireSh: { type: Date, default: null, required: false },
+        healthPic: { type: String, default: "", required: false },
+        confirmHealthPic: { type: Number, default: 0, required: false },
+        technicalDiagPic: { type: String, default: "", required: false },
+        confirmTechincalPic: { type: Number, default: 0, required: false },
+        clearancesPic: { type: String, default: "", required: false },
+        confirmClearPic: { type: Number, default: 0, required: false },
+        dLicencePic: { type: String, default: "" },
+        confirmDriverLcPic: { type: Number, default: 0, required: false },
+        dLicenceBackPic: { type: String, default: "" },
+        confirmDriverLcBackPic: { type: Number, default: 0, required: false },
+        carDocPic: { type: String, default: "" },
+        confirmcarDocPic: { type: Number, default: 0, required: false },
+        backCarDocPic: { type: String, default: "" },
+        confirmBackCarDocPic: { type: Number, default: 0, required: false },
+        taxiDriverLicense: { type: String, default: "" },
+        insPic: { type: String, default: "" },
+        confirmInsPic: { type: Number, default: 0, required: false },
+        isDriverCarOwner: { type: Boolean, default: true, required: false },
+    },
+    {
+        timestamps: true,
+    }
+);
+const DriverInfo = mongoose.model("DriverInfo", driverInfoSchema);
+
+module.exports = {Driver,DriverInfo};

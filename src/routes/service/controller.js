@@ -818,7 +818,7 @@ module.exports = new (class extends controller {
             for (let service of services) {
                 const driver = await this.Driver.findById(
                     service.driverId,
-                    "driverCode hesab shaba nationalCode"
+                    "driverCode hesab shaba nationalCode card"
                 );
                 let studentIds = [];
                 for (let st of service.student) {

@@ -1288,26 +1288,6 @@ module.exports = new (class extends controller {
 
             let drivers = [];
 
-            // const driversList = await this.Driver.find(
-            //     { agencyId, delete: false },
-            //     "userId driverCode pic active"
-            // );
-            // for (var s in driversList) {
-            //     let user = await this.User.findById(
-            //         driversList[s].userId,
-            //         "name lastName"
-            //     );
-            //     if (!user) continue;
-            //     drivers.push({
-            //         id: driversList[s].id,
-            //         active: driversList[s].active,
-            //         name: user.name,
-            //         lastName: user.lastName,
-            //         driverCode: driversList[s].driverCode,
-            //         pic: driversList[s].pic,
-            //     });
-            // }
-            // const sanadCount=await this.DocSanad.countDocuments({agencyId})
             const sanadCount0 = await this.Student.countDocuments({
                 state: 0,
                 agencyId,
@@ -1773,6 +1753,17 @@ module.exports = new (class extends controller {
             } = req.body;
 
             const setter = req.user._id;
+            const {
+                showPack,
+                needCard,
+                needHesab,
+                needShaba,
+                needHealthPic,
+                needTechnicalDiagPic,
+                needClearancesPic,
+                needCarDocPic,
+                needInsPic,
+            } = req.body;
 
             let agencySet = await this.AgencySet.findOne({
                 agencyId: ObjectId.createFromHexString(agencyId),
@@ -1802,6 +1793,30 @@ module.exports = new (class extends controller {
                     agencySet.formula = formula;
                 if (formulaForStudent != null)
                     agencySet.formulaForStudent = formulaForStudent;
+                if (showPack !== null && showPack != undefined)
+                    agencySet.showPack = showPack;
+                if (needCard !== null && needCard != undefined)
+                    agencySet.needCard = needCard;
+                if (needHesab !== null && needHesab != undefined)
+                    agencySet.needHesab = needHesab;
+                if (needShaba !== null && needShaba != undefined)
+                    agencySet.needShaba = needShaba;
+                if (needHealthPic !== null && needHealthPic != undefined)
+                    agencySet.needHealthPic = needHealthPic;
+                if (
+                    needTechnicalDiagPic !== null &&
+                    needTechnicalDiagPic != undefined
+                )
+                    agencySet.needTechnicalDiagPic = needTechnicalDiagPic;
+                if (
+                    needClearancesPic !== null &&
+                    needClearancesPic != undefined
+                )
+                    agencySet.needClearancesPic = needClearancesPic;
+                if (needCarDocPic !== null && needCarDocPic != undefined)
+                    agencySet.needCarDocPic = needCarDocPic;
+                if (needInsPic !== null && needInsPic != undefined)
+                    agencySet.needInsPic = needInsPic;
             }
             await agencySet.save();
 
