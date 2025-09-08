@@ -16,33 +16,21 @@ module.exports = new (class extends controller {
             for (var sc of schools) {
                 schoolIDs.push(ObjectId.createFromHexString(sc));
             }
-            const students = await this.Student.find(
+            const driverIds = await this.Service.find(
                 {
-                    state: 4,
-                    serviceId: { $gt: 0 },
-                    school: { $in: schoolIDs },
+                    schoolIds: { $in: schools },
                     delete: false,
+                    agencyId,
                 },
-                ""
-            ).distinct("_id");
-
-            if (students.length === 0) {
+                "driverId"
+            ).distinct("driverId");
+            if (driverIds.length === 0) {
                 return this.response({
                     res,
                     code: 404,
-                    message: "not find any",
+                    message: "driverIds not find",
                 });
             }
-            let studentIds = [];
-            for (var st of students) {
-                studentIds.push(st.toString());
-            }
-            const driverIds = await this.Service.find({
-                student: { $in: studentIds },
-                delete: false,
-                active: true,
-                agencyId,
-            }).distinct("driverId");
 
             let qr = { _id: { $in: driverIds }, delete: false };
             if (onlyActive) {
@@ -51,8 +39,8 @@ module.exports = new (class extends controller {
             // console.log("qr",qr)
             const drivers = await this.Driver.find(
                 qr,
-                "userId carId driverCode nationalCode hesab shaba birthday card"
-            );
+                "userId carId driverCode nationalCode hesab shaba card"
+            ).lean();
             // console.log("drivers",drivers.length)
             let driverList = [];
             for (var i = 0; i < drivers.length; i++) {
@@ -62,37 +50,52 @@ module.exports = new (class extends controller {
                 );
                 const car = await this.Car.findById(
                     drivers[i].carId,
-                    "carModel colorCar"
+                    "carModel colorCar pelak"
                 );
-                const serviceSt = await this.Service.find(
-                    { driverId: drivers[i]._id },
-                    "student"
-                );
+
+                const result = await this.Student.aggregate([
+                    {
+                        $match: {
+                            state: 4,
+                            driverCode: drivers[i].driverCode,
+                            delete: false,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            studentCount: { $sum: 1 },
+                            serviceNums: { $addToSet: "$serviceNum" },
+                            schoolIds: { $addToSet: "$school" },
+                        },
+                    },
+                ]);
+
                 let studentCount = 0;
-                let studentIds = [];
-                for (var st of serviceSt) {
-                    studentCount += st.student.length;
-                    for (var stId of st.student) {
-                        studentIds.push(ObjectId.createFromHexString(stId));
+                let serviceNums = [];
+                let schoolNames = [];
+
+                if (result.length > 0) {
+                    studentCount = result[0].studentCount;
+                    serviceNums = result[0].serviceNums;
+
+                    if (result[0].schoolIds.length > 0) {
+                        schoolNames = await this.School.find(
+                            { _id: { $in: result[0].schoolIds } },
+                            "name"
+                        )
+                            .distinct("name")
+                            .lean();
                     }
                 }
-                let schoolNames = [];
-                const schoolIds = await this.Student.find({
-                    _id: { $in: studentIds },
-                }).distinct("school");
-                // console.log("schoolIds",schoolIds)
-                if (schoolIds.length > 0) {
-                    schoolNames = await this.School.find(
-                        { _id: { $in: schoolIds } },
-                        "name"
-                    ).distinct("name");
-                }
+
                 // console.log("schoolNames",schoolNames)
                 let name = "";
                 let lastName = "";
                 let phone = "";
                 let nationalCode = "";
                 let carModel = "";
+                let pelak = "";
                 if (user) {
                     phone = user.phone;
                     nationalCode = user.nationalCode;
@@ -101,13 +104,17 @@ module.exports = new (class extends controller {
                 }
                 if (car) {
                     carModel = car.carModel + " " + car.colorCar;
+                    pelak = car.pelak;
                 }
                 if (nationalCode.trim().length < 10) {
                     nationalCode = drivers[i].nationalCode;
                 }
-                let driverInfo = await this.DriverInfo.findOne({
-                    driverId: drivers[i]._id,
-                },'birthday');
+                let driverInfo = await this.DriverInfo.findOne(
+                    {
+                        driverId: drivers[i]._id,
+                    },
+                    "birthday"
+                );
                 if (!driverInfo) {
                     driverInfo = new this.DriverInfo({
                         driverId: drivers[i]._id,
@@ -124,9 +131,11 @@ module.exports = new (class extends controller {
                     phone,
                     nationalCode,
                     carModel,
+                    pelak,
                     schools: schoolNames,
                     studentCount,
-                    serviceCount: serviceSt.length,
+                    serviceCount: serviceNums.length,
+                    serviceNums,
                 });
             }
             // console.log("driverList",driverList.length)

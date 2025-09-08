@@ -2396,15 +2396,18 @@ module.exports = new (class extends controller {
             const distanceS = req.query.distance || "0";
             const id = req.query.id;
             let distance = parseInt(distanceS);
+            let school = req.query.school;
             if (mongoose.isValidObjectId(id)) {
                 const student = await this.Student.findById(
                     id,
-                    "serviceDistance"
+                    "serviceDistance school"
                 ).lean();
                 if (student) {
                     distance = student.serviceDistance;
+                    school = student.school;
                 }
             }
+            console.log("school",school)
             let invoice = await this.Invoice.findOne(
                 {
                     agencyId: agencyId,
@@ -2423,30 +2426,41 @@ module.exports = new (class extends controller {
                     type: "prePayment",
                     active: true,
                 },
-                "amount title desc distancePrice"
+                "amount title desc distancePrice schools"
             ).lean();
             let amount2 = 0;
 
             if (invoice2) {
-                if (
-                    invoice2.distancePrice &&
-                    invoice2.distancePrice.length > 0
-                ) {
-                    const matchedPricing = invoice2.distancePrice.find(
-                        function (priceItem) {
-                            return priceItem.maxDistance * 1000 >= distance;
+                let findSchool = false;
+                if (invoice2.schools.length > 0 && school && school.toString().trim()!='') {
+                    for(var sc of invoice2.schools){
+                        if(sc.id.toString()===school.toString()){
+                            amount2=sc.amount;
+                            findSchool=true;
                         }
-                    );
-                    if (matchedPricing) {
-                        amount2 = matchedPricing.amount;
-                    } else {
-                        amount2 =
-                            invoice2.distancePrice[
-                                invoice2.distancePrice.length - 1
-                            ].amount;
                     }
-                } else {
-                    amount2 = invoice2.amount;
+                }
+                if (!findSchool) {
+                    if (
+                        invoice2.distancePrice &&
+                        invoice2.distancePrice.length > 0
+                    ) {
+                        const matchedPricing = invoice2.distancePrice.find(
+                            function (priceItem) {
+                                return priceItem.maxDistance * 1000 >= distance;
+                            }
+                        );
+                        if (matchedPricing) {
+                            amount2 = matchedPricing.amount;
+                        } else {
+                            amount2 =
+                                invoice2.distancePrice[
+                                    invoice2.distancePrice.length - 1
+                                ].amount;
+                        }
+                    } else {
+                        amount2 = invoice2.amount;
+                    }
                 }
             }
 

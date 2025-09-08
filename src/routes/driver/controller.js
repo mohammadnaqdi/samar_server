@@ -1143,19 +1143,6 @@ module.exports = new (class extends controller {
                 checkConfirm = true;
             }
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
-            const agency = await this.Agency.findOne({
-                _id: agencyId,
-                delete: false,
-            });
-            if (!agency) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "your agency is delete maybe",
-                    data: { fa_m: "احتمالا شرکت شما حذف شده است" },
-                });
-            }
-
             var qr = [];
             qr.push({ delete: false });
             qr.push({ agencyId });
@@ -1174,44 +1161,139 @@ module.exports = new (class extends controller {
                 // });
             }
 
-            let drivers = await this.Driver.find({ $and: qr });
+            let drivers = await this.Driver.aggregate([
+                { $match: { $and: qr } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "userId",
+                        foreignField: "_id",
+                        as: "user",
+                        pipeline: [
+                            { $project: { phone: 1, name: 1, lastName: 1 } },
+                        ],
+                    },
+                },
+                { $unwind: "$user" },
+                {
+                    $lookup: {
+                        from: "cars",
+                        localField: "carId",
+                        foreignField: "_id",
+                        as: "car",
+                        pipeline: [
+                            {
+                                $project: {
+                                    pelak: 1,
+                                    colorCar: 1,
+                                    carModel: 1,
+                                    capacity: 1,
+                                },
+                            },
+                        ],
+                    },
+                },
+                { $unwind: "$car" },
+                {
+                    $lookup: {
+                        from: "services",
+                        let: { driverId: "$_id" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ["$driverId", "$$driverId"] },
+                                    active: true,
+                                    delete: false,
+                                },
+                            },
+                            { $count: "count" },
+                        ],
+                        as: "services",
+                    },
+                },
+                {
+                    $addFields: {
+                        services: {
+                            $ifNull: [
+                                { $arrayElemAt: ["$services.count", 0] },
+                                0,
+                            ],
+                        },
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "students",
+                        let: { driverCode: "$driverCode" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $eq: ["$driverCode", "$$driverCode"],
+                                    },
+                                    state: 4,
+                                    delete: false,
+                                },
+                            },
+                            {
+                                $group: {
+                                    _id: null,
+                                    schoolIds: { $addToSet: "$school" },
+                                },
+                            },
+                        ],
+                        as: "studentSchools",
+                    },
+                },
+                {
+                    $addFields: {
+                        schoolIds: {
+                            $ifNull: [
+                                {
+                                    $arrayElemAt: [
+                                        "$studentSchools.schoolIds",
+                                        0,
+                                    ],
+                                },
+                                [],
+                            ],
+                        },
+                    },
+                },
+                {
+                    $project: {
+                        birthday: 0,
+                        updatedAt: 0,
+                        createdAt: 0,
+                        serial: 0,
+                        nationalCode: 0,
+                        active: 0,
+                        delete: 0,
+                        isDriverCarOwner: 0,
+                        confirmPic: 0,
+                        healthPic: 0,
+                        confirmHealthPic: 0,
+                        technicalDiagPic: 0,
+                        confirmTechincalPic: 0,
+                        clearancesPic: 0,
+                        confirmClearPic: 0,
+                        dLicencePic: 0,
+                        carDocPic: 0,
+                        confirmDriverLcPic: 0,
+                        confirmcarDocPic: 0,
+                        isAgent: 0,
+                        carDocPic: 0,
+                        carDocPic: 0,
+                        location: 0,
+                        carId: 0,
+                        userId: 0,
+                        agencyId: 0,
+                        __v: 0,
+                        studentSchools: 0,
+                    },
+                },
+            ]);
 
-            for (var i = 0; i < drivers.length; i++) {
-                // console.log(JSON.stringify(students[i]));
-                const user = await this.User.findById(
-                    drivers[i].userId,
-                    "phone name lastName"
-                );
-                const car = await this.Car.findById(
-                    drivers[i].carId,
-                    "pelak colorCar carModel capacity"
-                );
-                if (!car || !user) continue;
-                let services = await this.Service.countDocuments({
-                    driverId: drivers[i].id,
-                    active: true,
-                    delete: false,
-                });
-
-                if (user) {
-                    drivers[i].moreData = {
-                        phone: user.phone,
-                        name: user.name,
-                        lastName: user.lastName,
-                    };
-                }
-                if (car) {
-                    drivers[i].moreData.pelak = car.pelak;
-                    drivers[i].moreData.colorCar = car.colorCar;
-                    drivers[i].moreData.carModel = car.carModel;
-                    drivers[i].moreData.capacity = car.capacity ?? 0;
-                }
-                drivers[i].moreData.services = services;
-                delete drivers[i].carId;
-                delete drivers[i].userId;
-                delete drivers[i].agencyId;
-                delete drivers[i].__v;
-            }
             return this.response({
                 res,
                 data: drivers,
@@ -3493,20 +3575,23 @@ module.exports = new (class extends controller {
                         );
                         const car = await this.Car.findById(
                             drivers[i].carId,
-                            "carModel colorCar"
+                            "carModel colorCar pelak"
                         );
                         let name = "";
                         let phone = "";
                         let carModel = "";
+                        let pelak = "";
                         if (user) {
                             phone = user.phone;
                             name = user.name + " " + user.lastName;
                         }
                         if (car) {
                             carModel = car.carModel + " " + car.colorCar;
+                            pelak = car.pelak;
                         }
                         driverList.push({
                             driverCode: drivers[i].driverCode,
+                            pelak: pelak,
                             carModel: carModel,
                             name: name,
                             phone: phone,

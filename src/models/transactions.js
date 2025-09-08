@@ -137,7 +137,19 @@ const invoiceSchema = new mongoose.Schema(
         amount: { type: Number, required: true },
         title: { type: String, required: true },
         desc: { type: String, default: "" },
-        schools: [],
+        schools: {
+            type: [
+                {
+                    name: String,
+                    amount: Number,
+                    id: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "School",
+                    },
+                },
+            ],
+            default: [],
+        },
         distancePrice: {
             type: [{ maxDistance: Number, amount: Number }],
             default: [],

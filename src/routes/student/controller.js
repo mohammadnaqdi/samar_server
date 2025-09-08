@@ -390,7 +390,6 @@ module.exports = new (class extends controller {
                 payQueue.payDate = new Date();
                 await payQueue.save({ session });
 
-                // ✅ PrePayment invoice
                 const invoice2 = await this.Invoice.findOne(
                     {
                         agencyId: sch.agencyId,
@@ -402,13 +401,24 @@ module.exports = new (class extends controller {
                 );
                 if (invoice2) {
                     let amount2 = invoice2.amount;
-                    if (invoice2.distancePrice?.length > 0) {
-                        const matchedPricing = invoice2.distancePrice.find(
-                            (p) => p.maxDistance * 1000 >= serviceDistance
-                        );
-                        amount2 = matchedPricing
-                            ? matchedPricing.amount
-                            : invoice2.distancePrice.at(-1).amount;
+                    let findSchool = false;
+                    if (invoice2.schools.length > 0) {
+                        for (var sc of invoice2.schools) {
+                            if (sc.id.toString() === school.toString()) {
+                                amount2 = sc.amount;
+                                findSchool = true;
+                            }
+                        }
+                    }
+                    if (!findSchool) {
+                        if (invoice2.distancePrice?.length > 0) {
+                            const matchedPricing = invoice2.distancePrice.find(
+                                (p) => p.maxDistance * 1000 >= serviceDistance
+                            );
+                            amount2 = matchedPricing
+                                ? matchedPricing.amount
+                                : invoice2.distancePrice.at(-1).amount;
+                        }
                     }
                     let payQueue2 = new this.PayQueue({
                         inVoiceId: invoice2._id,
