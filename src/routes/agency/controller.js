@@ -2412,21 +2412,34 @@ module.exports = new (class extends controller {
             }
 
             const agencyId = req.query.agencyId;
+            const agency = await this.Agency.findById(
+                agencyId,
+                "paySeparation"
+            );
+            if (!agency) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "agency not find",
+                });
+            }
+            const paySeparation = agency.paySeparation || false;
             const distanceS = req.query.distance || "0";
             const id = req.query.id;
             let distance = parseInt(distanceS);
             let school = req.query.school;
+            let student;
             if (mongoose.isValidObjectId(id)) {
-                const student = await this.Student.findById(
+                student = await this.Student.findById(
                     id,
-                    "serviceDistance school"
+                    "serviceDistance school studentCode"
                 ).lean();
                 if (student) {
                     distance = student.serviceDistance;
                     school = student.school;
                 }
             }
-            console.log("school", school);
+
             let invoice = await this.Invoice.findOne(
                 {
                     agencyId: agencyId,
@@ -2436,8 +2449,47 @@ module.exports = new (class extends controller {
                 "amount title desc"
             ).lean();
             let amount = 0;
+            let payQueue;
             if (invoice) {
                 amount = invoice.amount;
+                if (student)
+                    payQueue = await this.PayQueue.findOne(
+                        {
+                            studentId: student._id,
+                            inVoiceId: invoice._id,
+                        },
+                        "isPaid refId code"
+                    ).lean();
+                if (
+                    payQueue &&
+                    payQueue.isPaid &&
+                    payQueue.refId.toString().trim() === ""
+                ) {
+                    const doclistSanad = await this.DocListSanad.findOne(
+                        {
+                            $and: [
+                                {
+                                    $or: [
+                                        {
+                                            accCode:
+                                                "003005" + student.studentCode,
+                                        },
+                                        {
+                                            forCode:
+                                                "003005" + student.studentCode,
+                                        },
+                                    ],
+                                },
+                                { mId: payQueue.code },
+                                { type: "invoice" },
+                            ],
+                        },
+                        "doclistId"
+                    ).lean();
+                    if (doclistSanad) {
+                        payQueue.refId = doclistSanad.doclistId.toString();
+                    }
+                }
             }
             let invoice2 = await this.Invoice.findOne(
                 {
@@ -2448,6 +2500,7 @@ module.exports = new (class extends controller {
                 "amount title desc distancePrice schools"
             ).lean();
             let amount2 = 0;
+            let payQueue2;
 
             if (invoice2) {
                 let findSchool = false;
@@ -2485,6 +2538,64 @@ module.exports = new (class extends controller {
                         amount2 = invoice2.amount;
                     }
                 }
+                if (
+                    amount2 > 0 &&
+                    payQueue != null &&
+                    payQueue.isPaid &&
+                    payQueue.refId.toString().trim() != ""
+                ) {
+                    payQueue2 = await this.PayQueue.findOne(
+                        {
+                            inVoiceId: invoice2._id,
+                            studentId: student._id,
+                        },
+                        "isPaid refId code"
+                    );
+                    if (!payQueue2) {
+                        payQueue2 = new this.PayQueue({
+                            inVoiceId: invoice2._id,
+                            code: invoice2.code,
+                            agencyId: agencyId,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice2.type,
+                            amount: amount2,
+                            title: invoice2.title,
+                            maxDate: invoice2.maxDate,
+                        });
+                        await payQueue2.save();
+                    } else if (payQueue2.isPaid) {
+                        const doclistSanad = await this.DocListSanad.findOne(
+                            {
+                                $and: [
+                                    {
+                                        $or: [
+                                            {
+                                                accCode:
+                                                    "003005" +
+                                                    student.studentCode,
+                                            },
+                                            {
+                                                forCode:
+                                                    "003005" +
+                                                    student.studentCode,
+                                            },
+                                        ],
+                                    },
+                                    { mId: payQueue2.code },
+                                    { type: "invoice" },
+                                ],
+                            },
+                            "doclistId"
+                        ).lean();
+                        if (doclistSanad) {
+                            payQueue.refId = doclistSanad.doclistId.toString();
+                        } else {
+                            payQueue2.isPaid = false;
+                            await payQueue2.save();
+                        }
+                    }
+                }
             }
 
             return this.response({
@@ -2495,6 +2606,9 @@ module.exports = new (class extends controller {
                     invoice,
                     invoice2,
                     canPayOnline: true,
+                    paySeparation,
+                    payQueue,
+                    payQueue2,
                 },
             });
         } catch (error) {

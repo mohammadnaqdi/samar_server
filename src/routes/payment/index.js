@@ -23,7 +23,12 @@ router.post(
 
 router.get("/Payment", isLoggined, controller.payment.bind(controller));
 router.get("/Payment2", isLoggined, controller.payment2.bind(controller));
-router.get("/PrePaymentLink", isLoggined, controller.prePaymentLink.bind(controller));
+router.get(
+    "/PrePaymentLink",
+    isLoggined,
+    controller.prePaymentLink.bind(controller)
+);
+router.get("/PaymentLink", isLoggined, controller.paymentLink.bind(controller));
 router.get("/PaymentCo", isLoggined, controller.paymentCo.bind(controller));
 
 router.get(
@@ -48,7 +53,7 @@ router.post(
 router.post(
     "/SetInstallmentByParent",
     isLoggined,
-        validator.setInstallmentByParentValidator(),
+    validator.setInstallmentByParentValidator(),
     controller.validate.bind(controller),
     controller.setInstallmentByParent.bind(controller)
 );

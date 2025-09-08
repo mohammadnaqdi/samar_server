@@ -20,6 +20,11 @@ const transSchema = new mongoose.Schema(
             ref: "Agency",
             default: null,
         },
+        payQueueId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "PayQueue",
+            default: null,
+        },
         bank: { type: String, default: "" },
         authority: { type: String, unique: true },
         authorityZarin: { type: String, default: "" },

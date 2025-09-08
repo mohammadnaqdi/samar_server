@@ -1116,6 +1116,23 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async setPaySeparationActive(req, res) {
+        try {
+            const agencyId = req.query.agencyId;
+            const active = req.query.active || "false";
+            console.log("active", active);
+            const paySeparation = active === "active";
+            console.log("paySeparation", paySeparation);
+            await this.Agency.findByIdAndUpdate(agencyId, { paySeparation });
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("setPaySeparationActive function error:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async getRule(req, res) {
         try {
