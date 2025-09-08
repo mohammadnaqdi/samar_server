@@ -238,7 +238,7 @@ module.exports = new (class extends controller {
 
             // const response2 = await axios.get(url2, options2);
 
-            // console.log("response2",response);
+            // console.log("response2",response2);
             // const data2 = response2.data;
             const data = response.data;
             let routing = {};

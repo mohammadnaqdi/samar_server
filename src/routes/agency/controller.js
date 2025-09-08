@@ -1217,7 +1217,6 @@ module.exports = new (class extends controller {
                 });
             }
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
-            console.log("agencyId", agencyId);
             const agency = await this.Agency.findOne(
                 {
                     $and: [
@@ -1288,6 +1287,26 @@ module.exports = new (class extends controller {
 
             let drivers = [];
 
+            // const driversList = await this.Driver.find(
+            //     { agencyId, delete: false },
+            //     "userId driverCode pic active"
+            // );
+            // for (var s in driversList) {
+            //     let user = await this.User.findById(
+            //         driversList[s].userId,
+            //         "name lastName"
+            //     );
+            //     if (!user) continue;
+            //     drivers.push({
+            //         id: driversList[s].id,
+            //         active: driversList[s].active,
+            //         name: user.name,
+            //         lastName: user.lastName,
+            //         driverCode: driversList[s].driverCode,
+            //         pic: driversList[s].pic,
+            //     });
+            // }
+            // const sanadCount=await this.DocSanad.countDocuments({agencyId})
             const sanadCount0 = await this.Student.countDocuments({
                 state: 0,
                 agencyId,
@@ -2407,7 +2426,7 @@ module.exports = new (class extends controller {
                     school = student.school;
                 }
             }
-            console.log("school",school)
+            console.log("school", school);
             let invoice = await this.Invoice.findOne(
                 {
                     agencyId: agencyId,
@@ -2432,11 +2451,15 @@ module.exports = new (class extends controller {
 
             if (invoice2) {
                 let findSchool = false;
-                if (invoice2.schools.length > 0 && school && school.toString().trim()!='') {
-                    for(var sc of invoice2.schools){
-                        if(sc.id.toString()===school.toString()){
-                            amount2=sc.amount;
-                            findSchool=true;
+                if (
+                    invoice2.schools.length > 0 &&
+                    school &&
+                    school.toString().trim() != ""
+                ) {
+                    for (var sc of invoice2.schools) {
+                        if (sc.id.toString() === school.toString()) {
+                            amount2 = sc.amount;
+                            findSchool = true;
                         }
                     }
                 }

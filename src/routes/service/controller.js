@@ -1184,7 +1184,7 @@ module.exports = new (class extends controller {
                 userId: req.user._id,
                 name: req.user.name + " " + req.user.lastName,
                 agencyId: service.agencyId,
-                targetIds: '',
+                targetIds: "",
                 targetTable: "student",
                 sanadId: 0,
                 actionName: "deleteService",

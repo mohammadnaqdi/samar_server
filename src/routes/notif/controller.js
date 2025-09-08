@@ -371,7 +371,6 @@ module.exports = new (class extends controller {
             if (agencyId.length < 10) {
                 agencyId = null;
             }
-            console.log("agencyId", agencyId);
             if (!(type === "ads" || type === "msg" || type === "warning")) {
                 return this.response({
                     res,

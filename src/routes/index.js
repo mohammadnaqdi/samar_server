@@ -1,10 +1,10 @@
-var soap = require("soap");
-const { promisify } = require("util");
+const path = require("path");
+const fs = require("fs");
 const express = require("express");
 const router = express.Router();
-const axios = require("axios");
 const authRouter = require("./auth");
 const userRouter = require("./user");
+const contractRouter = require("./contract");
 const studentRouter = require("./student");
 const student2Router = require("./student2");
 const schoolRouter = require("./school");
@@ -38,6 +38,7 @@ const Versionsoft = require("./../models/versionsoft");
 
 router.use("/auth", authRouter);
 
+router.use("/contract", contractRouter);
 router.use("/user", isLoggined, userRouter);
 router.use("/student", isLoggined, studentRouter);
 router.use("/student2", isLoggined, student2Router);
@@ -68,6 +69,31 @@ router.use("/finnotech", finnotechRouter);
 router.use("/admin", isLoggined, isEnyAdmin, adminRouter);
 
 const { redisClient } = require("../../startup/redis");
+
+router.get("/download", (req, res) => {
+    const { data } = req.query;
+    const filePath = path.join(__basedir, `/documents/${data}`);
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "File not found" });
+    }
+
+    if (data.includes("zip")) {
+        res.setHeader("Content-Type", "application/zip");
+    } else {
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        );
+    }
+
+    return res.download(filePath, data, (err) => {
+        if (err) {
+            console.error("Error sending file:", err);
+            res.status(500).json({ error: "Failed to send file" });
+        }
+    });
+});
 
 router.get("/getApp", getLatest);
 async function getLatest(req, res) {

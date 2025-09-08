@@ -21,6 +21,25 @@ const userPassMellat = 15806659;
 const urlVerifySaderat = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
 const urlVerifyMellat = "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl";
 
+async function calculateFee(merchant_id, amount) {
+    try {
+        const response = await axios.post(
+            "https://payment.zarinpal.com/pg/v4/payment/feeCalculation.json",
+            {
+                merchant_id,
+                amount,
+                currency: "IRR",
+            }
+        );
+        console.log("کارمزد:", response.data.data.fee, "ریال");
+
+        return response.data.data.suggested_amount;
+    } catch (error) {
+        console.error("خطا در محاسبه کارمزد:", error.response.data);
+        return 0;
+    }
+}
+
 function getDate() {
     const now = new Date();
 
@@ -3006,8 +3025,10 @@ module.exports = new (class extends controller {
                     if (typeBank === "ZARIN") {
                         let response;
                         const zarinpal = Zarin.create(bankGate.terminal, false);
+                        const am = transAction.amount + transAction.zarinFee;
+                        amount = transAction.amount;
                         response = await zarinpal.PaymentVerification({
-                            Amount: transAction.amount / 10,
+                            Amount: am / 10,
                             Authority: authority,
                         });
                         // console.log("response", response);
@@ -3019,7 +3040,7 @@ module.exports = new (class extends controller {
                             )
                         ) {
                             response = await zarinpal.PaymentVerification({
-                                Amount: transAction.amount,
+                                Amount: am,
                                 Authority: authority,
                             });
                             // console.log("response", response);
@@ -3034,6 +3055,7 @@ module.exports = new (class extends controller {
                         }
                     }
 
+                    // console.log("tr amount", amount);
                     // Update transaction
                     const tr = await this.Transactions.findByIdAndUpdate(
                         transAction._id,
@@ -3049,6 +3071,7 @@ module.exports = new (class extends controller {
                         },
                         { new: true, session }
                     );
+                    // console.log("tr after", tr);
 
                     if (!tr) {
                         throw new Error("Transaction not found");
@@ -3342,7 +3365,6 @@ module.exports = new (class extends controller {
             await session.endSession();
         }
     }
-    
 })();
 
 function financial(x) {

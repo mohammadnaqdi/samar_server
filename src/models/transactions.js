@@ -30,6 +30,7 @@ const transSchema = new mongoose.Schema(
         cardnumber: { type: String, default: "" },
         refID: { type: String, default: "" },
         amount: { type: Number, required: true },
+        zarinFee: { type: Number, default: 0 },
         stCode: { type: String, required: true },
         queueCode: { type: Number, required: true },
         state: { type: Number, default: 0 },

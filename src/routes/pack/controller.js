@@ -71,7 +71,7 @@ async function buildPack(
                 query: {
                     packed: false,
                     isIn: false,
-                    //dodo  state:3,
+                    state: 3,
                     school: { $in: schoolIds },
                     gradeId: { $in: grades },
                     time: time,
@@ -263,7 +263,7 @@ module.exports = new (class extends controller {
                 await this.Student.updateMany(
                     {
                         pack: pack.code,
-                        //dodo state:3
+                        state: 3,
                     },
                     { pack: -1, exception: false, packed: false, isIn: false }
                 );
@@ -555,7 +555,7 @@ module.exports = new (class extends controller {
                     await this.Student.updateMany(
                         {
                             pack: pack.code,
-                            //dodo state:3
+                            state: 3,
                         },
                         {
                             pack: -1,
@@ -819,7 +819,7 @@ module.exports = new (class extends controller {
                                 time,
                                 packed: false,
                                 isIn: false,
-                                //dodo  state:3
+                                state: 3,
                             },
                         },
                     },

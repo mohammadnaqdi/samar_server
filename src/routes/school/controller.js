@@ -191,7 +191,7 @@ module.exports = new (class extends controller {
                     const count = await this.Student.countDocuments({
                         school: school._id,
                         delete: false,
-                        //dodo state:3,
+                        state: 3,
                         packed: false,
                     });
                     schoolOb.studentNeedpack = count;
@@ -380,13 +380,21 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-
     async schoolSimpleList(req, res) {
         try {
             if (req.query.agencyId && req.query.agencyId !== "") {
                 const agencyId = req.query.agencyId;
+                const myAgency = await this.Agency.findById(agencyId);
+                if (!myAgency) {
+                    return this.response({
+                        res,
+                        code: 404,
+                        message: "not active agency",
+                        data: { fa_m: "شرکت غیرفعال یا حذف شده" },
+                    });
+                }
                 const schools = await this.School.find(
-                    { delete: false, agencyId },
+                    { delete: false, agencyId: myAgency._id },
                     "name"
                 );
                 return this.response({

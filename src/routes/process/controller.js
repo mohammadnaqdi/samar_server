@@ -821,7 +821,6 @@ module.exports = new (class extends controller {
                 agencyId != "null" &&
                 agencyId != null
             ) {
-                console.log("agencyId", agencyId);
                 if (agencyId != null) {
                     onlySchool = await this.School.find({ agencyId }).distinct(
                         "_id"

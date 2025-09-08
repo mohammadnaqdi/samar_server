@@ -448,7 +448,6 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "insertstudent error" });
         }
     }
-
     async setStudent(req, res) {
         try {
             let id = req.body.id;
@@ -1268,7 +1267,7 @@ module.exports = new (class extends controller {
             if (gender != 0) {
                 qr.push({ gender });
             }
-            console.log(JSON.stringify(qr));
+            // console.log(JSON.stringify(qr));
             let sortBy = { studentCode: -1 };
             if (minState === 4 && maxState === 4) {
                 sortBy = { serviceNum: -1, _id: 1 };
@@ -2337,7 +2336,8 @@ module.exports = new (class extends controller {
             var qr = {
                 delete: false,
                 packed: true,
-                pack: { $in: onlyPack }, //dodo state: 3
+                pack: { $in: onlyPack },
+                state: 3,
             };
             if (req.query.schoolId && req.query.schoolId.trim() !== "") {
                 qr.school = ObjectId.createFromHexString(req.query.schoolId);

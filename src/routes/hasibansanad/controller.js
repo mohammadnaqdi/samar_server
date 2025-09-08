@@ -558,9 +558,9 @@ module.exports = new (class extends controller {
             });
             await doc.save({ session });
 
-            console.log("doc.sanadId", doc.sanadId);
-            console.log("wallet", wallet);
-            console.log("charge", charge);
+            // console.log("doc.sanadId", doc.sanadId);
+            // console.log("wallet", wallet);
+            // console.log("charge", charge);
 
             await new this.DocListSanad({
                 agencyId,

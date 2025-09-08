@@ -23,6 +23,25 @@ function getDate() {
     return { localDate, localTime };
 }
 
+async function calculateFee(merchant_id, amount) {
+    try {
+        const response = await axios.post(
+            "https://payment.zarinpal.com/pg/v4/payment/feeCalculation.json",
+            {
+                merchant_id,
+                amount,
+                currency: "IRR",
+            }
+        );
+        console.log("کارمزد:", response.data.data.fee, "ریال");
+
+        return response.data.data.fee;
+    } catch (error) {
+        console.error("خطا در محاسبه کارمزد:", error.response.data);
+        return 0;
+    }
+}
+
 async function generateMellatToken(
     amount,
     orderId,
@@ -99,6 +118,15 @@ async function generateSepehrToken(
         }
         const URL = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/GetToken";
 
+        let payload = "";
+        if (terminalID === "45028996") {
+            payload = {
+                Slist: [
+                    { Iban: "IR890120000000009028512987", amount: "10000" },
+                ],
+            };
+        }
+
         const data = {
             Amount: amount,
             callbackUrl: `https://server.mysamar.ir/api/pay/${link}`,
@@ -118,7 +146,7 @@ async function generateSepehrToken(
         if (response.data.Status === 0) {
             return response.data.Accesstoken;
         }
-        console.log("response", response.data);
+        console.log("response2222", response.data);
         return null;
     } catch (error) {
         console.error("Error while generating sepehr bank token:", error);
@@ -147,6 +175,23 @@ async function generateMehrToken(
             MobileNo: mobileNo,
             UserId: mobileNo,
         };
+
+        if (amount == "100000") {
+            body.ApportionmentAccountList = [
+                {
+                    AccountIBAN: "IR120600720870003852998001",
+                    Amount: "70000",
+                    ApportionmentAccountType: "enMain",
+                },
+                {
+                    AccountIBAN: "IR700620000000102175497006",
+                    Amount: "30000",
+                    ApportionmentAccountType: "enOther",
+                },
+            ];
+
+            console.log("ours");
+        }
 
         const response = await axios.post(
             "https://fcp.shaparak.ir/ref-payment/RestServices/mts/generateTokenWithNoSign/",
@@ -359,17 +404,26 @@ module.exports = new (class extends controller {
             });
         }
 
-        console.log("amount", amount);
-        console.log("amount2", amount2);
-        console.log("desc", desc);
+        const newAmount = Math.ceil(amount + amount2);
+
+        // console.log("amount", amount);
+        // console.log("amount2", amount2);
+        // console.log("desc", desc);
         // if (bankGate.type === "MEHR" || bankGate.type === "SAMAN") {
         //     amount = 5000;
         //     amount2 = 5000;
         // }
+        // if (
+        //     req.user._id == "686e0cf5ee410a203824a9d5" ||
+        //     req.user._id == "687e1a4464a746341a0085b5"
+        // ) {
+        //     amount = 20000;
+        //     amount2 = 80000;
+        // }
         try {
             let newTr = new this.Transactions({
                 userId: req.user._id,
-                amount: amount + amount2,
+                amount: newAmount,
                 bank: bankGate.type,
                 desc,
                 queueCode: 0,
@@ -382,7 +436,7 @@ module.exports = new (class extends controller {
             if (bankGate.type === "SADERAT") {
                 //**********************************************SADERAT******************************************************* */
                 let token = await generateSepehrToken(
-                    amount + amount2,
+                    newAmount,
                     newTr.authority,
                     "callBack",
                     req.user.phone,
@@ -401,7 +455,7 @@ module.exports = new (class extends controller {
             } else if (bankGate.type === "MELLAT") {
                 //**********************************************MELLAT******************************************************* */
                 let token = await generateMellatToken(
-                    amount + amount2,
+                    newAmount,
                     newTr.authority,
                     "0",
                     bankGate.terminal,
@@ -429,14 +483,21 @@ module.exports = new (class extends controller {
             } else if (bankGate.type === "ZARIN") {
                 //**********************************************ZARIN******************************************************* */
                 const zarinpal = Zarin.create(bankGate.terminal, false);
+                let fee = await calculateFee(bankGate.terminal, newAmount);
+                console.log("fee", fee);
+                const am = newAmount / 10 + fee / 10;
+                console.log("amount with fee", am);
                 const response = await zarinpal.PaymentRequest({
-                    Amount: (amount + amount2) / 10,
+                    Amount: Math.ceil(am),
                     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
                     CallbackURL: `https://server.mysamar.ir/api/pay/callBack`,
                     Description: desc,
                     Email: "",
                     Mobile: req.user.phone,
                 });
+                console.log("response", response);
+                newTr.zarinFee = fee;
+                await newTr.save();
                 if (response.status === 100) {
                     newTr.authorityZarin = response.authority;
                     await newTr.save();
@@ -453,13 +514,13 @@ module.exports = new (class extends controller {
             } else if (bankGate.type === "MEHR") {
                 //**********************************************MEHR******************************************************* */
                 let token = await generateMehrToken(
-                    amount + amount2,
+                    newAmount,
                     newTr.authority,
                     bankGate.userName,
                     bankGate.userPass,
                     req.user.phone
                 );
-                console.log("token mehr", token);
+                // console.log("token mehr", token);
                 if (!token) {
                     return res.status(201).json({
                         message: `خطای بانک ${bankGate.bankName}`,
@@ -473,7 +534,7 @@ module.exports = new (class extends controller {
             } else if (bankGate.type === "SAMAN") {
                 //**********************************************SAMAN******************************************************* */
                 let token = await generateSamanToken(
-                    amount + amount2,
+                    newAmount,
                     newTr.authority,
                     bankGate.terminal
                 );
@@ -596,8 +657,8 @@ module.exports = new (class extends controller {
             });
         }
 
-        console.log("amount", amount);
-        console.log("desc", desc);
+        // console.log("amount", amount);
+        // console.log("desc", desc);
         try {
             const bankGate = await this.BankGate.findOne({
                 agencyId,
