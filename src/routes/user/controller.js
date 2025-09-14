@@ -669,7 +669,7 @@ module.exports = new (class extends controller {
                 ) {
                     return this.response({
                         res,
-                        code: 204,
+                        code: 604,
                         message: "set user is in troble",
                         data: user,
                     });
@@ -769,9 +769,8 @@ module.exports = new (class extends controller {
                 ) {
                     return this.response({
                         res,
-                        code: 204,
+                        code: 604,
                         message: "set user be wrong",
-                        data: user,
                     });
                 }
             }
@@ -791,9 +790,10 @@ module.exports = new (class extends controller {
                 user.name = name;
                 user.lastName = lastName;
                 user.isSupport = isAdmin;
-                // user.ban = banList;
+                user.ban = banList;
                 user.userName = userName;
                 if (changePass) user.password = password;
+                await user.save();
                 if (isAdmin) {
                     await this.Agency.findByIdAndUpdate(agencyId, {
                         $push: { users: user._id },
@@ -804,7 +804,6 @@ module.exports = new (class extends controller {
                     });
                 }
 
-                await user.save();
                 if (isManager) {
                     await this.Agency.findByIdAndUpdate(agency._id, {
                         manager: user._id,
@@ -827,7 +826,7 @@ module.exports = new (class extends controller {
                 name: name,
                 isSupport: isAdmin,
                 lastName: lastName,
-                banList,
+                ban: banList,
             });
             await user.save();
             await this.updateRedisDocument(`user:${user._id}`, user.toObject());
