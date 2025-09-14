@@ -99,6 +99,10 @@ router.delete(
     "/RemoveDocBySanadNum2",isEnyAdmin,
     controller.removeDocBySanadNum2.bind(controller),
 );
+router.delete(
+    "/RemoveDocBySanadNumAgency",
+    controller.removeDocBySanadNumAgency.bind(controller),
+);
 
 
 

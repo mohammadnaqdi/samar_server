@@ -21,8 +21,8 @@ router.post(
     controller.insertInvoice.bind(controller)
 );
 
-router.get("/Payment", isLoggined, controller.payment.bind(controller));
-router.get("/Payment2", isLoggined, controller.payment2.bind(controller));
+// router.get("/Payment", isLoggined, controller.payment.bind(controller));
+// router.get("/Payment2", isLoggined, controller.payment2.bind(controller));
 router.get(
     "/PrePaymentLink",
     isLoggined,

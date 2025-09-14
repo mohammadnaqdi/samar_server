@@ -157,6 +157,23 @@ const bankGateSchema = new mongoose.Schema(
         terminal: { type: String, default: "" },
         userName: { type: String, default: "" },
         userPass: { type: String, default: "" },
+        // schoolCards: {
+        //     type: [
+        //         {
+        //             schoolId: {
+        //                 type: mongoose.Schema.Types.ObjectId,
+        //                 ref: "School",
+        //             },
+        //             schoolName: { type: String },
+        //             bankName: { type: String },
+        //             bankCode: { type: String },
+        //             name: { type: String },
+        //             card: { type: String },
+        //             sheba: { type: String },
+        //         },
+        //     ],
+        //     default: [],
+        // },
         hesab: { type: String, required: true },
         active: { type: Boolean, default: true },
         personal: { type: Boolean, default: false },

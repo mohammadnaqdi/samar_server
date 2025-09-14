@@ -132,7 +132,7 @@ module.exports = new (class extends controller {
             if (!req.query.studentId || req.query.studentId.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "studentId needed!",
                 });
             }
@@ -211,7 +211,7 @@ module.exports = new (class extends controller {
             if (!req.query.id || req.query.id.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id needed!",
                 });
             }
@@ -497,7 +497,7 @@ module.exports = new (class extends controller {
             if (!req.query.studentId || req.query.studentId.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "studentId needed!",
                 });
             }

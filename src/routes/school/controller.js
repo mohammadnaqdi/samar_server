@@ -214,7 +214,7 @@ module.exports = new (class extends controller {
     async nearSchoolList(req, res) {
         try {
             const agencyId = req.body.agencyId;
-            const maxDistance = req.body.maxDistance || 20000;
+            const maxDistance = req.body.maxDistance || 40000;
             let limit = req.body.limit || 10;
             // console.log("limit",limit);
             const search = req.body.search.trim();
@@ -240,7 +240,7 @@ module.exports = new (class extends controller {
             if (gradeId < 0) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "gradeId is not correct",
                 });
             }
@@ -766,7 +766,7 @@ module.exports = new (class extends controller {
             ) {
                 this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "schoolId time need!",
                 });
                 return;
@@ -807,7 +807,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "studentId agencyId need!",
                 });
             }

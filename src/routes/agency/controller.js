@@ -54,7 +54,7 @@ module.exports = new (class extends controller {
     //             if (drv) {
     //                 return this.response({
     //                     res,
-    //                     code: 204,
+    //                     code: 604,
     //                     message: "Code is exist before",
     //                     data: { fa_m: "کد وارد شده برای شرکت تکراری است!" },
     //                 });
@@ -87,7 +87,7 @@ module.exports = new (class extends controller {
     //         if (!user && id != 0) {
     //             return this.response({
     //                 res,
-    //                 code: 204,
+    //                 code: 604,
     //                 message: "user inot find by phone",
     //                 data: {
     //                     fa_m: "از این api فقط میتونید مقادیر را تغییر دهید",
@@ -559,7 +559,7 @@ module.exports = new (class extends controller {
             //     if (drv) {
             //         return this.response({
             //             res,
-            //             code: 204,
+            //             code: 604,
             //             message: "Code is exist before",
             //             data: { fa_m: "کد وارد شده برای شرکت تکراری است!" },
             //         });
@@ -1057,7 +1057,7 @@ module.exports = new (class extends controller {
 
             return this.response({
                 res,
-                code: 204,
+                code: 604,
                 message: "school has service",
                 data: { fa_m: "دانش آموزی در این شرکت داری سرویس است" },
             });
@@ -1508,7 +1508,7 @@ module.exports = new (class extends controller {
             if (!agency) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "your agency is delete maybe",
                     data: { fa_m: "احتمالا شرکت حذف شده است" },
                 });
@@ -2440,14 +2440,11 @@ module.exports = new (class extends controller {
                 }
             }
 
-            let invoice = await this.Invoice.findOne(
-                {
-                    agencyId: agencyId,
-                    type: "registration",
-                    active: true,
-                },
-                "amount title desc"
-            ).lean();
+            let invoice = await this.Invoice.findOne({
+                agencyId: agencyId,
+                type: "registration",
+                active: true,
+            }).lean();
             let amount = 0;
             let payQueue;
             if (invoice) {
@@ -2458,13 +2455,9 @@ module.exports = new (class extends controller {
                             studentId: student._id,
                             inVoiceId: invoice._id,
                         },
-                        "isPaid refId code"
+                        "isPaid refId code authority"
                     ).lean();
-                if (
-                    payQueue &&
-                    payQueue.isPaid &&
-                    payQueue.refId.toString().trim() === ""
-                ) {
+                if (payQueue && payQueue.isPaid) {
                     const doclistSanad = await this.DocListSanad.findOne(
                         {
                             $and: [
@@ -2489,6 +2482,19 @@ module.exports = new (class extends controller {
                     if (doclistSanad) {
                         payQueue.refId = doclistSanad.doclistId.toString();
                     }
+                } else if (!payQueue && student) {
+                    payQueue = new this.PayQueue({
+                        inVoiceId: invoice._id,
+                        code: invoice.code,
+                        agencyId,
+                        studentId: student._id,
+                        setter: req.user._id,
+                        type: invoice.type,
+                        amount: invoice.amount,
+                        title: invoice.title,
+                        maxDate: invoice.maxDate,
+                    });
+                    await payQueue.save();
                 }
             }
             let invoice2 = await this.Invoice.findOne(
@@ -2538,18 +2544,13 @@ module.exports = new (class extends controller {
                         amount2 = invoice2.amount;
                     }
                 }
-                if (
-                    amount2 > 0 &&
-                    payQueue != null &&
-                    payQueue.isPaid &&
-                    payQueue.refId.toString().trim() != ""
-                ) {
+                if (amount2 > 0 && payQueue != null && payQueue.isPaid) {
                     payQueue2 = await this.PayQueue.findOne(
                         {
                             inVoiceId: invoice2._id,
                             studentId: student._id,
                         },
-                        "isPaid refId code"
+                        "isPaid refId code cardNumber"
                     );
                     if (!payQueue2) {
                         payQueue2 = new this.PayQueue({
@@ -2596,6 +2597,8 @@ module.exports = new (class extends controller {
                         }
                     }
                 }
+                delete invoice2.distancePrice;
+                delete invoice2.schools;
             }
 
             return this.response({

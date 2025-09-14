@@ -14,7 +14,7 @@ module.exports = new (class extends controller {
             if (req.query.id === undefined) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id need!",
                 });
             }
@@ -144,7 +144,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "lat and lng need!",
                 });
             }
@@ -308,7 +308,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "lat، lng & term need!",
                 });
             }
@@ -458,7 +458,7 @@ module.exports = new (class extends controller {
             if (req.query.id === undefined || req.query.id.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id need!",
                 });
             }
@@ -494,7 +494,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "lat and lng need!",
                 });
             }
@@ -549,7 +549,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "lat and lng need!",
                 });
             }
@@ -595,7 +595,7 @@ module.exports = new (class extends controller {
             if (!locations) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "locations need!",
                 });
             }
@@ -670,7 +670,7 @@ module.exports = new (class extends controller {
             if (!locations) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "locations need!",
                 });
             }

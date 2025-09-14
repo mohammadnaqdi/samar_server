@@ -1480,13 +1480,12 @@ module.exports = new (class extends controller {
                     }
                 );
                 if (payQueue && payQueue.type === "prePayment") {
-                    const invoice = await this.Invoice.findOne({
-                        agencyId,
-                        code: mId,
-                    });
+                    const invoice = await this.Invoice.findById(
+                        payQueue.inVoiceId
+                    );
                     if (invoice && invoice.confirmPrePaid) {
                         let student = await this.Student.findById(studentId);
-                        if (student && student.state === 2) {
+                        if (student) {
                             student.state = 3;
                             student.stateTitle = "در انتظار تعیین سرویس";
                             await student.save();
@@ -1779,7 +1778,7 @@ module.exports = new (class extends controller {
                 if (listAcc) {
                     return this.response({
                         res,
-                        code: 204,
+                        code: 604,
                         message: "this code is duplicated",
                     });
                 }

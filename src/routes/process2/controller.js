@@ -1062,7 +1062,7 @@ module.exports = new (class extends controller {
             if (!req.query.driverId || req.query.driverId.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "driverId needed!",
                 });
             }
@@ -1086,7 +1086,7 @@ module.exports = new (class extends controller {
             if (!req.query.id || req.query.id.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id needed!",
                 });
             }
@@ -1679,7 +1679,7 @@ module.exports = new (class extends controller {
             if (!req.body.ids || req.body.ids.length === 0) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "ids needed!",
                 });
             }

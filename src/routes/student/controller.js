@@ -1323,7 +1323,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type cardNumber"
+                        "title isPaid maxDate type cardNumber refId"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1597,7 +1597,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type cardNumber"
+                        "title isPaid maxDate type cardNumber refId"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1772,7 +1772,7 @@ module.exports = new (class extends controller {
                         data: [],
                     });
                 }
-            } else if (school != null) {
+            } else if (school != null && school.toString().trim() != "") {
                 onlySchool.push(ObjectId.createFromHexString(school));
             }
 
@@ -2326,6 +2326,7 @@ module.exports = new (class extends controller {
             //         data: { fa_m: "شرکت غیرفعال است یا حذف شده" },
             //     });
             // }
+
             let onlyPack = [];
             const schls = await this.Pack.find({
                 groupId,
@@ -2372,6 +2373,7 @@ module.exports = new (class extends controller {
                         address: 1,
                         pack: 1,
                         neighbourhood: 1,
+                        gradeTitle: 1,
                         "location.coordinates": 1,
                     },
                 },
@@ -2386,6 +2388,7 @@ module.exports = new (class extends controller {
                                 school: "$school",
                                 time: "$time",
                                 address: "$address",
+                                gradeTitle: "$gradeTitle",
                                 neighbourhood: "$neighbourhood",
                                 coordinates: "$location.coordinates",
                             },
@@ -2672,7 +2675,7 @@ module.exports = new (class extends controller {
             if (!req.query.id || req.query.id.trim() === "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id needed!",
                 });
             }
@@ -2937,7 +2940,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "pack or neighbourhood need!",
                 });
             }
@@ -3138,7 +3141,7 @@ module.exports = new (class extends controller {
                 session.endSession();
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id needed!",
                 });
             }

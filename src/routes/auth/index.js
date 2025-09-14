@@ -72,6 +72,6 @@ router.post(
     controller.validate.bind(controller),
     controller.updateDriverLocation.bind(controller)
 );
-router.get("/VerifyAgain", controller.verifyAgain.bind(controller));
+// router.get("/VerifyAgain", controller.verifyAgain.bind(controller));
 
 module.exports = router;

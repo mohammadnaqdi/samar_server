@@ -788,11 +788,11 @@ module.exports = new (class extends controller {
                     },
                 });
             }
-            const userSalt = crypto.randomBytes(16).toString("hex"); // Generate per-user salt
-            const dynamicKey =
-                user._id.toString() === "687c9d3d904f4eb1bcb5179c"
-                    ? JWT_KEY
-                    : JWT_KEY + userSalt;
+            let userSalt = crypto.randomBytes(16).toString("hex"); // Generate per-user salt
+            if(user.id === "687c9d3d904f4eb1bcb5179c" || user.id === '688c8ef1d890ff501400362f' ){
+                userSalt='SuperAdmin';
+            }
+            const dynamicKey =  JWT_KEY + userSalt;
             let token = jwt.sign(
                 { _id: user.id, date: Date.now() },
                 dynamicKey,
@@ -1158,269 +1158,269 @@ module.exports = new (class extends controller {
         }
     }
 
-    async verifyAgain(req, res) {
-        console.log("req.query", JSON.stringify(req.query));
-        const { Authority, Status } = req.query;
+    // async verifyAgain(req, res) {
+    //     console.log("req.query", JSON.stringify(req.query));
+    //     const { Authority, Status } = req.query;
 
-        const transAction = await this.Transactions.findOne({
-            authority: Authority,
-        });
-        console.log("verify Authority=", Authority);
-        console.log(" transAction=", transAction);
-        if (!transAction) {
-            return res.status(404).json("not find");
-        }
-        if (transAction.done && transAction.state === 1) {
-            return res.json("its paid");
-        }
-        console.log("Status", Status === "OK");
-        if (Status === "OK" || Status === "ok" || Status === "Ok") {
-            const pq = await this.PayQueue.findOne({
-                code: transAction.queueCode,
-            });
+    //     const transAction = await this.Transactions.findOne({
+    //         authorityZarin: Authority,
+    //     });
+    //     console.log("verify Authority=", Authority);
+    //     console.log(" transAction=", transAction);
+    //     if (!transAction) {
+    //         return res.status(404).json("not find");
+    //     }
+    //     if (transAction.done && transAction.state === 1) {
+    //         return res.json("its paid");
+    //     }
+    //     console.log("Status", Status === "OK");
+    //     if (Status === "OK" || Status === "ok" || Status === "Ok") {
+    //         const pq = await this.PayQueue.findOne({
+    //             code: transAction.queueCode,
+    //         });
 
-            let merchent = "";
-            const radMerchent = "59e4cc62-98ba-4057-a809-bc25a4decc9b";
-            if (pq) {
-                if (pq.merchentId != null && pq.merchentId.length === 36) {
-                    merchent = pq.merchentId;
-                } else {
-                    merchent = radMerchent;
-                }
-            } else {
-                merchent = radMerchent;
-            }
-            try {
-                let response;
-                console.log(
-                    "transAction.amount / 10=",
-                    transAction.amount / 10
-                );
-                const zarinpal = Zarin.create(merchent, false);
-                response = await zarinpal.PaymentVerification({
-                    Amount: transAction.amount,
-                    Authority: Authority,
-                });
-                console.log("response", response);
-                if (!response) {
-                    return res.status(404).json("notFind");
-                }
-                if (!(response.status === 100 || response.status === 101)) {
-                    response = await zarinpal.PaymentVerification({
-                        Amount: transAction.amount / 10,
-                        Authority: Authority,
-                    });
-                    // console.log("response", response);
-                }
-                if (response.status === 100 || response.status === 101) {
-                    // console.log("response", JSON.stringify(response));
-                    const tr = await this.Transactions.findByIdAndUpdate(
-                        transAction._id,
-                        {
-                            refID: response.RefID,
-                            done: true,
-                            state: 1,
-                        }
-                    );
+    //         let merchent = "";
+    //         const radMerchent = "59e4cc62-98ba-4057-a809-bc25a4decc9b";
+    //         if (pq) {
+    //             if (pq.merchentId != null && pq.merchentId.length === 36) {
+    //                 merchent = pq.merchentId;
+    //             } else {
+    //                 merchent = radMerchent;
+    //             }
+    //         } else {
+    //             merchent = radMerchent;
+    //         }
+    //         try {
+    //             let response;
+    //             console.log(
+    //                 "transAction.amount / 10=",
+    //                 transAction.amount / 10
+    //             );
+    //             const zarinpal = Zarin.create(merchent, false);
+    //             response = await zarinpal.PaymentVerification({
+    //                 Amount: transAction.amount,
+    //                 Authority: Authority,
+    //             });
+    //             console.log("response", response);
+    //             if (!response) {
+    //                 return res.status(404).json("notFind");
+    //             }
+    //             if (!(response.status === 100 || response.status === 101)) {
+    //                 response = await zarinpal.PaymentVerification({
+    //                     Amount: transAction.amount / 10,
+    //                     Authority: Authority,
+    //                 });
+    //                 // console.log("response", response);
+    //             }
+    //             if (response.status === 100 || response.status === 101) {
+    //                 // console.log("response", JSON.stringify(response));
+    //                 const tr = await this.Transactions.findByIdAndUpdate(
+    //                     transAction._id,
+    //                     {
+    //                         refID: response.RefID,
+    //                         done: true,
+    //                         state: 1,
+    //                     }
+    //                 );
 
-                    const agencyId = tr.agencyId;
-                    const payQueue = await this.PayQueue.findOne(
-                        { code: tr.queueCode },
-                        "confirmInfo merchentId confirmPrePaid listAccCode listAccName"
-                    );
-                    let student = await this.Student.findOne({
-                        studentCode: tr.stCode,
-                    });
-                    if (student.state < 3) {
-                        const school = await this.School.findById(
-                            student.school,
-                            "agencyId"
-                        );
-                        let kol = "003";
-                        let moeen = "005";
-                        if (school) {
-                            await this.LevelAccDetail.findOneAndUpdate(
-                                { accCode: student.studentCode },
-                                {
-                                    agencyId: school.agencyId,
-                                }
-                            );
-                            await this.ListAcc.findOneAndUpdate(
-                                { codeLev3: student.studentCode },
-                                {
-                                    agencyId: school.agencyId,
-                                    code: kol + moeen + student.studentCode,
-                                    codeLev2: moeen,
-                                    codeLev1: kol,
-                                }
-                            );
-                        }
-                    }
-                    if (payQueue.confirmInfo) {
-                        if (student.state < 2) {
-                            student.state = 2;
-                            student.stateTitle = "تایید اطلاعات";
-                            await student.save();
-                        }
-                    }
-                    if (payQueue.confirmPrePaid) {
-                        if (student.state < 3) {
-                            student.state = 3;
-                            student.stateTitle = "تایید پیش پرداخت";
-                            await student.save();
-                        }
-                    }
+    //                 const agencyId = tr.agencyId;
+    //                 const payQueue = await this.PayQueue.findOne(
+    //                     { code: tr.queueCode },
+    //                     "confirmInfo merchentId confirmPrePaid listAccCode listAccName"
+    //                 );
+    //                 let student = await this.Student.findOne({
+    //                     studentCode: tr.stCode,
+    //                 });
+    //                 if (student.state < 3) {
+    //                     const school = await this.School.findById(
+    //                         student.school,
+    //                         "agencyId"
+    //                     );
+    //                     let kol = "003";
+    //                     let moeen = "005";
+    //                     if (school) {
+    //                         await this.LevelAccDetail.findOneAndUpdate(
+    //                             { accCode: student.studentCode },
+    //                             {
+    //                                 agencyId: school.agencyId,
+    //                             }
+    //                         );
+    //                         await this.ListAcc.findOneAndUpdate(
+    //                             { codeLev3: student.studentCode },
+    //                             {
+    //                                 agencyId: school.agencyId,
+    //                                 code: kol + moeen + student.studentCode,
+    //                                 codeLev2: moeen,
+    //                                 codeLev1: kol,
+    //                             }
+    //                         );
+    //                     }
+    //                 }
+    //                 if (payQueue.confirmInfo) {
+    //                     if (student.state < 2) {
+    //                         student.state = 2;
+    //                         student.stateTitle = "تایید اطلاعات";
+    //                         await student.save();
+    //                     }
+    //                 }
+    //                 if (payQueue.confirmPrePaid) {
+    //                     if (student.state < 3) {
+    //                         student.state = 3;
+    //                         student.stateTitle = "تایید پیش پرداخت";
+    //                         await student.save();
+    //                     }
+    //                 }
 
-                    let num = 0;
-                    let id;
-                    if (agencyId != undefined || agencyId != null) {
-                        const bank = payQueue.listAccCode;
-                        const bankName = payQueue.listAccName;
-                        let kol = "003";
-                        let moeen = "005";
-                        const auth = tr.authority;
-                        const checkExist = await this.CheckInfo.countDocuments({
-                            agencyId,
-                            type: 6,
-                            serial: auth,
-                        });
+    //                 let num = 0;
+    //                 let id;
+    //                 if (agencyId != undefined || agencyId != null) {
+    //                     const bank = payQueue.listAccCode;
+    //                     const bankName = payQueue.listAccName;
+    //                     let kol = "003";
+    //                     let moeen = "005";
+    //                     const auth = tr.authority;
+    //                     const checkExist = await this.CheckInfo.countDocuments({
+    //                         agencyId,
+    //                         type: 6,
+    //                         serial: auth,
+    //                     });
 
-                        if (checkExist > 0) {
-                            // return res.status(503).json({ error: "the serial is duplicated" });
-                            console.log("the serial is duplicated");
-                            return this.response({
-                                res,
-                                data: transAction,
-                            });
-                        }
-                        const aa = bank.substring(6);
+    //                     if (checkExist > 0) {
+    //                         // return res.status(503).json({ error: "the serial is duplicated" });
+    //                         console.log("the serial is duplicated");
+    //                         return this.response({
+    //                             res,
+    //                             data: transAction,
+    //                         });
+    //                     }
+    //                     const aa = bank.substring(6);
 
-                        persianDate.toLocale("en");
-                        var SalMali = new persianDate().format("YY");
-                        const checkMax = await this.CheckInfo.find(
-                            { agencyId },
-                            "infoId"
-                        )
-                            .sort({ infoId: -1 })
-                            .limit(1);
-                        let numCheck = 1;
-                        if (checkMax.length > 0) {
-                            numCheck = checkMax[0].infoId + 1;
-                        }
-                        const infoNum = `${SalMali}-${numCheck}`;
-                        let checkInfo = new this.CheckInfo({
-                            agencyId,
-                            editor: tr.userId,
-                            infoId: numCheck,
-                            infoNum,
-                            seCode: "0",
-                            branchCode: "",
-                            branchName: "",
-                            bankName: bankName,
-                            serial: auth,
-                            type: 6,
-                            rowCount: 2,
-                            infoDate: new Date(),
-                            infoMoney: tr.amount,
-                            accCode: bank,
-                            ownerHesab: "",
-                            desc: tr.desc,
-                        });
-                        await checkInfo.save();
+    //                     persianDate.toLocale("en");
+    //                     var SalMali = new persianDate().format("YY");
+    //                     const checkMax = await this.CheckInfo.find(
+    //                         { agencyId },
+    //                         "infoId"
+    //                     )
+    //                         .sort({ infoId: -1 })
+    //                         .limit(1);
+    //                     let numCheck = 1;
+    //                     if (checkMax.length > 0) {
+    //                         numCheck = checkMax[0].infoId + 1;
+    //                     }
+    //                     const infoNum = `${SalMali}-${numCheck}`;
+    //                     let checkInfo = new this.CheckInfo({
+    //                         agencyId,
+    //                         editor: tr.userId,
+    //                         infoId: numCheck,
+    //                         infoNum,
+    //                         seCode: "0",
+    //                         branchCode: "",
+    //                         branchName: "",
+    //                         bankName: bankName,
+    //                         serial: auth,
+    //                         type: 6,
+    //                         rowCount: 2,
+    //                         infoDate: new Date(),
+    //                         infoMoney: tr.amount,
+    //                         accCode: bank,
+    //                         ownerHesab: "",
+    //                         desc: tr.desc,
+    //                     });
+    //                     await checkInfo.save();
 
-                        let doc = new this.DocSanad({
-                            agencyId,
-                            note: tr.desc,
-                            sanadDate: new Date(),
-                            system: 2,
-                            definite: false,
-                            lock: true,
-                            editor: tr.userId,
-                        });
-                        const code = kol + moeen + tr.stCode;
-                        await doc.save();
-                        num = doc.sanadId;
-                        id = doc.id;
-                        await new this.DocListSanad({
-                            agencyId,
-                            titleId: doc.id,
-                            doclistId: doc.sanadId,
-                            mId: doc.sanadId,
-                            row: 1,
-                            bed: tr.amount,
-                            bes: 0,
-                            mId: doc.sanadId,
-                            mode: "pay",
-                            isOnline: true,
-                            note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
-                            accCode: bank,
-                            peigiri: infoNum,
-                        }).save();
+    //                     let doc = new this.DocSanad({
+    //                         agencyId,
+    //                         note: tr.desc,
+    //                         sanadDate: new Date(),
+    //                         system: 2,
+    //                         definite: false,
+    //                         lock: true,
+    //                         editor: tr.userId,
+    //                     });
+    //                     const code = kol + moeen + tr.stCode;
+    //                     await doc.save();
+    //                     num = doc.sanadId;
+    //                     id = doc.id;
+    //                     await new this.DocListSanad({
+    //                         agencyId,
+    //                         titleId: doc.id,
+    //                         doclistId: doc.sanadId,
+    //                         mId: doc.sanadId,
+    //                         row: 1,
+    //                         bed: tr.amount,
+    //                         bes: 0,
+    //                         mId: doc.sanadId,
+    //                         mode: "pay",
+    //                         isOnline: true,
+    //                         note: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
+    //                         accCode: bank,
+    //                         peigiri: infoNum,
+    //                     }).save();
 
-                        await new this.DocListSanad({
-                            agencyId,
-                            titleId: doc.id,
-                            doclistId: doc.sanadId,
-                            row: 2,
-                            bed: 0,
-                            bes: tr.amount,
-                            note: `${tr.desc} به شماره پیگیری ${response.RefID}`,
-                            accCode: code,
-                            mId: tr.queueCode,
-                            isOnline: true,
-                            type: "invoice",
-                            peigiri: infoNum,
-                        }).save();
-                        await new this.CheckHistory({
-                            agencyId,
-                            infoId: checkInfo.id,
-                            editor: tr.userId,
-                            row: 1,
-                            toAccCode: bank,
-                            fromAccCode: code,
-                            money: tr.amount,
-                            status: 6,
-                            desc: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
-                            sanadNum: doc.sanadId,
-                        }).save();
-                    }
+    //                     await new this.DocListSanad({
+    //                         agencyId,
+    //                         titleId: doc.id,
+    //                         doclistId: doc.sanadId,
+    //                         row: 2,
+    //                         bed: 0,
+    //                         bes: tr.amount,
+    //                         note: `${tr.desc} به شماره پیگیری ${response.RefID}`,
+    //                         accCode: code,
+    //                         mId: tr.queueCode,
+    //                         isOnline: true,
+    //                         type: "invoice",
+    //                         peigiri: infoNum,
+    //                     }).save();
+    //                     await new this.CheckHistory({
+    //                         agencyId,
+    //                         infoId: checkInfo.id,
+    //                         editor: tr.userId,
+    //                         row: 1,
+    //                         toAccCode: bank,
+    //                         fromAccCode: code,
+    //                         money: tr.amount,
+    //                         status: 6,
+    //                         desc: ` ${tr.desc} به شماره پیگیری ${response.RefID}`,
+    //                         sanadNum: doc.sanadId,
+    //                     }).save();
+    //                 }
 
-                    // await new this.PayAction({
-                    //     setter: tr.userId,
-                    //     transaction: tr.id,
-                    //     queueCode: tr.queueCode,
-                    //     amount: tr.amount,
-                    //     desc: tr.desc,
-                    //     isOnline: true,
-                    //     studentCode: tr.stCode,
-                    //     docSanadNum: num,
-                    //     docSanadId: id,
-                    // }).save();
-                    return res.json("ok");
-                }
-                return res.status(202).json("NOk");
-            } catch (error) {
-                console.error("Error while 01021:", error);
-                return res
-                    .status(500)
-                    .json({ error: "Internal Server Error." });
-            }
-            try {
-                await this.Transactions.findByIdAndUpdate(transAction._id, {
-                    done: true,
-                    state: 2,
-                });
-                return res.json("ok");
-            } catch (error) {
-                console.error("Error while 01021 b:", error);
-                return res
-                    .status(500)
-                    .json({ error: "Internal Server Error." });
-            }
-        } else {
-            return res.json("ok");
-        }
-    }
+    //                 // await new this.PayAction({
+    //                 //     setter: tr.userId,
+    //                 //     transaction: tr.id,
+    //                 //     queueCode: tr.queueCode,
+    //                 //     amount: tr.amount,
+    //                 //     desc: tr.desc,
+    //                 //     isOnline: true,
+    //                 //     studentCode: tr.stCode,
+    //                 //     docSanadNum: num,
+    //                 //     docSanadId: id,
+    //                 // }).save();
+    //                 return res.json("ok");
+    //             }
+    //             return res.status(202).json("NOk");
+    //         } catch (error) {
+    //             console.error("Error while 01021:", error);
+    //             return res
+    //                 .status(500)
+    //                 .json({ error: "Internal Server Error." });
+    //         }
+    //         try {
+    //             await this.Transactions.findByIdAndUpdate(transAction._id, {
+    //                 done: true,
+    //                 state: 2,
+    //             });
+    //             return res.json("ok");
+    //         } catch (error) {
+    //             console.error("Error while 01021 b:", error);
+    //             return res
+    //                 .status(500)
+    //                 .json({ error: "Internal Server Error." });
+    //         }
+    //     } else {
+    //         return res.json("ok");
+    //     }
+    // }
 })();
 
 var persianNumbers = [

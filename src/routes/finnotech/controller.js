@@ -289,7 +289,7 @@ module.exports = new (class extends controller {
             if (!agencyId || agencyId == "") {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "Invalid agencyId!",
                 });
             }
@@ -376,7 +376,7 @@ module.exports = new (class extends controller {
                 await session.abortTransaction();
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "Invalid sayadId or nid or agencyId",
                 });
             }
@@ -457,7 +457,7 @@ module.exports = new (class extends controller {
                 await session.abortTransaction();
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "Invalid phone or agencyId",
                 });
             }
@@ -538,7 +538,7 @@ module.exports = new (class extends controller {
                 await session.abortTransaction();
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "Invalid input!",
                 });
             }
@@ -594,7 +594,7 @@ module.exports = new (class extends controller {
                 await session.abortTransaction();
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "Invalid input!",
                 });
             }

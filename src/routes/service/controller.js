@@ -987,7 +987,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "agencyId need!",
                 });
             }
@@ -1072,7 +1072,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "agencyId need!",
                 });
             }
@@ -1120,7 +1120,7 @@ module.exports = new (class extends controller {
             if (!city) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "city inot find by phone",
                 });
             }
@@ -1146,7 +1146,7 @@ module.exports = new (class extends controller {
     async deletePrice(req, res) {
         try {
             if (req.query.id === undefined || req.query.id.trim() === "") {
-                return this.response({ res, code: 204, message: "id need!" });
+                return this.response({ res, code: 604, message: "id need!" });
             }
             const id = req.query.id;
             await this.PricingTable.findByIdAndUpdate(id, { delete: true });
@@ -1160,7 +1160,7 @@ module.exports = new (class extends controller {
     async deleteService(req, res) {
         try {
             if (req.query.id === undefined || req.query.id.trim() === "") {
-                return this.response({ res, code: 204, message: "id need!" });
+                return this.response({ res, code: 604, message: "id need!" });
             }
             const id = req.query.id;
             const service = await this.Service.findByIdAndUpdate(id, {
@@ -1207,7 +1207,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "forDate serviceNum need!",
                 });
             }

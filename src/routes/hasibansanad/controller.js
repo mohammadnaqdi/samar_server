@@ -2256,8 +2256,7 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-
-    async removeDocBySanadNum(req, res) {
+async removeDocBySanadNum(req, res) {
         try {
             if (
                 req.query.agencyId === undefined ||
@@ -2317,6 +2316,88 @@ module.exports = new (class extends controller {
             });
         } catch (err) {
             console.error("removeDocBySanadNum function error:", err);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async removeDocBySanadNumAgency(req, res) {
+        try {
+            if (
+                req.query.agencyId === undefined ||
+                req.query.agencyId.trim() === ""
+            ) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId need",
+                });
+            }
+            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+            if (req.query.sanadId === undefined) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "sanadId need",
+                });
+            }
+            const sanadId = parseInt(req.query.sanadId);
+            const agency = await this.Agency.findById(agencyId);
+            if (!agency) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "agency not found",
+                });
+            }
+            if (!agency.active) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "agency not found",
+                });
+            }
+            const docSanad = await this.DocSanad.findOne({ agencyId, sanadId });
+
+            if (docSanad) {
+                const doc = await this.DocListSanad.find({
+                    titleId: docSanad._id,
+                    type: {
+                        $in: [
+                            "salary",
+                            "paySalary",
+                            "invoice",
+                            "charge",
+                            "unCharge",
+                        ],
+                    },
+                });
+                if (doc && doc.length > 0) {
+                    return this.response({
+                        res,
+                        code: 400,
+                        message: "this doc not remove here",
+                    });
+                }
+                await this.DocListSanad.deleteMany({ titleId: docSanad._id });
+                await this.DocSanad.findByIdAndDelete(docSanad._id);
+                const checkHis = await this.CheckHistory.find({
+                    agencyId,
+                    sanadNum: sanadId,
+                });
+                for (const check of checkHis) {
+                    await this.CheckInfo.findByIdAndDelete(check.infoId);
+                    await this.CheckHistory.deleteMany({
+                        infoId: check.infoId,
+                    });
+                }
+                return res.json("ok");
+            }
+            return this.response({
+                res,
+                code: 404,
+                message: "Sanad not found",
+            });
+        } catch (err) {
+            console.error("removeDocBySanadNumAgency function error:", err);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

@@ -739,7 +739,7 @@ module.exports = new (class extends controller {
                 return res.status(404).json({ message: "Invalid agencyId!" });
             }
             let match = {
-                isPaid: true,
+                // isPaid: true,
                 cardNumber: { $nin: ["", null, " "] },
                 agencyId: ObjectId.createFromHexString(agencyId),
                 delete: false,
@@ -749,6 +749,7 @@ module.exports = new (class extends controller {
                     req.query.studentId
                 );
             }
+            //  console.log("match", match);
             const payCards = await this.PayQueue.aggregate([
                 {
                     $match: match,
@@ -773,7 +774,7 @@ module.exports = new (class extends controller {
                     },
                 },
             ]);
-
+            //  console.log("payCards", payCards);
             let pays = [];
             for (var card of payCards) {
                 // console.log("card", card);
@@ -845,7 +846,7 @@ module.exports = new (class extends controller {
 
             const agency = await this.Agency.findById(
                 agencyId,
-                "name tel"
+                "name tel paySeparation"
             ).lean();
             if (!agency) {
                 await session.abortTransaction();
@@ -889,9 +890,24 @@ module.exports = new (class extends controller {
 
             // Reject prePayment
             await rejectPayCardHelper(idPre, 1, "نیاز به تایید اطلاعات");
-
+            const paySeparation = agency.paySeparation || false;
             // Reject registration
-            await rejectPayCardHelper(idReg, 0, "ثبت شده");
+      if (idReg && idReg.toString().trim() !== "") {
+        if (!paySeparation) {
+          await rejectPayCardHelper(idReg, 0, "ثبت شده");
+        } else {
+          const payCard = await this.PayQueue.findById(idReg).session(session);
+          if (payCard) {
+            if (
+              payCard.cardNumber.length > 6 &&
+              payCard.isPaid &&
+              payCard.authority.trim() === ""
+            ) {
+              await rejectPayCardHelper(idReg, 0, "ثبت شده");
+            }
+          }
+        }
+      }
 
             await session.commitTransaction();
             session.endSession();

@@ -286,7 +286,7 @@ module.exports = new (class extends controller {
             if (!id) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "id need!",
                 });
             }
@@ -508,7 +508,7 @@ module.exports = new (class extends controller {
                 ]);
                 const point = !result || !result[0] ? 0 : result[0].total;
                 const count = !result || !result[0] ? 0 : result[0].count;
-                points.push({month:i,point,count})
+                points.push({ month: i, point, count });
             }
 
             const ratingDriver = await this.RatingDriver.find(

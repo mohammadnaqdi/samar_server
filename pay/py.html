@@ -391,7 +391,7 @@
         return {
           amount: params.get("amount"),
           transaction: params.get("transaction"),
-          card: params.get("card"),
+          card: params.get("id"),
           bank: params.get("bank"),
         };
       }
@@ -399,7 +399,7 @@
       // Format amount with commas
       function formatAmount(amount) {
         return (
-          amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " تومان"
+          amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " ریال"
         );
       }
 

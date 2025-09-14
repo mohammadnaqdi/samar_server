@@ -286,46 +286,6 @@ async function varifyPaidBank(
     }
 }
 
-async function generateSepehrToken(
-    amount,
-    invoice,
-    link = "verify2",
-    CellNumber,
-    terminalID
-) {
-    try {
-        if (!amount || amount < 10000) {
-            amount = 10000;
-        }
-        const URL = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/GetToken";
-
-        const data = {
-            Amount: amount,
-            callbackUrl: `https://server.mysamar.ir/api/pay/${link}`,
-            invoiceID: invoice,
-            terminalID,
-            payload: "",
-            CellNumber,
-        };
-
-        const response = await axios.post(URL, data, {
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-        // console.log("response", response);
-
-        if (response.data.Status === 0) {
-            return response.data.Accesstoken;
-        }
-        console.log("response", response.data);
-        return null;
-    } catch (error) {
-        console.error("Error while generating bank token:", error);
-        return null;
-    }
-}
-
 module.exports = new (class extends controller {
     //for we dont need to create a new object only export directly a class
 
@@ -719,7 +679,7 @@ module.exports = new (class extends controller {
                 // res.end(html);
                 //mysamar.ir/downloads/pay.html
                 https: res.redirect(
-                    `https://${process.env.URL}/downloads/pay.html?amount=${transAction.amount}&transaction=${transAction.invoiceid}&id=${transAction.stCode}`
+                    `https://${process.env.URL}/downloads/pay.html?amount=${transAction.amount}&transaction=${transAction.invoiceid}&id=${transAction.stCode}&bank=${transAction.bank}`
                 );
                 return;
             }
@@ -1013,7 +973,7 @@ module.exports = new (class extends controller {
                     //   transAction,
                     // });
                     res.redirect(
-                        `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
+                        `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}&bank=${tr.bank}`
                     );
                     // res.end(html);
                     return;
@@ -1473,8 +1433,8 @@ module.exports = new (class extends controller {
                         responseData.Status === "Duplicate") &&
                     responseData.ReturnId.toString() === amount.toString()
                 ) {
-                    res.redirect(
-                        `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}`
+                    return res.redirect(
+                        `https://${process.env.URL}/downloads/pay.html?amount=${responseData.ReturnId}&transaction=${req.body.invoiceid}&id=${tr.stCode}&bank=${tr.bank}`
                     );
                 } else {
                     throw new Error("Payment verification failed");
@@ -3035,7 +2995,7 @@ module.exports = new (class extends controller {
                             type: typeBank,
                         }).session(session),
                     ]);
-                    console.log("bankGate", bankGate);
+                    // console.log("bankGate", bankGate);
                     if (!agency || !bankGate) {
                         throw new Error("Agency or bankGate not found");
                     }
@@ -3074,7 +3034,7 @@ module.exports = new (class extends controller {
                         }
                     }
 
-                    // console.log("tr amount", amount);
+                    console.log("tr amount", amount);
                     // Update transaction
                     const tr = await this.Transactions.findByIdAndUpdate(
                         transAction._id,
@@ -3090,7 +3050,7 @@ module.exports = new (class extends controller {
                         },
                         { new: true, session }
                     );
-                    // console.log("tr after", tr);
+                    console.log("tr after", tr);
 
                     if (!tr) {
                         throw new Error("Transaction not found");
@@ -3366,8 +3326,12 @@ module.exports = new (class extends controller {
                         }
                     }
 
-                    res.redirect(
-                        `https://${process.env.URL}/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${tr.stCode}`
+                    return res.redirect(
+                        `https://${
+                            process.env.URL
+                        }/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${
+                            tr.stCode
+                        }&bank=${bankGate.bankName || transAction.bank}`
                     );
                 },
                 {
@@ -3384,6 +3348,7 @@ module.exports = new (class extends controller {
             await session.endSession();
         }
     }
+
     // FOR ALL BANK
     async verifyPaymentStudent(
         res,
@@ -3416,18 +3381,27 @@ module.exports = new (class extends controller {
                         throw new Error("invoice not found");
                     }
                     console.log("payQueue", payQueue.authority);
-                    const [agency, bankGate] = await Promise.all([
-                        this.Agency.findById(agencyId, "settings").session(
-                            session
-                        ),
-                        this.BankGate.findOne({
+                    let bankGate;
+                    if (payQueue.type === "registration") {
+                        bankGate = {
+                            type: "MELLAT",
+                            terminal: "8551948",
+                            userName: "8551948",
+                            userPass: "15806659",
+                            hesab: "001003000000016",
+                            bankName: "ملت",
+                            bankCode: "MEL",
+                        };
+                    } else {
+                        bankGate = await this.BankGate.findOne({
                             agencyId,
                             type: typeBank,
-                        }).session(session),
-                    ]);
+                        }).session(session);
+                    }
+
                     console.log("bankGate", bankGate);
-                    if (!agency || !bankGate) {
-                        throw new Error("Agency or bankGate not found");
+                    if (!bankGate) {
+                        throw new Error(" bankGate not found");
                     }
                     const tid = bankGate.terminal;
                     const bankCode = bankGate.hesab;
@@ -3490,7 +3464,6 @@ module.exports = new (class extends controller {
                         throw new Error("Transaction not found");
                     }
 
-                    let amountpaid = tr.amount;
                     const student = await this.Student.findOne({
                         studentCode: tr.stCode,
                     }).session(session);
@@ -3608,6 +3581,77 @@ module.exports = new (class extends controller {
                                 sanadNum: doc.sanadId,
                             }).save({ session }),
                         ]);
+                    } else {
+                        console.log("elseeeeeeeee");
+                        let prePayment = await this.PayQueue.findOne({
+                            agencyId: student.agencyId,
+                            studentId: student._id,
+                            type: "prePayment",
+                        }).session(session);
+                        console.log("!prePayment", !prePayment);
+                        if (!prePayment) {
+                            let invoice2 = await this.Invoice.findOne({
+                                agencyId: student.agencyId,
+                                type: "prePayment",
+                                active: true,
+                            }).lean();
+                            console.log("!invoice2", !invoice2);
+                            let amount2 = 0;
+                            if (invoice2) {
+                                let findSchool = false;
+                                if (invoice2.schools.length > 0) {
+                                    for (var sc of invoice2.schools) {
+                                        if (
+                                            sc.id.toString() ===
+                                            student.school.toString()
+                                        ) {
+                                            amount2 = sc.amount;
+                                            findSchool = true;
+                                        }
+                                    }
+                                }
+                                if (!findSchool) {
+                                    if (
+                                        invoice2.distancePrice &&
+                                        invoice2.distancePrice.length > 0
+                                    ) {
+                                        const matchedPricing =
+                                            invoice2.distancePrice.find(
+                                                function (priceItem) {
+                                                    return (
+                                                        priceItem.maxDistance *
+                                                            1000 >=
+                                                        student.serviceDistance
+                                                    );
+                                                }
+                                            );
+                                        if (matchedPricing) {
+                                            amount2 = matchedPricing.amount;
+                                        } else {
+                                            amount2 =
+                                                invoice2.distancePrice[
+                                                    invoice2.distancePrice
+                                                        .length - 1
+                                                ].amount;
+                                        }
+                                    } else {
+                                        amount2 = invoice2.amount;
+                                    }
+                                }
+                            }
+                            prePayment = new this.PayQueue({
+                                inVoiceId: invoice2._id,
+                                code: invoice2.code,
+                                agencyId: student.agencyId,
+                                studentId: student._id,
+                                setter: tr.userId,
+                                type: invoice2.type,
+                                amount: amount2,
+                                title: invoice2.title,
+                                maxDate: invoice2.maxDate,
+                            });
+                            await prePayment.save({ session });
+                        }
                     }
 
                     if (typeBank !== "ZARIN") {
@@ -3626,10 +3670,13 @@ module.exports = new (class extends controller {
                             throw new Error("Payment verification failed");
                         }
                     }
-
-                    res.redirect(
-                        `https://${process.env.URL}/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${tr.stCode}`
-                    );
+                    const url = `https://${
+                        process.env.URL
+                    }/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${
+                        tr.stCode
+                    }&bank=${bankGate.bankName || transAction.bank}`;
+                    console.log("url", url);
+                    return res.redirect(url);
                 },
                 {
                     // Transaction options

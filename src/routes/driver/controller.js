@@ -2179,7 +2179,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "forDate serviceNum need!",
                 });
             }
@@ -2274,7 +2274,7 @@ module.exports = new (class extends controller {
             ) {
                 return this.response({
                     res,
-                    code: 204,
+                    code: 604,
                     message: "forDate driverCode need!",
                 });
             }
@@ -3605,21 +3605,24 @@ module.exports = new (class extends controller {
                     );
                     const car = await this.Car.findById(
                         drivers[i].carId,
-                        "carModel colorCar"
+                        "carModel colorCar pelak"
                     );
                     let name = "";
                     let phone = "";
                     let carModel = "";
+                    let pelak = "";
                     if (user) {
                         phone = user.phone;
                         name = user.name + " " + user.lastName;
                     }
                     if (car) {
                         carModel = car.carModel + " " + car.colorCar;
+                        pelak = car.pelak;
                     }
                     driverList.push({
                         driverCode: drivers[i].driverCode,
                         carModel: carModel,
+                        pelak,
                         name: name,
                         phone: phone,
                         countService,
