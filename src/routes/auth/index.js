@@ -5,73 +5,73 @@ const validator = require("./validator");
 const { isLoggined } = require("./../../middleware/auth");
 
 router.post(
-    "/phoneCheck",
-    validator.phoneCheckValidator(),
-    controller.validate.bind(controller),
-    controller.phoneCheck.bind(controller)
+  "/phoneCheck",
+  validator.phoneCheckValidator(),
+  controller.validate.bind(controller),
+  controller.phoneCheck.bind(controller)
 );
 router.post(
-    "/PhoneCheckMaster",
-    validator.phoneCheckValidator(),
-    controller.validate.bind(controller),
-    controller.phoneCheckMaster.bind(controller)
+  "/PhoneCheckMaster",
+  validator.phoneCheckValidator(),
+  controller.validate.bind(controller),
+  controller.phoneCheckMaster.bind(controller)
 );
 
 router.post(
-    "/codeCheck",
-    validator.codeValidator(),
-    controller.validate.bind(controller),
-    controller.codeCheck.bind(controller)
+  "/codeCheck",
+  validator.codeValidator(),
+  controller.validate.bind(controller),
+  controller.codeCheck.bind(controller)
 );
 
 router.get("/firstCheck", controller.firstCheck.bind(controller));
 router.post(
-    "/FirstUser",
-    validator.firstUserValidator(),
-    controller.validate.bind(controller),
-    controller.firstUser.bind(controller)
+  "/FirstUser",
+  validator.firstUserValidator(),
+  controller.validate.bind(controller),
+  controller.firstUser.bind(controller)
 );
 router.post(
-    "/Login",
-    validator.loginValidator(),
-    controller.validate.bind(controller),
-    controller.login.bind(controller)
+  "/Login",
+  validator.loginValidator(),
+  controller.validate.bind(controller),
+  controller.login.bind(controller)
 );
 router.post(
-    "/CheckCodeChangePass",
-    validator.checkCodeChangePassValidator(),
-    controller.validate.bind(controller),
-    controller.checkCodeChangePass.bind(controller)
+  "/CheckCodeChangePass",
+  validator.checkCodeChangePassValidator(),
+  controller.validate.bind(controller),
+  controller.checkCodeChangePass.bind(controller)
 );
 router.post(
-    "/AdminPhoneCheck",
-    validator.adminPhoneCheckValidator(),
-    controller.validate.bind(controller),
-    controller.adminPhoneCheck.bind(controller)
+  "/AdminPhoneCheck",
+  validator.adminPhoneCheckValidator(),
+  controller.validate.bind(controller),
+  controller.adminPhoneCheck.bind(controller)
 );
 router.post(
-    "/InspectorPhoneCheck",
-    validator.adminPhoneCheckValidator(),
-    controller.validate.bind(controller),
-    controller.inspectorPhoneCheck.bind(controller)
+  "/InspectorPhoneCheck",
+  validator.adminPhoneCheckValidator(),
+  controller.validate.bind(controller),
+  controller.inspectorPhoneCheck.bind(controller)
 );
 router.get(
-    "/GetDriverLocation",
-    isLoggined,
-    controller.getDriverLocation.bind(controller)
+  "/GetDriverLocation",
+  isLoggined,
+  controller.getDriverLocation.bind(controller)
 );
 router.get(
-    "/GetDriverStates",
-    isLoggined,
-    controller.getDriverStates.bind(controller)
+  "/GetDriverStates",
+  isLoggined,
+  controller.getDriverStates.bind(controller)
 );
 
 router.post(
-    "/UpdateDriverLocation",
-    validator.updateDriverLocationValidator(),
-    controller.validate.bind(controller),
-    controller.updateDriverLocation.bind(controller)
+  "/UpdateDriverLocation",
+  validator.updateDriverLocationValidator(),
+  controller.validate.bind(controller),
+  controller.updateDriverLocation.bind(controller)
 );
-// router.get("/VerifyAgain", controller.verifyAgain.bind(controller));
+router.get("/VerifyAgain", controller.verifyAgain.bind(controller));
 
 module.exports = router;

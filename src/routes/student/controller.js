@@ -1323,7 +1323,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type cardNumber refId"
+                        "title isPaid maxDate type cardNumber"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1597,7 +1597,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type cardNumber refId"
+                        "title isPaid maxDate type cardNumber"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1931,8 +1931,8 @@ module.exports = new (class extends controller {
             let stateId = 3;
             if (req.body.stateId != undefined) stateId = req.body.stateId;
 
-            console.log("schoolId=", schoolId);
-            console.log("gradeId=", gradeId);
+            // console.log("schoolId=", schoolId);
+            // console.log("gradeId=", gradeId);
             const myAgency = await this.Agency.findById(
                 agencyId,
                 "delete active"
@@ -2214,7 +2214,6 @@ module.exports = new (class extends controller {
                     moreInfo: moreInfo,
                 });
             }
-            console.log("myStudent", myStudent.length);
             return this.response({
                 res,
                 message: studentCount,
@@ -2326,7 +2325,6 @@ module.exports = new (class extends controller {
             //         data: { fa_m: "شرکت غیرفعال است یا حذف شده" },
             //     });
             // }
-
             let onlyPack = [];
             const schls = await this.Pack.find({
                 groupId,
@@ -2345,8 +2343,8 @@ module.exports = new (class extends controller {
                 qr.pack = -1;
                 qr.packed = false;
             }
-            // var qr = [];
-            console.log("qr", qr);
+            // // var qr = [];
+            // console.log("qr", qr);
 
             // qr.push({ school: { $in: onlySchool } });
             // qr.push({ delete: false });

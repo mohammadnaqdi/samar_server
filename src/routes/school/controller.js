@@ -214,7 +214,7 @@ module.exports = new (class extends controller {
     async nearSchoolList(req, res) {
         try {
             const agencyId = req.body.agencyId;
-            const maxDistance = req.body.maxDistance || 40000;
+            const maxDistance = req.body.maxDistance || 30000;
             let limit = req.body.limit || 10;
             // console.log("limit",limit);
             const search = req.body.search.trim();

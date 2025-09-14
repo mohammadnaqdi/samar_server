@@ -469,9 +469,9 @@ module.exports = new (class extends controller {
             const packCode = req.body.packCode;
             const groupId = req.body.groupId;
             const mode = req.body.mode;
-            console.log("mode", mode);
-            console.log("groupId", groupId);
-            console.log("packCode", packCode);
+            // console.log("mode", mode);
+            // console.log("groupId", groupId);
+            // console.log("packCode", packCode);
             if (mode === "removeFromPack") {
                 await this.Student.findByIdAndUpdate(studentId, {
                     exception: false,

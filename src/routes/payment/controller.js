@@ -4,7 +4,6 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const Zarin = require("zarinpal-checkout");
 const soap = require("soap");
-const { promisify } = require("util");
 
 function getDate() {
     const now = new Date();
@@ -42,6 +41,44 @@ async function calculateFee(merchant_id, amount) {
     }
 }
 
+async function generateTejaratToken(amount, orderId, pin) {
+    const wsdl =
+        "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?WSDL";
+
+    const params = {
+        LoginAccount: pin,
+        Amount: amount,
+        OrderId: orderId,
+        CallBackUrl: "https://server.mysamar.ir/api/pay/callback",
+        // AdditionalData: JSON.stringify(addData),
+        Originator: "",
+    };
+
+    // console.log("params", params);
+
+    try {
+        const client = await soap.createClientAsync(wsdl);
+        const [result] = await client.SalePaymentRequestAsync({
+            requestData: params,
+        });
+        console.log("Tejarat response", result);
+        const res = result.SalePaymentRequestResult;
+
+        if (res && Number(res.Status) === 0 && res.Token) {
+            return res.Token;
+        } else {
+            console.error("PEC error:", res);
+            return null;
+        }
+    } catch (err) {
+        console.error(
+            "SOAP lib error:",
+            err && err.message ? err.message : err
+        );
+        return null;
+    }
+}
+
 async function generateMellatToken(
     amount,
     orderId,
@@ -50,7 +87,7 @@ async function generateMellatToken(
     userName,
     userPassword,
     additionalData,
-    link = "mellatCallback",
+    link = "callback",
     CellNumber
 ) {
     try {
@@ -71,7 +108,6 @@ async function generateMellatToken(
             additionalData,
             mobileNo: CellNumber,
             callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
-            // callBackUrl: `http://192.168.0.122:9000/api/pay/${link}`,
             payerId: parseInt(payerId),
         };
 
@@ -109,7 +145,7 @@ async function generateMellatToken(
 async function generateSepehrToken(
     amount,
     invoice,
-    link = "verify2",
+    link = "callback",
     CellNumber,
     terminalID
 ) {
@@ -118,15 +154,6 @@ async function generateSepehrToken(
             amount = 10000;
         }
         const URL = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/GetToken";
-
-        let payload = "";
-        if (terminalID === "45028996") {
-            payload = {
-                Slist: [
-                    { Iban: "IR890120000000009028512987", amount: "10000" },
-                ],
-            };
-        }
 
         const data = {
             Amount: amount,
@@ -142,12 +169,10 @@ async function generateSepehrToken(
                 "Content-Type": "application/json",
             },
         });
-        // console.log("response", response);
 
         if (response.data.Status === 0) {
             return response.data.Accesstoken;
         }
-        console.log("response2222", response.data);
         return null;
     } catch (error) {
         console.error("Error while generating sepehr bank token:", error);
@@ -177,23 +202,6 @@ async function generateMehrToken(
             UserId: mobileNo,
         };
 
-        if (amount == "100000") {
-            body.ApportionmentAccountList = [
-                {
-                    AccountIBAN: "IR120600720870003852998001",
-                    Amount: "70000",
-                    ApportionmentAccountType: "enMain",
-                },
-                {
-                    AccountIBAN: "IR700620000000102175497006",
-                    Amount: "30000",
-                    ApportionmentAccountType: "enOther",
-                },
-            ];
-
-            console.log("ours");
-        }
-
         const response = await axios.post(
             "https://fcp.shaparak.ir/ref-payment/RestServices/mts/generateTokenWithNoSign/",
             body
@@ -210,51 +218,40 @@ async function generateMehrToken(
     }
 }
 
-async function generateSamanToken(amount, reserveNum, terminalId) {
+async function generateSamanToken(
+    amount,
+    reserveNum,
+    terminalId,
+    phone,
+    callback
+) {
     try {
         if (!amount || amount < 10000) {
             amount = 10000;
         }
+        let redirect = `https://${callback}/saman.php`;
 
-        const merchantID = terminalId;
-        const resNum = reserveNum;
-        amount = amount.toString();
-        const redirectUrl = "https://server.mysamar.ir/api/pay/callback";
+        if (callback.includes("mysamar")) {
+            redirect = "https://server.mysamar.ir/api/pay/callback";
+        }
 
-        const wsdlUrl =
-            "https://sep.shaparak.ir/Payments/InitPayment.asmx?WSDL";
+        const url = "https://sep.shaparak.ir/onlinepg/onlinepg";
 
-        const params = {
-            TermID: merchantID,
-            ResNum: resNum,
-            TotalAmount: amount,
-            SegAmount1: 0,
-            SegAmount2: 0,
-            SegAmount3: 0,
-            SegAmount4: 0,
-            SegAmount5: 0,
-            SegAmount6: 0,
-            AdditionalData1: 0,
-            AdditionalData2: 0,
-            Wage: 0,
-            RedirectUrl: redirectUrl,
+        const body = {
+            action: "token",
+            TerminalId: terminalId,
+            Amount: amount,
+            ResNum: reserveNum,
+            RedirectUrl: redirect,
+            CellNumber: phone,
         };
 
-        const createClientAsync = promisify(soap.createClient);
-        const client = await createClientAsync(wsdlUrl);
-
-        const requestTokenAsync = promisify(client.RequestToken.bind(client));
-        const result = await requestTokenAsync(params);
-
-        console.log("Result from Shaparak:", result);
-
-        const token = result?.result?.$value;
+        const response = await axios.post(url, body);
+        const token = response.data.token;
         if (!token) {
             return null;
         }
         return token;
-
-        // return res.redirect(`https://pay.mysamar.ir/saman.html?Token=${token}`);
     } catch (error) {
         console.error("Error while generating saman bank token:", error);
         return null;
@@ -275,7 +272,7 @@ module.exports = new (class extends controller {
         }
         const agencyId = req.query.agencyId;
         const bank = req.query.bank || "";
-        console.log("bank", bank);
+        // console.log("bank", bank);
         const bankGate =
             bank.trim() === ""
                 ? await this.BankGate.findOne({
@@ -288,7 +285,7 @@ module.exports = new (class extends controller {
                       active: true,
                       type: bank.trim(),
                   });
-        console.log("bankGate", bankGate);
+        // console.log("bankGate", bankGate);
         if (!bankGate) {
             return this.response({
                 res,
@@ -403,7 +400,7 @@ module.exports = new (class extends controller {
             });
         }
 
-        const newAmount = Math.ceil(amount + amount2);
+        let newAmount = Math.ceil(amount + amount2);
 
         // console.log("amount", amount);
         // console.log("amount2", amount2);
@@ -413,11 +410,10 @@ module.exports = new (class extends controller {
         //     amount2 = 5000;
         // }
         // if (
-        //     req.user._id == "686e0cf5ee410a203824a9d5" ||
-        //     req.user._id == "687e1a4464a746341a0085b5"
+        //   req.user._id == "686e0cf5ee410a203824a9d5" ||
+        //   req.user._id == "687e1a4464a746341a0085b5"
         // ) {
-        //     amount = 20000;
-        //     amount2 = 80000;
+        //   newAmount = 30000;
         // }
         try {
             let newTr = new this.Transactions({
@@ -432,6 +428,7 @@ module.exports = new (class extends controller {
             });
             await newTr.save();
 
+            console.log("bankGate.type", bankGate.type);
             if (bankGate.type === "SADERAT") {
                 //**********************************************SADERAT******************************************************* */
                 let token = await generateSepehrToken(
@@ -464,7 +461,6 @@ module.exports = new (class extends controller {
                     "callBack",
                     req.user.phone
                 );
-                console.log("token.return mellat", token.return);
                 const spl = token.return;
                 if (!token) {
                     return res.status(201).json({
@@ -481,7 +477,14 @@ module.exports = new (class extends controller {
                 });
             } else if (bankGate.type === "ZARIN") {
                 //**********************************************ZARIN******************************************************* */
+                if (!bankGate.callback || bankGate.callback == "") {
+                    return res.status(201).json({
+                        status: "Error",
+                        message: "خطای بانک",
+                    });
+                }
                 const zarinpal = Zarin.create(bankGate.terminal, false);
+                console.log("newAmount", newAmount);
                 let fee = await calculateFee(bankGate.terminal, newAmount);
                 console.log("fee", fee);
                 const am = newAmount / 10 + fee / 10;
@@ -489,12 +492,12 @@ module.exports = new (class extends controller {
                 const response = await zarinpal.PaymentRequest({
                     Amount: Math.ceil(am),
                     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
-                    CallbackURL: `https://server.mysamar.ir/api/pay/callBack`,
+                    // CallbackURL: `https://server.mysamar.ir/api/pay/callBack`,
+                    CallbackURL: `https://${bankGate.callback}/callback.php`,
                     Description: desc,
                     Email: "",
                     Mobile: req.user.phone,
                 });
-                console.log("response", response);
                 newTr.zarinFee = fee;
                 await newTr.save();
                 if (response.status === 100) {
@@ -535,9 +538,10 @@ module.exports = new (class extends controller {
                 let token = await generateSamanToken(
                     newAmount,
                     newTr.authority,
-                    bankGate.terminal
+                    bankGate.terminal,
+                    req.user.phone,
+                    bankGate.callback
                 );
-                console.log("token saman", token);
                 if (!token) {
                     return res.status(201).json({
                         message: `خطای بانک ${bankGate.bankName}`,
@@ -546,7 +550,25 @@ module.exports = new (class extends controller {
 
                 return res.json({
                     success: true,
-                    message: `https://pay.mysamar.ir/saman.html?Token=${token}`,
+                    message: `https://pay.mysamar.ir/saman.html?token=${token}`,
+                });
+            } else if (bankGate.type === "TEJARAT") {
+                //**********************************************TEJARAT******************************************************* */
+                let token = await generateTejaratToken(
+                    newAmount,
+                    newTr.authority,
+                    bankGate.terminal
+                );
+                // console.log("token mehr", token);
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    message: `https://pec.shaparak.ir/NewIPG/?Token="${token}`,
                 });
             }
             return this.response({
@@ -583,6 +605,9 @@ module.exports = new (class extends controller {
                 message: "payQueue not find",
             });
         }
+        // console.log("payQueue tr:", payQueue);
+        // console.log("payQueue code:", payQueue.code);
+
         const studentId = payQueue.studentId;
         let agencyId = payQueue.agencyId;
 
@@ -619,7 +644,7 @@ module.exports = new (class extends controller {
             });
         }
 
-        console.log("bank", bank);
+        // console.log("bank", bank);
         let bankGate;
         if (payQueue.type != "registration") {
             bankGate =
@@ -726,14 +751,12 @@ module.exports = new (class extends controller {
                     "callBack",
                     req.user.phone
                 );
-                console.log("token.return mellat", token.return);
                 const spl = token.return;
                 if (!token) {
                     return res.status(201).json({
                         message: `خطای بانک ${bankGate.bankName}`,
                     });
                 }
-                console.log("spl mellat", spl);
 
                 return res.json({
                     success: true,
@@ -757,7 +780,6 @@ module.exports = new (class extends controller {
                     Email: "",
                     Mobile: req.user.phone,
                 });
-                console.log("response", response);
                 newTr.zarinFee = fee;
                 await newTr.save();
                 if (response.status === 100) {
@@ -795,12 +817,46 @@ module.exports = new (class extends controller {
                 });
             } else if (bankGate.type === "SAMAN") {
                 //**********************************************SAMAN******************************************************* */
+                if (
+                    req.user._id.toString() === "6870dfa9fecc5f4e41844ca1" ||
+                    req.user._id.toString() === "686e0cf5ee410a203824a9d5" ||
+                    req.user._id.toString() === "687e1a4464a746341a0085b5"
+                ) {
+                    amount = 100000;
+                }
                 let token = await generateSamanToken(
+                    amount,
+                    newTr.authority,
+                    bankGate.terminal,
+                    req.user.phone,
+                    bankGate.callback
+                );
+                if (!token) {
+                    return res.status(201).json({
+                        message: `خطای بانک ${bankGate.bankName}`,
+                    });
+                }
+                console.log("tk from saman bank:", token);
+
+                let re = `https://${bankGate.callback}/saman.html?token=${token}`;
+
+                if (bankGate.callback.includes("mysamar")) {
+                    re = `https://pay.mysamar.ir/saman.html?token=${token}`;
+                }
+
+                return res.json({
+                    success: true,
+                    message: re,
+                });
+            } else if (bankGate.type === "TEJARAT") {
+                //**********************************************TEJARAT******************************************************* */
+                // amount = 120000;
+                // console.log(bankGate);
+                let token = await generateTejaratToken(
                     amount,
                     newTr.authority,
                     bankGate.terminal
                 );
-                console.log("token saman", token);
                 if (!token) {
                     return res.status(201).json({
                         message: `خطای بانک ${bankGate.bankName}`,
@@ -809,7 +865,7 @@ module.exports = new (class extends controller {
 
                 return res.json({
                     success: true,
-                    message: `https://pay.mysamar.ir/saman.html?Token=${token}`,
+                    message: `https://pec.shaparak.ir/NewIPG/?Token=${token}`,
                 });
             }
             return this.response({
@@ -829,514 +885,6 @@ module.exports = new (class extends controller {
         //     return res.status(500).json({ error: "Internal Server Error." });
         // }
     }
-    // async payment2(req, res) {
-    //     if (
-    //         req.query.amount === undefined ||
-    //         req.query.desc === undefined ||
-    //         req.query.stCode === undefined ||
-    //         req.query.queueCode === undefined
-    //     ) {
-    //         return this.response({
-    //             res,
-    //             code: 214,
-    //             message: "amount & desc stCode queueCode need",
-    //         });
-    //     }
-    //     // const socket = req.query.socket;
-
-    //     let amount = parseInt(req.query.amount);
-    //     const stCode = req.query.stCode;
-    //     let desc = req.query.desc;
-
-    //     const student = await this.Student.findOne({
-    //         studentCode: stCode,
-    //     }).lean();
-
-    //     if (student) {
-    //         desc = req.query.desc + " " + student.name + " " + student.lastName;
-    //     }
-
-    //     const queueCode = parseInt(req.query.queueCode);
-    //     let payQueue = await this.PayQueue.findOne(
-    //         { code: queueCode, studentId: student._id },
-    //         "amount agencyId type title"
-    //     ).lean();
-    //     if (!payQueue) {
-    //         return this.response({
-    //             res,
-    //             code: 404,
-    //             message: "payQueue not find",
-    //         });
-    //     }
-    //     const docListSanad = await this.DocListSanad.findOne(
-    //         {
-    //             $and: [
-    //                 {
-    //                     $or: [
-    //                         { accCode: "003005" + stCode },
-    //                         { forCode: "003005" + stCode },
-    //                     ],
-    //                 },
-    //                 { mId: queueCode },
-    //                 { type: "invoice" },
-    //             ],
-    //         },
-    //         ""
-    //     ).lean();
-    //     if (docListSanad) {
-    //         return this.response({
-    //             res,
-    //             code: 203,
-    //             message: "this queue is paid refresh please",
-    //         });
-    //     }
-    //     // const payAction = await this.PayAction.find({
-    //     //     queueCode,
-    //     //     studentCode: req.query.stCode,
-    //     //     delete: false,
-    //     // });
-    //     // if (payAction.length > 0) {
-    //     //     return this.response({
-    //     //         res,
-    //     //         code: 210,
-    //     //         message: "this queue is paid refresh please",
-    //     //     });
-    //     // }
-
-    //     const agencyId = payQueue.agencyId;
-    //     const agency = await this.Agency.findById(agencyId, "settings name");
-    //     if (agency) {
-    //         desc = desc + " شرکت " + agency.name;
-    //     }
-    //     console.log("payQueue", payQueue);
-
-    //     if (amount < 10000) {
-    //         console.log("amount < 10000", amount);
-    //         return this.response({
-    //             res,
-    //             code: 203,
-    //             message: "amount not enough",
-    //         });
-    //     }
-
-    //     // console.log("amount", amount);
-    //     // console.log("desc", desc);
-    //     try {
-    //         const bankGate = await this.BankGate.findOne({
-    //             agencyId,
-    //             type: { $ne: "CARD" },
-    //             active: true,
-    //         }).lean();
-    //         if (!bankGate) {
-    //             return res.status(404).json({
-    //                 message: "No bankGate available for this agency!",
-    //             });
-    //         }
-
-    //         if (bankGate.type === "MELLAT") {
-    //             const newTr = new this.Transactions({
-    //                 userId: req.user._id,
-    //                 amount: amount,
-    //                 bank: "MELLAT",
-    //                 desc: desc,
-    //                 queueCode: queueCode,
-    //                 stCode: stCode,
-    //                 agencyId,
-    //                 phone: mobile,
-    //             });
-    //             await newTr.save();
-    //             let token = await generateMellatToken(
-    //                 amount,
-    //                 newTr.authority,
-    //                 "0",
-    //                 bankGate.terminal,
-    //                 bankGate.userName,
-    //                 bankGate.userPass,
-    //                 "",
-    //                 "mellatCallback",
-    //                 mobile
-    //             );
-
-    //             const spl = token.return;
-    //             if (!token) {
-    //                 return res.status(201).json({
-    //                     message: `خطای بانک ${bankGate.bankName}`,
-    //                 });
-    //             }
-    //             if (spl.split(",").length < 2) {
-    //                 return res.status(201).json({
-    //                     message: `خطای بانک ${bankGate.bankName}`,
-    //                 });
-    //             }
-
-    //             return res.json({
-    //                 success: true,
-    //                 message: `https://pay.mysamar.ir/mellat.html?RefId=${
-    //                     spl.split(",")[1]
-    //                 }&MobileNo=${mobile}`,
-    //             });
-    //         } else if (bankGate.type === "SADERAT") {
-    //             const newTr = new this.Transactions({
-    //                 userId: req.user._id,
-    //                 amount: amount,
-    //                 bank: "SADERAT",
-    //                 desc: desc,
-    //                 queueCode: queueCode,
-    //                 stCode: stCode,
-    //                 agencyId,
-    //                 phone: mobile,
-    //             });
-    //             await newTr.save();
-    //             let token = await generateSepehrToken(
-    //                 amount,
-    //                 newTr.authority,
-    //                 "saderatCallback",
-    //                 mobile,
-    //                 bankGate.terminal
-    //             );
-    //             if (!token) {
-    //                 return res.status(201).json({
-    //                     message: `خطای بانک ${bankGate.bankName}`,
-    //                 });
-    //             }
-
-    //             return res.json({
-    //                 success: true,
-    //                 message: `https://pay.mysamar.ir?TerminalID=${TERMINAL}&token=${token}`,
-    //             });
-    //         }
-    //         const newTr = new this.Transactions({
-    //             userId: req.user._id,
-    //             amount: amount,
-    //             authority: invoice,
-    //             desc,
-    //             queueCode,
-    //             stCode,
-    //             agencyId,
-    //             phone: mobile,
-    //         });
-    //         await newTr.save();
-    //         let token = await generateSepehrToken(amount, newTr.authority);
-    //         if (!token) {
-    //             token = await generateSepehrToken(amount, newTr.authority);
-    //         }
-    //         if (!token) {
-    //             return res.status(201).json({
-    //                 message: "خطای بانک",
-    //             });
-    //         }
-
-    //         return res.json({
-    //             success: true,
-    //             message: `https://mysamar.ir/downloads/index.html?TerminalID=99018831&token=${token}`,
-    //         });
-
-    //         // return res.send(`
-    //         //     <html>
-    //         //     <body onload="document.getElementById('paymentForm').submit();">
-    //         //         <form id="paymentForm" action="https://sepehr.shaparak.ir:8080/Pay" method="POST">
-    //         //             <input type="hidden" name="TerminalID" value="${TERMINAL}">
-    //         //             <input type="hidden" name="token" value="${token}">
-    //         //             <noscript>
-    //         //                 <input type="submit" value="Click here if you are not redirected">
-    //         //             </noscript>
-    //         //         </form>
-    //         //     </body>
-    //         //     </html>
-    //         // `);
-    //         // const response = await zarinpal.PaymentRequest({
-    //         //     Amount: amount / 10,
-    //         //     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
-    //         //     CallbackURL: callBackUrl,
-    //         //     Description: desc,
-    //         //     Email: '',
-    //         //     Mobile: req.user.phone,
-    //         // });
-    //         // if (response.status === 100) {
-    //         //     const newTr = new this.Transactions({
-    //         //         userId: req.user._id,
-    //         //         amount: amount,
-    //         //         authority: response.authority,
-    //         //         desc,
-    //         //         queueCode,
-    //         //         stCode,
-    //         //         agencyId,
-    //         //     });
-    //         //     await newTr.save();
-    //         //     // res.redirect(https://panel.${process.env.URL}/finance);
-    //         //     res.json({
-    //         //         message: response.url,
-    //         //     });
-    //         //     return;
-    //         // }
-    //         // res.status(201).json({
-    //         //     status: "Error",
-    //         //     message: "خطای بانک",
-    //         // });
-    //         // return;
-    //     } catch (e) {
-    //         console.log("sepehr bank error", e);
-    //         res.status(201).json({
-    //             status: "Error",
-    //             message: "خطای بانک",
-    //         });
-    //         return;
-    //     }
-    //     // } catch (error) {
-    //     //     console.error("Error while 00020:", error);
-    //     //     return res.status(500).json({ error: "Internal Server Error." });
-    //     // }
-    // }
-
-    // async payment(req, res) {
-    //     if (
-    //         req.query.amount === undefined ||
-    //         req.query.desc === undefined ||
-    //         req.query.stCode === undefined ||
-    //         req.query.queueCode === undefined
-    //     ) {
-    //         return this.response({
-    //             res,
-    //             code: 214,
-    //             message: "amount & desc stCode queueCode need",
-    //         });
-    //     }
-    //     const socket = req.query.socket;
-
-    //     let amount = parseInt(req.query.amount);
-    //     const stCode = req.query.stCode;
-    //     let desc = req.query.desc;
-
-    //     const student = await this.Student.findOne({ studentCode: stCode });
-
-    //     if (student) {
-    //         desc = req.query.desc + " " + student.name + " " + student.lastName;
-    //     }
-
-    //     const queueCode = parseInt(req.query.queueCode);
-    //     let payQueue = await this.PayQueue.findOne(
-    //         { code: queueCode },
-    //         "amount amount03 amount37 amount7i merchentId agencyId type"
-    //     );
-    //     if (!payQueue) {
-    //         return this.response({
-    //             res,
-    //             code: 404,
-    //             message: "payQueue not find",
-    //         });
-    //     }
-    //     const docListSanad = await this.DocListSanad.findOne(
-    //         {
-    //             $and: [
-    //                 {
-    //                     $or: [
-    //                         { accCode: "003005" + stCode },
-    //                         { forCode: "003005" + stCode },
-    //                     ],
-    //                 },
-    //                 { mId: queueCode },
-    //                 { type: "invoice" },
-    //             ],
-    //         },
-    //         ""
-    //     ).lean();
-    //     if (docListSanad) {
-    //         return this.response({
-    //             res,
-    //             code: 203,
-    //             message: "this queue is paid refresh please",
-    //         });
-    //     }
-    //     // const payAction = await this.PayAction.find({
-    //     //     queueCode,
-    //     //     studentCode: req.query.stCode,
-    //     //     delete: false,
-    //     // });
-    //     // if (payAction.length > 0) {
-    //     //     return this.response({
-    //     //         res,
-    //     //         code: 210,
-    //     //         message: "this queue is paid refresh please",
-    //     //     });
-    //     // }
-
-    //     if (payQueue.amount03 != -1 && payQueue.amount03 != undefined) {
-    //         if (student.serviceDistance <= 3000) {
-    //             payQueue.amount = payQueue.amount03;
-    //         } else if (student.serviceDistance <= 7000) {
-    //             payQueue.amount = payQueue.amount37;
-    //         } else {
-    //             payQueue.amount = payQueue.amount7i;
-    //         }
-    //     }
-
-    //     let merchent = "";
-    //     // const radMerchent = "59e4cc62-98ba-4057-a809-bc25a4decc9b";
-    //     if (payQueue.merchentId != null && payQueue.merchentId.length === 36) {
-    //         merchent = payQueue.merchentId;
-    //     } else {
-    //         return this.response({
-    //             res,
-    //             code: 400,
-    //             message: "merchent not find",
-    //         });
-    //     }
-    //     const zarinpal = Zarin.create(merchent, false);
-    //     let agencyId = payQueue.agencyId;
-    //     let agency;
-    //     if (agencyId != null) {
-    //         agency = await this.Agency.findById(agencyId, "settings name");
-    //         if (agency) {
-    //             desc = desc + " شرکت " + agency.name;
-    //         }
-    //     }
-    //     // console.log("agency", agency);
-    //     if (!agency) {
-    //         // console.log(" student.school",  student.school);
-    //         const school = await this.School.findById(
-    //             student.school,
-    //             "agencyId"
-    //         ).lean();
-    //         if (school) {
-    //             agency = await this.Agency.findById(
-    //                 school.agencyId,
-    //                 "settings name"
-    //             );
-    //             if (agency) {
-    //                 desc = desc + " شرکت " + agency.name;
-    //             }
-    //         }
-    //     }
-    //     console.log("amount", amount);
-    //     // console.log("desc", desc);
-    //     if (!payQueue) {
-    //         return this.response({
-    //             res,
-    //             code: 404,
-    //             message: "Pay Queue not find",
-    //         });
-    //     }
-    //     if (amount < 10000) {
-    //         return this.response({
-    //             res,
-    //             code: 203,
-    //             message: "amount not enough",
-    //         });
-    //     }
-    //     if (
-    //         payQueue.amount > 0 &&
-    //         amount != payQueue.amount &&
-    //         payQueue.type != 7
-    //     ) {
-    //         return this.response({
-    //             res,
-    //             code: 604,
-    //             message: "amount not correct",
-    //         });
-    //     }
-    //     if (payQueue.amount < 0 || payQueue.type === 7) {
-    //         let kol = "003";
-    //         let moeen = "005";
-    //         const code = kol + moeen + stCode;
-    //         let remaining = 0;
-    //         const result = await this.DocListSanad.aggregate([
-    //             {
-    //                 $match: {
-    //                     accCode: code,
-    //                     agencyId: agencyId,
-    //                 },
-    //             },
-    //             {
-    //                 $group: {
-    //                     _id: null,
-    //                     // totalbed: { $sum: '$bed' },
-    //                     // totalbes: { $sum: '$bes' }
-    //                     total: {
-    //                         $sum: {
-    //                             $subtract: ["$bed", "$bes"],
-    //                         },
-    //                     },
-    //                 },
-    //             },
-    //         ]);
-    //         // console.log("result[0]", result[0]);
-    //         remaining = result[0] === undefined ? 0 : result[0].total;
-
-    //         console.log("remaining remaining", remaining);
-    //         if (remaining > 10000) {
-    //             amount =
-    //                 (Math.abs(payQueue.amount) * Math.abs(remaining)) / 100;
-    //             amount = financial(amount);
-    //             if (amount < 10000) {
-    //                 return this.response({
-    //                     res,
-    //                     code: 203,
-    //                     message: "amount not enough",
-    //                 });
-    //             }
-    //         } else {
-    //             return this.response({
-    //                 res,
-    //                 code: 205,
-    //                 message: "remaining is not bed",
-    //             });
-    //         }
-    //     }
-    //     // console.log("amount", amount);
-    //     // const url = config.get("url.address3");
-    //     if (!desc.includes("شرکت")) {
-    //         desc = desc + " " + process.env.URL;
-    //     }
-    //     try {
-    //         let callBackUrl = `https://node.${process.env.URL}/api/pay/verify`;
-    //         if (socket != undefined && socket === "socket") {
-    //             callBackUrl = `https://socket.${process.env.URL}/api/pay/verify`;
-    //             console.log("callBackUrl", callBackUrl);
-    //         }
-    //         const response = await zarinpal.PaymentRequest({
-    //             Amount: amount / 10,
-    //             // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
-    //             CallbackURL: callBackUrl,
-    //             Description: desc,
-    //             Email: "",
-    //             Mobile: req.user.phone,
-    //         });
-    //         if (response.status === 100) {
-    //             const newTr = new this.Transactions({
-    //                 userId: req.user._id,
-    //                 amount: amount,
-    //                 authority: response.authority,
-    //                 desc,
-    //                 queueCode,
-    //                 stCode,
-    //                 agencyId,
-    //                 phone: req.user.phone,
-    //             });
-    //             await newTr.save();
-    //             // res.redirect(https://panel.${process.env.URL}/finance);
-    //             res.json({
-    //                 message: response.url,
-    //             });
-    //             return;
-    //         }
-    //         res.status(201).json({
-    //             status: "Error",
-    //             message: "خطای بانک",
-    //         });
-    //         return;
-    //     } catch (e) {
-    //         console.log("zarinpall error", e);
-    //         res.status(201).json({
-    //             status: "Error",
-    //             message: "خطای بانک",
-    //         });
-    //         return;
-    //     }
-    //     // } catch (error) {
-    //     //     console.error("Error while 00020:", error);
-    //     //     return res.status(500).json({ error: "Internal Server Error." });
-    //     // }
-    // }
 
     async paymentCo(req, res) {
         // console.log("paymentCorrrrrr")
@@ -1605,6 +1153,7 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+
     async payRegistrationWithWallet(req, res) {
         try {
             const { studentId } = req.body;
@@ -2770,16 +2319,15 @@ module.exports = new (class extends controller {
                     pays.push({ payQueue, doclistSanad: null });
                 }
             }
-            console.log("pays.length", pays.length);
-            console.log("pays[0].type", pays[0].payQueue.type);
+            // console.log("pays.length", pays.length);
+            // console.log("pays[0].type", pays[0].payQueue.type);
             if (pays.length === 1 && pays[0].payQueue.type === "registration") {
-                console.log("student.agencyId", student.agencyId);
                 let invoice2 = await this.Invoice.findOne({
                     agencyId: student.agencyId,
                     type: "prePayment",
                     active: true,
                 }).lean();
-                console.log("invoice2", invoice2);
+
                 let amount2 = 0;
                 if (invoice2) {
                     let findSchool = false;

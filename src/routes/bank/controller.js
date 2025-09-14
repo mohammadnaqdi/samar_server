@@ -2,6 +2,7 @@ const controller = require("../controller");
 const https = require("https");
 const axios = require("axios");
 const mongoose = require("mongoose");
+const { truncateSync } = require("fs-extra");
 const ObjectId = mongoose.Types.ObjectId;
 const amoot_t = process.env.AMOOT_SMS;
 const amootUser = process.env.AMOOT_USER;
@@ -31,6 +32,7 @@ module.exports = new (class extends controller {
                     terminal: true,
                     username: false,
                     password: false,
+                    callback: false,
                 },
                 {
                     name: "ملت",
@@ -39,6 +41,7 @@ module.exports = new (class extends controller {
                     terminal: true,
                     username: true,
                     password: true,
+                    callback: false,
                 },
                 {
                     name: "زرین پال",
@@ -47,6 +50,7 @@ module.exports = new (class extends controller {
                     terminal: true,
                     username: false,
                     password: false,
+                    callback: true,
                 },
                 {
                     name: "مهر",
@@ -55,6 +59,7 @@ module.exports = new (class extends controller {
                     terminal: true,
                     username: true,
                     password: true,
+                    callback: false,
                 },
                 {
                     name: "سامان",
@@ -63,6 +68,16 @@ module.exports = new (class extends controller {
                     terminal: true,
                     username: false,
                     password: false,
+                    callback: true,
+                },
+                {
+                    name: "تجارت",
+                    sign: "TEJ",
+                    eng: "TEJARAT",
+                    terminal: true,
+                    username: false,
+                    password: false,
+                    callback: false,
                 },
             ];
 
@@ -632,6 +647,7 @@ module.exports = new (class extends controller {
                 hesab,
                 active,
                 personal,
+                callback,
             } = req.body;
 
             if (!agencyId) {
@@ -657,6 +673,7 @@ module.exports = new (class extends controller {
                     hesab,
                     active,
                     personal,
+                    callback,
                 });
 
                 return res.json({ message: "Done" });
@@ -675,6 +692,7 @@ module.exports = new (class extends controller {
                 hesab,
                 active,
                 personal,
+                callback,
             });
             return res.json({ message: "Done" });
         } catch (error) {
@@ -749,7 +767,6 @@ module.exports = new (class extends controller {
                     req.query.studentId
                 );
             }
-            //  console.log("match", match);
             const payCards = await this.PayQueue.aggregate([
                 {
                     $match: match,
@@ -774,7 +791,7 @@ module.exports = new (class extends controller {
                     },
                 },
             ]);
-            //  console.log("payCards", payCards);
+
             let pays = [];
             for (var card of payCards) {
                 // console.log("card", card);
@@ -837,7 +854,6 @@ module.exports = new (class extends controller {
 
         try {
             const { idPay, idReg, idPre, agencyId } = req.query;
-
             if (!agencyId) {
                 await session.abortTransaction();
                 session.endSession();
@@ -855,7 +871,7 @@ module.exports = new (class extends controller {
             }
 
             let parentPhone = "";
-            console.log("000000000000");
+
             const rejectPayCardHelper = async (
                 payQueueId,
                 newState,
@@ -887,27 +903,30 @@ module.exports = new (class extends controller {
                     if (parent) parentPhone = parent.phone;
                 }
             };
-
+            console.log("agency", agency);
             // Reject prePayment
             await rejectPayCardHelper(idPre, 1, "نیاز به تایید اطلاعات");
+
             const paySeparation = agency.paySeparation || false;
             // Reject registration
-      if (idReg && idReg.toString().trim() !== "") {
-        if (!paySeparation) {
-          await rejectPayCardHelper(idReg, 0, "ثبت شده");
-        } else {
-          const payCard = await this.PayQueue.findById(idReg).session(session);
-          if (payCard) {
-            if (
-              payCard.cardNumber.length > 6 &&
-              payCard.isPaid &&
-              payCard.authority.trim() === ""
-            ) {
-              await rejectPayCardHelper(idReg, 0, "ثبت شده");
+            if (idReg && idReg.toString().trim() !== "") {
+                if (!paySeparation) {
+                    await rejectPayCardHelper(idReg, 0, "ثبت شده");
+                } else {
+                    const payCard = await this.PayQueue.findById(idReg).session(
+                        session
+                    );
+                    if (payCard) {
+                        if (
+                            payCard.cardNumber.length > 6 &&
+                            payCard.isPaid &&
+                            payCard.authority.trim() === ""
+                        ) {
+                            await rejectPayCardHelper(idReg, 0, "ثبت شده");
+                        }
+                    }
+                }
             }
-          }
-        }
-      }
 
             await session.commitTransaction();
             session.endSession();

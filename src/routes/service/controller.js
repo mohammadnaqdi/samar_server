@@ -386,7 +386,7 @@ module.exports = new (class extends controller {
                     inVoiceId: invoice._id,
                     studentId: stu.id,
                 });
-                console.log("payQueue", payQueue);
+                // console.log("payQueue", payQueue);
                 if (!payQueue) {
                     await new this.PayQueue({
                         inVoiceId: invoice._id,

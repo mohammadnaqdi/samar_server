@@ -2256,7 +2256,8 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-async removeDocBySanadNum(req, res) {
+
+    async removeDocBySanadNum(req, res) {
         try {
             if (
                 req.query.agencyId === undefined ||

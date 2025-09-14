@@ -3,9 +3,9 @@ const router = express.Router();
 const controller = require("./controller");
 const validator = require("./validator");
 const {
-    isLoggined,
-    isAgencyAdmin,
-    isAdmin,
+  isLoggined,
+  isAgencyAdmin,
+  isAdmin,
 } = require("./../../middleware/auth");
 //this controller import a class this mean like a class
 
@@ -19,12 +19,12 @@ router.get("/callBack", controller.callBack.bind(controller));
 router.get("/VerifyCo", controller.verifyCo.bind(controller));
 router.get("/VerifyCoCharge", controller.verifyCoCharge.bind(controller));
 router.post(
-    "/SendNotifSocket",
-    isLoggined,
-    isAdmin,
-    validator.sendNotifsValidator(),
-    controller.validate.bind(controller),
-    controller.sendNotifSocket.bind(controller)
+  "/SendNotifSocket",
+  isLoggined,
+  isAdmin,
+  validator.sendNotifsValidator(),
+  controller.validate.bind(controller),
+  controller.sendNotifSocket.bind(controller)
 );
 router.get("/PaymentCoBank", controller.paymentCoBank.bind(controller));
 

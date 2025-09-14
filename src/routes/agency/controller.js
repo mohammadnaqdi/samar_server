@@ -2387,7 +2387,7 @@ module.exports = new (class extends controller {
             });
             contract.defHeadLine.push({ title: "tId", code: contract.tId });
             contract.defHeadLine.push({ title: "bank", code: contract.bank });
-            console.log("contract", contract);
+            // console.log("contract", contract);
 
             return this.response({
                 res,
@@ -2497,14 +2497,11 @@ module.exports = new (class extends controller {
                     await payQueue.save();
                 }
             }
-            let invoice2 = await this.Invoice.findOne(
-                {
-                    agencyId: agencyId,
-                    type: "prePayment",
-                    active: true,
-                },
-                "amount title desc distancePrice schools"
-            ).lean();
+            let invoice2 = await this.Invoice.findOne({
+                agencyId: agencyId,
+                type: "prePayment",
+                active: true,
+            }).lean();
             let amount2 = 0;
             let payQueue2;
 

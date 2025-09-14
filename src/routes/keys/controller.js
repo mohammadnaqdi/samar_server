@@ -210,7 +210,7 @@ module.exports = new (class extends controller {
     }
     async getAddress2(req, res) {
         const isImportant = req.body.isImportant || false;
-        console.log("isImportant", isImportant);
+        // console.log("isImportant", isImportant);
         try {
             const lat = req.body.lat;
             const lng = req.body.lng;
@@ -283,7 +283,7 @@ module.exports = new (class extends controller {
             //     },
             // });
         } catch (error) {
-            console.log("isImportant", isImportant);
+            // console.log("isImportant", isImportant);
             console.error("Error in getAddress:", "neshan error", error.data);
             if (isImportant) {
                 return res
@@ -648,7 +648,7 @@ module.exports = new (class extends controller {
                 distance: len,
                 IsValid: true,
             };
-            console.log("data", data);
+
             return this.response({
                 res,
                 message: "ok",
@@ -690,8 +690,6 @@ module.exports = new (class extends controller {
                     message: "ip getTripLocal not answer",
                 });
             }
-
-            console.log("data", response);
 
             return this.response({
                 res,

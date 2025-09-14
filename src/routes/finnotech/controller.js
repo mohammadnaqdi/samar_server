@@ -475,8 +475,6 @@ module.exports = new (class extends controller {
 
             const response = await makeHttpsGet(url, ENCODED_TOKEN);
 
-            // console.log("Raw response:", response.data);
-
             let parsed;
             try {
                 parsed = JSON.parse(response.data);
@@ -1835,7 +1833,7 @@ async function getToken() {
         }
     } catch (err) {
         await session.abortTransaction();
-        console.error("Error while getting token:", err.response);
+        console.error("Error while getting token:", err.response.data);
         return {
             token: null,
             refresh_token: null,

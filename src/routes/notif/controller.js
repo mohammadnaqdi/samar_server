@@ -102,7 +102,7 @@ module.exports = new (class extends controller {
                 { confirmState: 1 },
             ];
 
-            const [notifMsg, notifAds, notifWarn] = await Promise.all([
+            let [notifMsg, notifAds, notifWarn] = await Promise.all([
                 this.Notification.find({
                     $and: [...baseQuery, { type: "msg" }],
                 }).sort({ updatedAt: -1 }),

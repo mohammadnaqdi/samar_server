@@ -686,6 +686,10 @@ module.exports = new (class extends controller {
                     }
                     user = userX;
                     driver.userId = user.id;
+                    const agency = await this.Agency.findById(
+                        driver.agencyId
+                    ).lean();
+                    driver.driverCode = agency.code + user.code;
                 }
             }
             // console.log("req.body=",req.body);

@@ -1916,7 +1916,7 @@ module.exports = new (class extends controller {
                 }
                 qr.driverId = { $in: driverObject };
             }
-            console.log("resetDDS qr", qr);
+            // console.log("resetDDS qr", qr);
             await this.DDS.deleteMany(qr);
 
             const daysDifference = Math.ceil(

@@ -38,7 +38,7 @@ const agencySchema = new mongoose.Schema(
             },
         },
         active: { type: Boolean, default: true, required: false },
-        activeHasiban: { type: Boolean, default: false, required: false },
+        activeHasiban: { type: Boolean, default: true, required: false },
         paySeparation: { type: Boolean, default: false, required: false },
         delete: { type: Boolean, default: false, required: false },
         registrationNumber: { type: String, default: "", required: false },

@@ -38,7 +38,6 @@ async function isLoggined(req, res, next) {
         const dynamicKey = !checkSalt
             ? process.env.JWT_KEY
             : process.env.JWT_KEY + userSalt;
-            console.log("userSaltx=",userSalt);
         const decoded = jwt.verify(token, dynamicKey);
         if (!decoded || !decoded._id) {
             return res.status(401).json({ message: "Invalid token" });

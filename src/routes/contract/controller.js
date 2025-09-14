@@ -43,7 +43,13 @@ const imageOptions = {
 
 async function convertImage(url) {
     try {
-        const response = await axios.get(url, { responseType: "arraybuffer" });
+        const response = await axios.get(url, {
+            responseType: "arraybuffer",
+            validateStatus: () => true,
+        });
+        if (response.status == 404) {
+            return false;
+        }
         const jpegBuffer = await sharp(Buffer.from(response.data))
             // .flatten({ background: { r: 255, g: 255, b: 255 } })
             .png({ quality: 100 })
@@ -87,6 +93,7 @@ module.exports = new (class extends controller {
 
                 const parentPicUrl = `https://server.mysamar.ir/${parent.contract.pic}`;
                 const parentBuffer = await convertImage(parentPicUrl);
+                if (!parentBuffer) continue;
                 const parentBase64 =
                     "data:image/jpeg;base64," + parentBuffer.toString("base64");
 
@@ -103,6 +110,8 @@ module.exports = new (class extends controller {
                 } else {
                     const agencyPicUrl = `https://server.mysamar.ir/${parent.agency_pic}`;
                     agencyB = await convertImage(agencyPicUrl);
+                    if (!agencyB) continue;
+
                     agencyBuffer =
                         "data:image/jpeg;base64," + agencyB.toString("base64");
                 }
@@ -155,7 +164,7 @@ module.exports = new (class extends controller {
             const dir = path.join(__basedir, "/documents/", `${phone}.zip`);
             fs.writeFileSync(dir, zipBuf);
 
-            const downloadUrl = `server.${process.env.URL}/api/download?data=${phone}.zip`;
+            const downloadUrl = `https://server.${process.env.URL}/api/download?data=${phone}.zip`;
             return res.json({
                 message: "Successfully generated",
                 downloadLink: downloadUrl,
@@ -197,6 +206,8 @@ module.exports = new (class extends controller {
 
                 const parentPicUrl = `https://server.mysamar.ir/${parent.pic}`;
                 const parentBuffer = await convertImage(parentPicUrl);
+                if (!parentBuffer) continue;
+
                 const parentBase64 =
                     "data:image/jpeg;base64," + parentBuffer.toString("base64");
 
@@ -213,6 +224,8 @@ module.exports = new (class extends controller {
                 } else {
                     const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
                     const agencyB = await convertImage(agencyPicUrl);
+                    if (!agencyB) continue;
+
                     agencyBuffer =
                         "data:image/jpeg;base64," + agencyB.toString("base64");
                 }
@@ -263,7 +276,7 @@ module.exports = new (class extends controller {
             const p = path.join(__basedir, "/documents/", `${fileName}.zip`);
             fs.writeFileSync(p, zipBuf);
 
-            const downloadUrl = `server.${process.env.URL}/api/download?data=${fileName}.zip`;
+            const downloadUrl = `https://server.${process.env.URL}/api/download?data=${fileName}.zip`;
             return res.json({
                 message: "Successfully generated",
                 downloadLink: downloadUrl,
@@ -304,6 +317,13 @@ module.exports = new (class extends controller {
 
             const parentPicUrl = `https://server.mysamar.ir/${data.contract.pic}`;
             const parentBuffer = await convertImage(parentPicUrl);
+            if (!parentBuffer) {
+                return res.status(400).json({
+                    message: "Failed to generate word file",
+                    downloadLink: null,
+                });
+            }
+
             const parentBase64 =
                 "data:image/jpeg;base64," + parentBuffer.toString("base64");
 
@@ -320,6 +340,13 @@ module.exports = new (class extends controller {
             } else {
                 const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
                 const agencyB = await convertImage(agencyPicUrl);
+                if (!agencyB) {
+                    return res.status(400).json({
+                        message: "Failed to generate word file",
+                        downloadLink: null,
+                    });
+                }
+
                 agencyBuffer =
                     "data:image/jpeg;base64," + agencyB.toString("base64");
             }
@@ -363,7 +390,7 @@ module.exports = new (class extends controller {
             const p = path.join(__basedir, "/documents/", `${fileName}.docx`);
             fs.writeFileSync(p, buf);
 
-            const downloadUrl = `server.${process.env.URL}/api/download?data=${fileName}.docx`;
+            const downloadUrl = `https://server.${process.env.URL}/api/download?data=${fileName}.docx`;
             return res.json({
                 message: "Successfully generated",
                 downloadLink: downloadUrl,
