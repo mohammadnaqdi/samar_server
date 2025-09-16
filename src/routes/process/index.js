@@ -15,17 +15,17 @@ router.post(
 router.post(
     "/StudentPayState",
     isEnyAdmin,
-    validator.studentPayStateValidator(),
+    validator.studentPayState2Validator(),
     controller.validate.bind(controller),
     controller.studentPayState.bind(controller)
 );
-router.post(
-    "/StudentPayState2",
-    isEnyAdmin,
-    validator.studentPayState2Validator(),
-    controller.validate.bind(controller),
-    controller.studentPayState2.bind(controller)
-);
+// router.post(
+//     "/StudentPayState2",
+//     isEnyAdmin,
+//     validator.studentPayState2Validator(),
+//     controller.validate.bind(controller),
+//     controller.studentPayState2.bind(controller)
+// );
 
 router.post(
     "/StudentListByIds",

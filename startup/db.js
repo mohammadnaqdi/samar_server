@@ -1,13 +1,14 @@
 const { Keys, CounterKey } = require("../src/models/keys");
-const Day = require("../src/models/days");
-const School = require("../src/models/school");
-const Student = require("../src/models/student");
+// const Day = require("../src/models/days");
+// const School = require("../src/models/school");
+// const Student = require("../src/models/student");
 const { Agency } = require("../src/models/agency");
-const { DriverInfo, Driver } = require("../src/models/driver");
-const { Holiday } = require("../src/models/calendar");
+// const { DriverInfo, Driver } = require("../src/models/driver");
+// const { Holiday } = require("../src/models/calendar");
 const Rule = require("../src/models/rules");
 const { LevelAcc, Bank } = require("../src/models/levels");
-const { Service } = require("../src/models/service");
+const { BankGate,PayGate } = require("../src/models/banks");
+// const { Service } = require("../src/models/service");
 
 const textValues = [
     "سرویس مدرسه یک سرویس جمعی می باشد که در صورت تکمیل ظرفیت خودرو سرویس دهی انجام می پذیرد",
@@ -37,85 +38,135 @@ module.exports = async function (mongoose) {
         })
         .catch(() => console.log("mongodb dont Connected!!"));
 
-    if (false) {
-        const drivers = await Driver.find();
-        await Promise.all(
-            drivers.map(async (dr) => {
-                let driverInfo = await DriverInfo.findOne({ driverId: dr._id });
-                if (!driverInfo) {
-                    await new DriverInfo({
-                        driverId: dr._id,
-                        location: dr.location,
-                        address: dr.address,
-                        birthday: dr.birthday,
-                        healthPic: dr.healthPic,
-                        confirmHealthPic: dr.confirmHealthPic,
-                        technicalDiagPic: dr.technicalDiagPic,
-                        confirmTechincalPic: dr.confirmTechincalPic,
-                        clearancesPic: dr.clearancesPic,
-                        confirmClearPic: dr.confirmClearPic,
-                        dLicencePic: dr.dLicencePic,
-                        confirmDriverLcPic: dr.confirmDriverLcPic,
-                        carDocPic: dr.carDocPic,
-                        confirmcarDocPic: dr.confirmcarDocPic,
-                        isDriverCarOwner: dr.isDriverCarOwner,
-                    }).save();
-                } else if (driverInfo.dLicencePic.trim() === "") {
-                    driverInfo.location = dr.location;
-                    driverInfo.address = dr.address;
-                    driverInfo.birthday = dr.birthday;
-                    driverInfo.healthPic = dr.healthPic;
-                    driverInfo.confirmHealthPic = dr.confirmHealthPic;
-                    driverInfo.technicalDiagPic = dr.technicalDiagPic;
-                    driverInfo.confirmTechincalPic = dr.confirmTechincalPic;
-                    driverInfo.clearancesPic = dr.clearancesPic;
-                    driverInfo.confirmClearPic = dr.confirmClearPic;
-                    driverInfo.dLicencePic = dr.dLicencePic;
-                    driverInfo.confirmDriverLcPic = dr.confirmDriverLcPic;
-                    driverInfo.carDocPic = dr.carDocPic;
-                    driverInfo.confirmcarDocPic = dr.confirmcarDocPic;
-                    driverInfo.isDriverCarOwner = dr.isDriverCarOwner;
-                    await driverInfo.save();
+    if(false){
+        const count=await PayGate.countDocuments();
+        if(count<1){
+            const bankGate=await BankGate.find();
+            let count=0;
+            for(var g of bankGate){
+                let xType='CARD';
+                switch (g.type) {
+                    case 'MELLAT':
+                        xType='BPM';
+                        break;
+                    case 'SADERAT':
+                        xType='SEPEHR';
+                        break;
+                    case 'ZARIN':
+                        xType='ZARIN';
+                        break;
+                    case 'MEHR':
+                        xType='FCP';
+                        break;
+                    case 'SAMAN':
+                        xType='SEP';
+                        break;
+                    case 'TEJARAT':
+                        xType='PEC';
+                        break;
+                
                 }
-            })
-        );
-    }
-    if (false) {
-        const authority = await CounterKey.findOne({ name: "authority" });
-        if (!authority) {
-            await new CounterKey({
-                name: "authority",
-                seq: 11111111,
-            }).save();
-            console.log("CounterKey for authority created");
-        } else if (authority.seq < 11111111) {
-            authority.seq = 11111111;
-            await authority.save();
-            console.log("CounterKey for authority updated");
-        } else {
-            console.log("CounterKey for authority already exists");
-        }
-    }
-    if (false) {
-        const s = await Holiday.updateMany(
-            { serviceNum: -1 },
-            { studentId: "" }
-        );
-        let sa = await Holiday.find({ studentId: { $ne: "" } });
-
-        for (var t of sa) {
-            var stCode = t.studentId;
-            // t.studentId=stCode.toString();
-            console.log("stCode", stCode);
-            await Holiday.findByIdAndUpdate(t.id, {
-                studentId: stCode.toString(),
-            });
-            if (stCode === null) {
-                await Holiday.findByIdAndUpdate(t.id, { serviceNum: -1 });
+                 await PayGate.create({
+                    agencyId:g.agencyId,
+                    editor: g.editor,
+                    bankName:g.bankName,
+                    bankCode:g.bankCode,
+                    type:xType,
+                    card:g.card,
+                    terminal:g.terminal,
+                    userName:g.userName,
+                    userPass:g.userPass,
+                    hesab:g.hesab,
+                    active:g.active,
+                    personal:g.personal,
+                    callback:g.callback,
+                    schools:[],
+                });
+                count++;
             }
+            console.log(`create ${count} payGates`);
         }
-        console.log("update student in holiday", s.length);
-    }
+    }    
+
+    // if (false) {
+    //     const drivers = await Driver.find();
+    //     await Promise.all(
+    //         drivers.map(async (dr) => {
+    //             let driverInfo = await DriverInfo.findOne({ driverId: dr._id });
+    //             if (!driverInfo) {
+    //                 await new DriverInfo({
+    //                     driverId: dr._id,
+    //                     location: dr.location,
+    //                     address: dr.address,
+    //                     birthday: dr.birthday,
+    //                     healthPic: dr.healthPic,
+    //                     confirmHealthPic: dr.confirmHealthPic,
+    //                     technicalDiagPic: dr.technicalDiagPic,
+    //                     confirmTechincalPic: dr.confirmTechincalPic,
+    //                     clearancesPic: dr.clearancesPic,
+    //                     confirmClearPic: dr.confirmClearPic,
+    //                     dLicencePic: dr.dLicencePic,
+    //                     confirmDriverLcPic: dr.confirmDriverLcPic,
+    //                     carDocPic: dr.carDocPic,
+    //                     confirmcarDocPic: dr.confirmcarDocPic,
+    //                     isDriverCarOwner: dr.isDriverCarOwner,
+    //                 }).save();
+    //             } else if (driverInfo.dLicencePic.trim() === "") {
+    //                 driverInfo.location = dr.location;
+    //                 driverInfo.address = dr.address;
+    //                 driverInfo.birthday = dr.birthday;
+    //                 driverInfo.healthPic = dr.healthPic;
+    //                 driverInfo.confirmHealthPic = dr.confirmHealthPic;
+    //                 driverInfo.technicalDiagPic = dr.technicalDiagPic;
+    //                 driverInfo.confirmTechincalPic = dr.confirmTechincalPic;
+    //                 driverInfo.clearancesPic = dr.clearancesPic;
+    //                 driverInfo.confirmClearPic = dr.confirmClearPic;
+    //                 driverInfo.dLicencePic = dr.dLicencePic;
+    //                 driverInfo.confirmDriverLcPic = dr.confirmDriverLcPic;
+    //                 driverInfo.carDocPic = dr.carDocPic;
+    //                 driverInfo.confirmcarDocPic = dr.confirmcarDocPic;
+    //                 driverInfo.isDriverCarOwner = dr.isDriverCarOwner;
+    //                 await driverInfo.save();
+    //             }
+    //         })
+    //     );
+    // }
+    // if (false) {
+    //     const authority = await CounterKey.findOne({ name: "authority" });
+    //     if (!authority) {
+    //         await new CounterKey({
+    //             name: "authority",
+    //             seq: 11111111,
+    //         }).save();
+    //         console.log("CounterKey for authority created");
+    //     } else if (authority.seq < 11111111) {
+    //         authority.seq = 11111111;
+    //         await authority.save();
+    //         console.log("CounterKey for authority updated");
+    //     } else {
+    //         console.log("CounterKey for authority already exists");
+    //     }
+    // }
+    // if (false) {
+    //     const s = await Holiday.updateMany(
+    //         { serviceNum: -1 },
+    //         { studentId: "" }
+    //     );
+    //     let sa = await Holiday.find({ studentId: { $ne: "" } });
+
+    //     for (var t of sa) {
+    //         var stCode = t.studentId;
+    //         // t.studentId=stCode.toString();
+    //         console.log("stCode", stCode);
+    //         await Holiday.findByIdAndUpdate(t.id, {
+    //             studentId: stCode.toString(),
+    //         });
+    //         if (stCode === null) {
+    //             await Holiday.findByIdAndUpdate(t.id, { serviceNum: -1 });
+    //         }
+    //     }
+    //     console.log("update student in holiday", s.length);
+    // }
     // if (false) {
     //     let schools = await School.find({}, "name shifts schoolTime");
     //     for (var i in schools) {
@@ -188,7 +239,7 @@ module.exports = async function (mongoose) {
         });
     }
 
-    if (true) {
+    if (false) {
         const countkey = await Keys.countDocuments();
         console.log("countkey", countkey);
         if (countkey < 4) {
@@ -574,7 +625,7 @@ module.exports = async function (mongoose) {
     if (false) {
         await Bank.deleteMany();
     }
-    if (true) {
+    if (false) {
         const count = await Bank.countDocuments();
         if (count < 29) {
             let bank = new Bank({
@@ -803,7 +854,7 @@ module.exports = async function (mongoose) {
             console.log("Banks added succsefully");
         }
     }
-    if (true) {
+    if (false) {
         const count = await LevelAcc.countDocuments();
         if (count < 3) {
             let level = new LevelAcc({

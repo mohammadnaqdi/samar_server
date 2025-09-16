@@ -180,4 +180,59 @@ bankGateSchema.index({ agencyId: 1, type: 1 }, { unique: true });
 
 const BankGate = mongoose.model("BankGate", bankGateSchema);
 
-module.exports = { CostCenter, BankInfo, CheckBook, CheckPage, BankGate };
+const payGateSchema = new mongoose.Schema(
+    {
+        agencyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Agency",
+            required: true,
+        },
+        editor: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        bankName: { type: String, default: "" },
+        bankCode: { type: String, default: "" },
+        type: {
+            type: String,
+            enum: [
+                "CARD",
+                "SEPEHR",//saderat
+                "BPM",//mellat
+                "ZARIN",
+                "SEP",//ayandeh , refah
+                "FCP",//mehr
+                "PEC",// tejart
+            ],
+            default: "ZARIN",
+        },
+        callback: { type: String, default: "" },
+        card: { type: String, default: "" },
+        terminal: { type: String, default: "" },
+        userName: { type: String, default: "" },
+        userPass: { type: String, default: "" },
+        hesab: { type: String, required: true },
+        active: { type: Boolean, default: true },
+        schools:{
+            type:[
+                {
+                    name:String,
+                    schoolId:String
+                }
+            ],
+            default:[]
+        },
+        personal: { type: Boolean, default: false },
+        prePayment: { type: Boolean, default: true },
+        installments: { type: Boolean, default: true },
+    },
+    {
+        timestamps: true,
+    }
+);
+payGateSchema.index({ agencyId: 1, terminal: 1 }, { unique: true });
+
+const PayGate = mongoose.model("PayGate", payGateSchema);
+
+module.exports = { CostCenter, BankInfo, CheckBook, CheckPage, BankGate,PayGate };

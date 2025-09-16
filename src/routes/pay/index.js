@@ -9,8 +9,8 @@ const {
 } = require("./../../middleware/auth");
 //this controller import a class this mean like a class
 
-router.get("/Verify", controller.verify.bind(controller));
-router.post("/Verify2", controller.verify2.bind(controller));
+// router.get("/Verify", controller.verify.bind(controller));
+// router.post("/Verify2", controller.verify2.bind(controller));
 router.post("/VerifyPrePayment", controller.verifyPrePayment.bind(controller));
 router.post("/saderatCallback", controller.saderatCallback.bind(controller));
 router.post("/mellatCallback", controller.mellatCallback.bind(controller));

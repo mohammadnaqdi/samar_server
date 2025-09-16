@@ -456,24 +456,6 @@ module.exports = new (class extends controller {
         }
     }
 
-    async deleteSchool(req, res) {
-        try {
-            if (req.query.id === undefined) {
-                return res.status(214).json({ msg: "id need" });
-            }
-            const school = await this.School.findByIdAndUpdate(req.query.id, {
-                delete: true,
-            });
-            return this.response({
-                res,
-                message: "ok",
-                data: school,
-            });
-        } catch (error) {
-            console.error("Error in deleteSchool:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
 
     async setSchoolTeacher(req, res) {
         try {
@@ -1047,6 +1029,48 @@ module.exports = new (class extends controller {
             res.status(500).json({ error: "Internal Server Error" });
         }
     }
+    async deleteSchool(req, res) {
+        try {
+            const schoolId = req.query.schoolId;
+            if (schoolId === undefined || schoolId.trim() === "") {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "schoolId need",
+                });
+            }
+ 
+            const school = await this.School.findById(schoolId);
+            if (!school) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "school not found",
+                });
+            }
+ 
+            const student = await this.Student.findOne({
+                school: school._id,
+            });
+            if (student) {
+                return this.response({
+                    res,
+                    code: 402,
+                    message: "school has students",
+                });
+            }
+ 
+            await this.School.findByIdAndDelete(schoolId);
+            return this.response({
+                res,
+                code: 200,
+                message: "Deleted",
+            });
+        } catch (error) {
+            console.error("Error getting deleteSchool:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
 })();
 function calculateMonthsAndDays(start, end) {
     const startDate = new persianDate(new Date(start));
@@ -1085,6 +1109,12 @@ function replacePlaceholders(text, data) {
     const regex = /\{(\w+)\}/g;
 
     return text.replace(regex, (_, key) => data[key] || `{${key}}`);
+}
+function isEmpty(value) {
+    return (
+        value == null ||
+        (typeof value === "string" && value.trim().length === 0)
+    );
 }
 function pad(width, string, padding) {
     return width <= string.length

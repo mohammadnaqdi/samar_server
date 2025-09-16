@@ -55,15 +55,29 @@ router.post(
     controller.validate.bind(controller),
     controller.setBankGate.bind(controller)
 );
+router.post(
+    "/SetPayGate",
+    validator.setBankGateValidator(),
+    controller.validate.bind(controller),
+    controller.setPayGate.bind(controller)
+);
 
-router.get("/getBankGate", controller.getBankGate.bind(controller));
+router.get("/GetPayGate", controller.getPayGate.bind(controller));
 router.get(
     "/GetBankGateOnlyCard",
     controller.getBankGateOnlyCard.bind(controller)
 );
 router.get(
+    "/GetPayGateOnlyCard",
+    controller.getPayGateOnlyCard.bind(controller)
+);
+router.get(
     "/GetBankGate4Parent",
-    controller.getBankGate4Parent.bind(controller)
+    controller.getPayGate4Parent.bind(controller)
+);
+router.get(
+    "/GetPayGate4Parent",
+    controller.getPayGate4Parent.bind(controller)
 );
 router.get(
     "/GetAgencyPayCards",
@@ -79,6 +93,11 @@ router.get(
     "/getBankCreds",
     isAgencyAdmin,
     controller.getBankCreds.bind(controller)
+);
+router.get(
+    "/GetPayCreds",
+    isAgencyAdmin,
+    controller.getPayCreds.bind(controller)
 );
 
 module.exports = router;

@@ -539,20 +539,35 @@ module.exports = new (class extends controller {
                     message: "service not find",
                 });
             }
+            let student = await this.Student.findById(studentId);
+            if (!student) {
+                return this.response({
+                    res,
+                    code: 501,
+                    message: "student not find",
+                });
+            }
+
+            if (!student.service) {
+                return this.response({
+                    res,
+                    code: 400,
+                    message: "student already has service",
+                });
+            }
 
             const lastCost = service.cost;
             service.distance = distance;
             service.cost = cost;
             service.driverSharing = driverSharing;
-            service.student.push(studentId);
-            service.studentCost.push(studentCost);
             service.routeSave.push({ routes: [], lat, lng, name, code });
             service.percentInfo = percentInfo;
 
             await service.save();
 
             var st = await this.Student.findByIdAndUpdate(studentId, {
-                serviceId: service.serviceNum,
+                serviceNum: service.serviceNum,
+                service: service._id,
                 serviceCost: studentCost,
                 state: 4,
                 stateTitle: "دارای سرویس",
@@ -572,7 +587,7 @@ module.exports = new (class extends controller {
 
             return this.response({
                 res,
-                data: { id: service.id, serviceNum: service.serviceNum },
+                data: { id: service._id, serviceNum: service.serviceNum },
             });
         } catch (error) {
             console.error("Error in addStudentToService:", error);

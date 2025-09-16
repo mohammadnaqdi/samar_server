@@ -273,19 +273,33 @@ module.exports = new (class extends controller {
         const agencyId = req.query.agencyId;
         const bank = req.query.bank || "";
         // console.log("bank", bank);
-        const bankGate =
+        let bankGate =
             bank.trim() === ""
-                ? await this.BankGate.findOne({
+                ? await this.PayGate.findOne({
                       agencyId,
                       active: true,
                       type: { $ne: "CARD" },
                   })
-                : await this.BankGate.findOne({
+                : await this.PayGate.findOne({
                       agencyId,
                       active: true,
                       type: bank.trim(),
                   });
         // console.log("bankGate", bankGate);
+        if (!bankGate) {
+            bankGate =
+                bank.trim() === ""
+                    ? await this.BankGate.findOne({
+                          agencyId,
+                          active: true,
+                          type: { $ne: "CARD" },
+                      })
+                    : await this.BankGate.findOne({
+                          agencyId,
+                          active: true,
+                          type: bank.trim(),
+                      });
+        }
         if (!bankGate) {
             return this.response({
                 res,
@@ -429,7 +443,7 @@ module.exports = new (class extends controller {
             await newTr.save();
 
             console.log("bankGate.type", bankGate.type);
-            if (bankGate.type === "SADERAT") {
+            if (bankGate.type === "SADERAT" || bankGate.type === "SEPEHR") {
                 //**********************************************SADERAT******************************************************* */
                 let token = await generateSepehrToken(
                     newAmount,
@@ -448,7 +462,7 @@ module.exports = new (class extends controller {
                     success: true,
                     message: `https://pay.samar-rad.ir?TerminalID=${bankGate.terminal}&token=${token}`,
                 });
-            } else if (bankGate.type === "MELLAT") {
+            } else if (bankGate.type === "MELLAT" || bankGate.type === "BPM") {
                 //**********************************************MELLAT******************************************************* */
                 let token = await generateMellatToken(
                     newAmount,
@@ -513,7 +527,7 @@ module.exports = new (class extends controller {
                     status: "Error",
                     message: "خطای بانک",
                 });
-            } else if (bankGate.type === "MEHR") {
+            } else if (bankGate.type === "MEHR" || bankGate.type === "FCP") {
                 //**********************************************MEHR******************************************************* */
                 let token = await generateMehrToken(
                     newAmount,
@@ -533,7 +547,7 @@ module.exports = new (class extends controller {
                     success: true,
                     message: `https://fcp.shaparak.ir/_ipgw_/payment/?token=${token}&lang=fa`,
                 });
-            } else if (bankGate.type === "SAMAN") {
+            } else if (bankGate.type === "SAMAN" || bankGate.type === "SEP") {
                 //**********************************************SAMAN******************************************************* */
                 let token = await generateSamanToken(
                     newAmount,
@@ -552,7 +566,7 @@ module.exports = new (class extends controller {
                     success: true,
                     message: `https://pay.mysamar.ir/saman.html?token=${token}`,
                 });
-            } else if (bankGate.type === "TEJARAT") {
+            } else if (bankGate.type === "TEJARAT" || bankGate.type === "PEC") {
                 //**********************************************TEJARAT******************************************************* */
                 let token = await generateTejaratToken(
                     newAmount,
@@ -649,17 +663,31 @@ module.exports = new (class extends controller {
         if (payQueue.type != "registration") {
             bankGate =
                 bank.trim() === ""
-                    ? await this.BankGate.findOne({
+                    ? await this.PayGate.findOne({
                           agencyId,
                           active: true,
                           type: { $ne: "CARD" },
                       })
-                    : await this.BankGate.findOne({
+                    : await this.PayGate.findOne({
                           agencyId,
                           active: true,
                           type: bank.trim(),
                       });
             // console.log("bankGate", bankGate);
+            if (!bankGate) {
+                bankGate =
+                    bank.trim() === ""
+                        ? await this.BankGate.findOne({
+                              agencyId,
+                              active: true,
+                              type: { $ne: "CARD" },
+                          })
+                        : await this.BankGate.findOne({
+                              agencyId,
+                              active: true,
+                              type: bank.trim(),
+                          });
+            }
             if (!bankGate) {
                 return this.response({
                     res,
@@ -719,7 +747,7 @@ module.exports = new (class extends controller {
             });
             await newTr.save();
 
-            if (bankGate.type === "SADERAT") {
+            if (bankGate.type === "SADERAT" || bankGate.type === "SEPEHR") {
                 //****************************************SADERAT************************************************** */
                 let token = await generateSepehrToken(
                     payQueue.amount,
@@ -738,7 +766,7 @@ module.exports = new (class extends controller {
                     success: true,
                     message: `https://pay.samar-rad.ir?TerminalID=${bankGate.terminal}&token=${token}`,
                 });
-            } else if (bankGate.type === "MELLAT") {
+            } else if (bankGate.type === "MELLAT" || bankGate.type === "BPM") {
                 //**********************************************MELLAT******************************************************* */
                 let token = await generateMellatToken(
                     amount,
@@ -795,7 +823,7 @@ module.exports = new (class extends controller {
                     status: "Error",
                     message: "خطای بانک",
                 });
-            } else if (bankGate.type === "MEHR") {
+            } else if (bankGate.type === "MEHR" || bankGate.type === "FCP") {
                 //**********************************************MEHR******************************************************* */
                 let token = await generateMehrToken(
                     amount,
@@ -815,7 +843,7 @@ module.exports = new (class extends controller {
                     success: true,
                     message: `https://fcp.shaparak.ir/_ipgw_/payment/?token=${token}&lang=fa`,
                 });
-            } else if (bankGate.type === "SAMAN") {
+            } else if (bankGate.type === "SAMAN" || bankGate.type === "SEP") {
                 //**********************************************SAMAN******************************************************* */
                 if (
                     req.user._id.toString() === "6870dfa9fecc5f4e41844ca1" ||
@@ -848,7 +876,7 @@ module.exports = new (class extends controller {
                     success: true,
                     message: re,
                 });
-            } else if (bankGate.type === "TEJARAT") {
+            } else if (bankGate.type === "TEJARAT" || bankGate.type === "PEC") {
                 //**********************************************TEJARAT******************************************************* */
                 // amount = 120000;
                 // console.log(bankGate);
@@ -885,7 +913,6 @@ module.exports = new (class extends controller {
         //     return res.status(500).json({ error: "Internal Server Error." });
         // }
     }
-
     async paymentCo(req, res) {
         // console.log("paymentCorrrrrr")
         if (
@@ -1649,41 +1676,26 @@ module.exports = new (class extends controller {
         }
     }
 
-    async getPayQueue(req, res) {
+    async getAgencyInvoices(req, res) {
         try {
             if (req.query.agencyId === undefined) {
                 return this.response({
                     res,
-                    code: 214,
+                    code: 614,
                     message: "agencyId need",
                 });
             }
-            const type = req.query.type || "other";
-            const ag =
-                req.query.agencyId.trim() === "" ? null : req.body.agencyId;
-            if (ag === null || ag === "null") {
-                const pays = await this.PayQueue.find({ agencyId: null });
-                this.response({
-                    res,
-                    data: pays,
-                });
-                return;
-            }
-            let qu = [
-                { agencyId: ObjectId.createFromHexString(req.query.agencyId) },
-            ];
-            if (type === "other") {
-                qu.push({ $or: [{ type: "optional" }, { type: "force" }] });
-            } else {
-                qu.push({ type: type });
-            }
-            const pays = await this.PayQueue.find({ $and: qu });
+            const pays = await this.Invoice.find({
+                agencyId: req.query.agencyId,
+                delete: false,
+                active: true,
+            });
             return this.response({
                 res,
                 data: pays,
             });
         } catch (error) {
-            console.error("Error while 00029:", error);
+            console.error("Error while getAgencyInvoices:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -2396,9 +2408,17 @@ module.exports = new (class extends controller {
         session.startTransaction();
 
         try {
-            const { agencyId, studentId, cardNumber, refId, amount, payDate } =
-                req.body;
+            const {
+                payGateId,
+                agencyId,
+                studentId,
+                cardNumber,
+                refId,
+                amount,
+                payDate,
+            } = req.body;
             const isSheba = req.body.isSheba || false;
+            console.log("payGateId", payGateId);
 
             let student = await this.Student.findById(studentId).session(
                 session
@@ -2467,6 +2487,7 @@ module.exports = new (class extends controller {
                             cardNumber,
                             isSheba,
                             refId,
+                            bank: payGateId,
                         });
                     } else {
                         payQueue.isPaid = true;
@@ -2475,6 +2496,7 @@ module.exports = new (class extends controller {
                         payQueue.cardNumber = cardNumber;
                         payQueue.isSheba = isSheba;
                         payQueue.refId = refId;
+                        payQueue.bank = payGateId;
                     }
                     await payQueue.save({ session });
                 }
@@ -2546,6 +2568,7 @@ module.exports = new (class extends controller {
                         cardNumber,
                         isSheba,
                         refId,
+                        bank: payGateId,
                     });
                 } else {
                     prePayment.isPaid = true;
@@ -2554,6 +2577,7 @@ module.exports = new (class extends controller {
                     prePayment.cardNumber = cardNumber;
                     prePayment.isSheba = isSheba;
                     prePayment.refId = refId;
+                    prePayment.bank = payGateId;
                 }
                 await prePayment.save({ session });
             }

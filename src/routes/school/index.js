@@ -9,20 +9,20 @@ router.post(
     isEnyAdmin,
     validator.setSchoolValidator(),
     controller.validate.bind(controller),
-    controller.setSchool.bind(controller),
+    controller.setSchool.bind(controller)
 );
 router.post(
     "/UnselectedSchools",
     validator.unselectedSchoolsValidator(),
     controller.validate.bind(controller),
-    controller.unselectedSchools.bind(controller),
+    controller.unselectedSchools.bind(controller)
 );
 router.post(
     "/AddManagerToSchool",
     isAdmin,
     validator.addManagerToSchoolValidator(),
     controller.validate.bind(controller),
-    controller.addManagerToSchool.bind(controller),
+    controller.addManagerToSchool.bind(controller)
 );
 
 router.get("/SchoolList", controller.schoolList.bind(controller));
@@ -31,13 +31,33 @@ router.get("/SchoolById", controller.schoolById.bind(controller));
 router.get("/AgencySchoolList", controller.agencySchoolList.bind(controller));
 
 router.get("/CheckSchoolTime", controller.checkSchoolTime.bind(controller));
-router.get("/CheckStudentContract", controller.checkStudentContract.bind(controller));
+router.get(
+    "/CheckStudentContract",
+    controller.checkStudentContract.bind(controller)
+);
 
-router.post("/SetStudentSign", validator.setStudentSignValidator(),
-controller.validate.bind(controller), controller.setStudentSign.bind(controller));
+router.post(
+    "/SetStudentSign",
+    validator.setStudentSignValidator(),
+    controller.validate.bind(controller),
+    controller.setStudentSign.bind(controller)
+);
 
-router.get("/GetCountSchoolContracts", controller.getCountSchoolContracts.bind(controller));
-router.post("/NearSchoolList", validator.nearSchoolListValidator(),
-    controller.validate.bind(controller), controller.nearSchoolList.bind(controller));
+router.get(
+    "/GetCountSchoolContracts",
+    controller.getCountSchoolContracts.bind(controller)
+);
+router.post(
+    "/NearSchoolList",
+    validator.nearSchoolListValidator(),
+    controller.validate.bind(controller),
+    controller.nearSchoolList.bind(controller)
+);
+
+router.delete(
+    "/DeleteSchool",
+    isEnyAdmin,
+    controller.deleteSchool.bind(controller)
+);
 
 module.exports = router;

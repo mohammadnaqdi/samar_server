@@ -36,7 +36,7 @@ router.get(
 
     controller.paymentChargeAdmin.bind(controller)
 );
-router.get("/GetPayQueue", controller.getPayQueue.bind(controller));
+router.get("/GetAgencyInvoices", controller.getAgencyInvoices.bind(controller));
 router.get("/GetInvoceId", controller.getInvoceId.bind(controller));
 router.get(
     "/SetInstallments",

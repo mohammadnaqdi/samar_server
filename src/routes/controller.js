@@ -62,7 +62,7 @@ const {
     BankInfo,
     CheckBook,
     CheckPage,
-    BankGate,
+    BankGate,PayGate
 } = require("./../models/banks");
 const Rule = require("./../models/rules");
 const { Feedback, OperationLog } = require("./../models/feedback");
@@ -77,6 +77,7 @@ const { redisClient } = require("../../startup/redis");
 
 module.exports = class {
     constructor() {
+        this.PayGate = PayGate;
         this.DriverInfo = DriverInfo;
         this.FinnotechUsage = FinnotechUsage;
         this.BankGate = BankGate;

@@ -2649,23 +2649,21 @@ module.exports = new (class extends controller {
                     continue;
                 }
                 let agencySet;
-                if (driver.isAgent) {
-                    agencySet = await this.AgencySet.findOne({
-                        agencyId: agency._id,
-                    });
-                    if (!agencySet) {
-                        agencySet = {
-                            setter: null,
-                            showFirstCostToStudent: false,
-                            showCostToDriver: true,
-                            formula: "a-(a*(b/100))",
-                            formulaForStudent: false,
-                            updatedAt: null,
-                        };
-                    }
-                    if (agencySet.formula === "") {
-                        agencySet.formula = "a-(a*(b/100))";
-                    }
+                agencySet = await this.AgencySet.findOne({
+                    agencyId: agency._id,
+                });
+                if (!agencySet) {
+                    agencySet = {
+                        setter: null,
+                        showFirstCostToStudent: false,
+                        showCostToDriver: true,
+                        formula: "a-(a*(b/100))",
+                        formulaForStudent: false,
+                        updatedAt: null,
+                    };
+                }
+                if (agencySet.formula === "") {
+                    agencySet.formula = "a-(a*(b/100))";
                 }
 
                 let services = await this.Service.find(
@@ -3098,11 +3096,20 @@ module.exports = new (class extends controller {
                     drivers[i].moreData.capacity = car.capacity ?? 0;
                     drivers[i].moreData.year = car.year;
                 }
-                const serviceChart = await this.Service.find(
-                    { driverId: drivers[i]._id, delete: false, active: true },
-                    "student -_id"
-                ).lean();
-                drivers[i].moreData.serviceChart = serviceChart;
+                // const serviceChart = await this.Service.find(
+                //     { driverId: drivers[i]._id, delete: false, active: true },
+                //     "student -_id"
+                // ).lean();
+                // drivers[i].moreData.serviceChart = serviceChart;
+                const studentCount = await this.Student.countDocuments({
+                    driverCode: drivers[i].driverCode,
+                });
+                const serviceCount = await this.Service.countDocuments({
+                    delete: false,
+                    driverId: drivers[i]._id,
+                });
+                drivers[i].moreData.studentCount = studentCount;
+                drivers[i].moreData.serviceCount = serviceCount;
                 delete drivers[i].carId;
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;

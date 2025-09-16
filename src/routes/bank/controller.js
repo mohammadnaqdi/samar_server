@@ -23,67 +23,76 @@ function getFormattedDateTime(date) {
 }
 module.exports = new (class extends controller {
     async getBankCreds(req, res) {
+        return res.status(606).json({ message: "it is an old API" });
+    }
+    async getPayCreds(req, res) {
         try {
             const Banks = [
                 {
-                    name: "صادرات",
-                    sign: "BSI",
-                    eng: "SADERAT",
+                    name: "سپهر",
+                    sign: "SEPEHR",
+                    eng: "SEPEHR",
                     terminal: true,
                     username: false,
                     password: false,
                     callback: false,
+                    pic: "api/file/files/banks/SEPEHR.png",
                 },
                 {
-                    name: "ملت",
-                    sign: "MEL",
-                    eng: "MELLAT",
+                    name: "به پرداخت ملت",
+                    sign: "BPM",
+                    eng: "BPM",
                     terminal: true,
                     username: true,
                     password: true,
                     callback: false,
+                    pic: "api/file/files/banks/BPM.png",
                 },
                 {
                     name: "زرین پال",
-                    sign: "ZAR",
+                    sign: "ZARIN",
                     eng: "ZARIN",
                     terminal: true,
                     username: false,
                     password: false,
                     callback: true,
+                    pic: "api/file/files/banks/ZAR.png",
                 },
                 {
-                    name: "مهر",
-                    sign: "MHR",
-                    eng: "MEHR",
+                    name: "فن آوا",
+                    sign: "FCP",
+                    eng: "FCP",
                     terminal: true,
                     username: true,
                     password: true,
                     callback: false,
+                    pic: "api/file/files/banks/FCP.png",
                 },
                 {
                     name: "سامان",
-                    sign: "SAM",
-                    eng: "SAMAN",
+                    sign: "SEP",
+                    eng: "SEP",
                     terminal: true,
                     username: false,
                     password: false,
                     callback: true,
+                    pic: "api/file/files/banks/SEP.png",
                 },
                 {
-                    name: "تجارت",
-                    sign: "TEJ",
-                    eng: "TEJARAT",
+                    name: "تجارت الکترونیک پارسیان",
+                    sign: "PEC",
+                    eng: "PEC",
                     terminal: true,
                     username: false,
                     password: false,
                     callback: false,
+                    pic: "api/file/files/banks/PEC.png",
                 },
             ];
 
             return res.json({ banks: Banks });
         } catch (error) {
-            console.error("Error while getting bank credentials:", error);
+            console.error("Error while getting pay credentials:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -700,18 +709,103 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async setPayGate(req, res) {
+        try {
+            const {
+                id,
+                agencyId,
+                bankName,
+                bankCode,
+                type,
+                card,
+                terminal,
+                userName,
+                userPass,
+                hesab,
+                active,
+                personal,
+                callback,
+                schools,
+            } = req.body;
 
-    async getBankGate(req, res) {
+            if (!mongoose.isValidObjectId(agencyId)) {
+                return this.response({
+                    res,
+                    code: 604,
+                    message: "agencyId are objectId!",
+                });
+            }
+            let find;
+            if (mongoose.isValidObjectId(id)) {
+                find = await this.PayGate.findById(id).lean();
+            } else {
+                find = await this.PayGate.findOne({
+                    agencyId,
+                    terminal,
+                }).lean();
+                if (find) {
+                    return this.response({
+                        res,
+                        code: 603,
+                        message: "PayGate is duplicated",
+                    });
+                }
+            }
+
+            if (!find) {
+                await this.PayGate.create({
+                    agencyId,
+                    editor: req.user._id,
+                    bankName,
+                    bankCode,
+                    type,
+                    card,
+                    terminal,
+                    userName,
+                    userPass,
+                    hesab,
+                    active,
+                    personal,
+                    callback,
+                    schools,
+                });
+                return res.json({ message: "Done" });
+            }
+
+            await this.PayGate.findByIdAndUpdate(find._id, {
+                agencyId,
+                editor: req.user._id,
+                bankName,
+                bankCode,
+                type,
+                card,
+                terminal,
+                userName,
+                userPass,
+                hesab,
+                active,
+                personal,
+                callback,
+                schools,
+            });
+            return res.json({ message: "Done" });
+        } catch (error) {
+            console.error("Error in setPayGate:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async getPayGate(req, res) {
         try {
             const { agencyId } = req.query;
             if (!agencyId) {
                 return res.status(404).json({ message: "Invalid agencyId!" });
             }
 
-            const find = await this.BankGate.find({ agencyId }).lean();
+            const find = await this.PayGate.find({ agencyId }).lean();
             return res.json(find);
         } catch (error) {
-            console.error("Error in getBankGate:", error);
+            console.error("Error in getPayGate:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -732,21 +826,69 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-    async getBankGate4Parent(req, res) {
+    async getPayGateOnlyCard(req, res) {
         try {
             const { agencyId } = req.query;
             if (!agencyId) {
                 return res.status(404).json({ message: "Invalid agencyId!" });
             }
 
-            const find = await this.BankGate.find(
-                { agencyId, active: true },
+            const find = await this.PayGate.find({
+                agencyId,
+                type: "CARD",
+            }).lean();
+            return res.json(find);
+        } catch (error) {
+            console.error("Error in getPayGateOnlyCard:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    // async getBankGate4Parent(req, res) {
+    //     try {
+    //         const { agencyId } = req.query;
+    //         if (!agencyId) {
+    //             return res.status(404).json({ message: "Invalid agencyId!" });
+    //         }
+
+    //         const find = await this.BankGate.find(
+    //             { agencyId, active: true },
+    //             "type bankName card terminal bankCode installments prePayment userName"
+    //         ).lean();
+
+    //         return res.json(find);
+    //     } catch (error) {
+    //         console.error("Error in getBankGate4Parent:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
+    async getPayGate4Parent(req, res) {
+        try {
+            console.log("req.query", req.query);
+            const { agencyId } = req.query;
+            if (!agencyId) {
+                return res.status(404).json({ message: "Invalid agencyId!" });
+            }
+            const match = [{ agencyId }, { active: true }];
+            if (mongoose.isValidObjectId(req.query.school)) {
+                match.push({
+                    $or: [
+                        {
+                            "schools.schoolId": req.query.school,
+                        },
+                        {
+                            schools: [],
+                        },
+                    ],
+                });
+            }
+            const find = await this.PayGate.find(
+                { $and: match },
                 "type bankName card terminal bankCode installments prePayment userName"
             ).lean();
 
             return res.json(find);
         } catch (error) {
-            console.error("Error in getBankGate4Parent:", error);
+            console.error("Error in getPayGate4Parent:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -833,6 +975,7 @@ module.exports = new (class extends controller {
                 if (cardPays.length > 0) {
                     pays.push({
                         cardNumber: ccc["cardNumber"],
+                        payGateId: ccc["bank"] ?? "",
                         refId: ccc["refId"],
                         isSheba: docs[0]["isSheba"] || false,
                         payDate,

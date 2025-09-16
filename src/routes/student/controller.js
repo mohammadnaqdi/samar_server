@@ -1928,6 +1928,7 @@ module.exports = new (class extends controller {
             const schoolId = req.body.schoolId.trim();
             const agencyId = req.body.agencyId;
             const sortBy = req.body.sortBy;
+            const serviceId = req.body.serviceId || "";
             let stateId = 3;
             if (req.body.stateId != undefined) stateId = req.body.stateId;
 
@@ -1945,6 +1946,15 @@ module.exports = new (class extends controller {
                     message: "not active agency",
                     data: { fa_m: "شرکت غیرفعال است یا حذف شده" },
                 });
+            }
+            let studentsLocations = [];
+            if (serviceId && serviceId != "") {
+                studentsLocations = await this.Student.find(
+                    {
+                        service: serviceId,
+                    },
+                    "location"
+                );
             }
             let onlySchool = [];
             const schls = await this.School.find({
@@ -1972,7 +1982,7 @@ module.exports = new (class extends controller {
                     message: "schoolId need",
                 });
             if (page < 0) page = 0;
-            let students;
+            let students=[];
             var qr = [];
             var searchQ = {
                 $or: [
@@ -2007,16 +2017,48 @@ module.exports = new (class extends controller {
                 sort = { updatedAt: -1, _id: 1 };
             }
 
-            //console.log(JSON.stringify(qr));
-            students = await this.Student.find(
-                {
-                    $and: qr,
+            console.log("studentsLocations.length", studentsLocations.length);
+            if (studentsLocations.length > 0) {
+                const limit = Math.round(20 / studentsLocations.length);
+                const skipCount = page * limit;
+                for (var lc of studentsLocations) {
+                    let stf = await this.Student.aggregate([
+                        {
+                            $geoNear: {
+                                near: {
+                                    type: "Point",
+                                    coordinates: lc.location.coordinates,
+                                },
+                                key: "location",
+                                distanceField: "dist.calculated",
+                                maxDistance: 20000,
+                                spherical: true,
+                            },
+                        },
+                        {
+                            $match: { $and: qr },
+                        },
+                        { $sort: { "dist.calculated": 1 } },
+                        { $skip: skipCount },
+                        { $limit: limit },
+                    ]).exec();
+                    students.push(...stf);
                 }
-                // needList
-            )
-                .skip(page * 20)
-                .limit(20)
-                .sort(sort);
+                //  remove duplicates from students
+                students = students.filter(
+                    (v, i, a) =>
+                        a.findIndex(
+                            (t) => t._id.toString() === v._id.toString()
+                        ) === i
+                );
+            } else {
+                students = await this.Student.find({
+                    $and: qr,
+                })
+                    .skip(page * 20)
+                    .limit(20)
+                    .sort(sort);
+            }
 
             let myStudent = [];
             for (var i = 0; i < students.length; i++) {

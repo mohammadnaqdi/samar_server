@@ -49,62 +49,15 @@ module.exports = new (class extends controller {
                 },
                 data: data,
             };
-            // await axios.request(config);
-            axios(config)
-                .then(function (response) {
-                    // console.log("response", JSON.stringify(response.data));
-                })
-                .catch(function (error) {
-                    console.error("Error axios service sendSmsAndSAve", error);
-                });
-
-            //   let UserName = '09151156929';
-            // let Password = 'nazanin110';
-            // let messageId = 32076178;
-            // let number = '09150044275';
-            // let vote = false;
-            // let serverid = 0;
-
-            // let data = qs.stringify({
-            //     'UserName': UserName,
-            //     'Password': Password,
-            //     'messageId': messageId,
-            //     'number': number,
-            //     'vote': vote,
-            //     'serverid': serverid
-            // });
-
-            // let config = {
-            //     method: 'post',
-            //     url: 'https://portal.avanak.ir/webservice3.asmx/QuickSend', // Replace with your web service URL
-            //     headers: {
-            //         'Content-Type': 'application/x-www-form-urlencoded'
-            //     },
-            //     data: data
-            // };
-
             // axios(config)
-            // .then(function (response) {
-            //     let quickSendId = response.data;
-            //     if (quickSendId >= 0) {
-            //         console.log('Success! quickSendId:', quickSendId);
-            //     }
-            // })
-            // .catch(function (error) {
-            //     console.log(error);
-            // });
+            //     .then(function (response) {
+            //         // console.log("response", JSON.stringify(response.data));
+            //     })
+            //     .catch(function (error) {
+            //         console.error("Error axios service sendSmsAndSAve", error);
+            //     });
 
-            //   let smsResult = await ghasedak.verification({
-            //     receptor: phone,
-            //     type: "1",
-            //     template: "school",
-            //     param1: code,
-            //     param2: code,
-            //     param3: code,
-            //     param4: code,
-            //   });
-            //   console.log("smsResult", smsResult);
-            // } catch {}
+          
 
             //for this 'smsResult i add 'return result' to ghasedak.verification in modules
             // if(smsResult.result.code==200){

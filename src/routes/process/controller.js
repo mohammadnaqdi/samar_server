@@ -242,228 +242,11 @@ module.exports = new (class extends controller {
                 "use studentPayState in process user is",
                 req.user.lastName
             );
-            const { size, isOnline, isPaid, queueCode } = req.body;
-            let page = req.body.page;
-            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
-
-            let kol = "003";
-            let moeen = "005";
-
-            if (page < 0) page = 0;
-
-            const queue = await this.PayQueue.findOne({ code: queueCode });
-
-            if (!queue) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "queue not find",
-                    data: { fa_m: "پیدا نشد" },
-                });
-            }
-
-            let schools = await this.School.find({ agencyId }).distinct("_id");
-            if (queue.schools.length != 0) {
-                schools = queue.schools;
-            }
-
-            const students = await this.Student.find(
-                { delete: false, state: { $gt: 0 }, school: { $in: schools } },
-                "studentCode parent name lastName state stateTitle serviceDistance"
-            );
-            console.log("isPaid", isPaid);
-            if (!isPaid) {
-                let list = [];
-                for (var st of students) {
-                    const docListSanad = await this.DocListSanad.findOne(
-                        {
-                            $and: [
-                                {
-                                    $or: [
-                                        { accCode: "003005" + st.studentCode },
-                                        { forCode: "003005" + st.studentCode },
-                                    ],
-                                },
-                                { mId: queueCode },
-                                { type: "invoice" },
-                            ],
-                        },
-                        ""
-                    ).lean();
-                    // const payAction = await this.PayAction.find({
-                    //     queueCode,
-                    //     studentCode: st.studentCode,
-                    //     delete: false,
-                    // });
-                    if (!docListSanad) {
-                        // const pays = await this.PayAction.find({
-                        //     studentCode: st.studentCode,
-                        //     delete: false,
-                        // });
-                        const pays = await this.DocListSanad.find({
-                            $and: [
-                                {
-                                    $or: [
-                                        { accCode: "003005" + st.studentCode },
-                                        { forCode: "003005" + st.studentCode },
-                                    ],
-                                },
-                                { type: "invoice" },
-                            ],
-                        }).lean();
-                        let remaining = 0;
-                        const code = "003005" + st.studentCode;
-                        const result = await this.DocListSanad.aggregate([
-                            {
-                                $match: {
-                                    accCode: code,
-                                    agencyId: agencyId,
-                                },
-                            },
-                            {
-                                $group: {
-                                    _id: null,
-                                    totalbed: { $sum: "$bed" },
-                                    totalbes: { $sum: "$bes" },
-                                },
-                            },
-                        ]);
-                        // console.log("result[0]", result[0]);
-
-                        remaining =
-                            result[0] === undefined
-                                ? 0
-                                : result[0].totalbed - result[0].totalbes;
-                        let payQueue = queue;
-                        if (
-                            payQueue.amount03 != -1 &&
-                            payQueue.amount03 != undefined
-                        ) {
-                            if (st.serviceDistance <= 3000) {
-                                payQueue.amount = payQueue.amount03;
-                            } else if (st.serviceDistance <= 7000) {
-                                payQueue.amount = payQueue.amount37;
-                            } else {
-                                payQueue.amount = payQueue.amount7i;
-                            }
-                        }
-                        if (payQueue.type === 7 && remaining > 0) {
-                            payQueue.amount =
-                                (Math.abs(payQueue.amount) *
-                                    Math.abs(remaining)) /
-                                100;
-                            payQueue.amount = financial(payQueue.amount);
-                            // console.log("payQueue33.33.amount", payQueue.amount);
-                        } else if (payQueue.amount < 0 && remaining < 0) {
-                            payQueue.amount =
-                                (Math.abs(payQueue.amount) *
-                                    Math.abs(remaining)) /
-                                100;
-                            // console.log("payQueue2.amount", payQueue.amount);
-                        }
-
-                        const parent = await this.Parent.findById(
-                            st.parent,
-                            "phone"
-                        );
-                        list.push({
-                            st,
-                            pays,
-                            phone: parent.phone,
-                            amount: payQueue.amount,
-                            title: payQueue.title,
-                            remaining,
-                        });
-                    }
-                }
-                return this.response({
-                    res,
-                    message: "ok",
-                    data: list,
-                });
-            }
-
-            let list = [];
-            for (var st of students) {
-                // const payAction = await this.PayAction.find({
-                //     queueCode,
-                //     studentCode: st.studentCode,
-                //     delete: false,
-                //     isOnline,
-                // });
-                const docListSanad = await this.DocListSanad.findOne(
-                    {
-                        $and: [
-                            {
-                                $or: [
-                                    { accCode: "003005" + st.studentCode },
-                                    { forCode: "003005" + st.studentCode },
-                                ],
-                            },
-                            { mId: queueCode },
-                            { type: "invoice" },
-                            { isOnline },
-                        ],
-                    },
-                    ""
-                ).lean();
-                if (docListSanad) {
-                    // const pays = await this.PayAction.find({
-                    //     studentCode: st.studentCode,
-                    //     delete: false,
-                    // });
-                    const pays = await this.DocListSanad.find({
-                        $and: [
-                            {
-                                $or: [
-                                    { accCode: "003005" + st.studentCode },
-                                    { forCode: "003005" + st.studentCode },
-                                ],
-                            },
-                            { type: "invoice" },
-                        ],
-                    }).lean();
-                    const parent = await this.Parent.findById(
-                        st.parent,
-                        "phone"
-                    );
-                    list.push({ st, pays, phone: parent.phone });
-                }
-            }
-
-            return this.response({
-                res,
-                message: "ok",
-                data: list,
-            });
-        } catch (error) {
-            console.error("Error in studentPayState:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
-    async studentPayState2(req, res) {
-        try {
-            console.log(
-                "use studentPayState2 in process user is",
-                req.user.lastName
-            );
             const { isOnline, isPaid, stateStart, stateEnd, schools, queues } =
                 req.body;
             let page = req.body.page;
             let check = req.body.check || -1;
             if (page < 0) page = 0;
-            const queue = await this.PayQueue.findOne({ code: queues[0] });
-            if (!queue) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "queue not find",
-                    data: { fa_m: "پیدا نشد" },
-                });
-            }
-            let kol = "003";
-            let moeen = "005";
-
             const startDate = req.body.start;
             const endDate = req.body.end;
             let start = null,
@@ -492,161 +275,100 @@ module.exports = new (class extends controller {
             } else if (start && end) {
                 querySt.createdAt = { $gte: start, $lte: end };
             }
-
-            const students = await this.Student.find(
-                querySt,
-                "studentCode school parent name lastName state check createdAt serviceDistance"
-            );
-
-            if (!isPaid) {
-                let list = [];
-                for (var st of students) {
-                    // const payAction = await this.PayAction.countDocuments({
-                    //     queueCode: { $in: queues },
-                    //     studentCode: st.studentCode,
-                    //     delete: false,
-                    // });
-                    const docListSanad = await this.DocListSanad.findOne(
-                        {
-                            $and: [
-                                {
-                                    $or: [
-                                        { accCode: "003005" + st.studentCode },
-                                        { forCode: "003005" + st.studentCode },
-                                    ],
-                                },
-                                { mId: { $in: queues } },
-                                { type: "invoice" },
-                            ],
-                        },
-                        ""
-                    ).lean();
-                    if (!docListSanad) {
-                        // const pays = await this.PayAction.find({
-                        //     queueCode: { $in: queues },
-                        //     studentCode: st.studentCode,
-                        //     delete: false,
-                        // });
-                        const pays = await this.DocListSanad.find({
-                            $and: [
-                                {
-                                    $or: [
-                                        { accCode: "003005" + st.studentCode },
-                                        { forCode: "003005" + st.studentCode },
-                                    ],
-                                },
-                                { type: "invoice" },
-                                { mId: { $in: queues } },
-                            ],
-                        }).lean();
-                        const parent = await this.Parent.findById(
-                            st.parent,
-                            "phone"
-                        );
-                        if (!parent) continue;
-
-                        if (
-                            queues.length === 1 &&
-                            kol != "" &&
-                            queue.type === 7
-                        ) {
-                            let remaining = 0;
-                            const code = kol + moeen + st.studentCode;
-                            const result = await this.DocListSanad.aggregate([
-                                {
-                                    $match: {
-                                        accCode: code,
-                                        agencyId: queue.agencyId,
-                                    },
-                                },
-                                {
-                                    $group: {
-                                        _id: null,
-                                        totalbed: { $sum: "$bed" },
-                                        totalbes: { $sum: "$bes" },
-                                    },
-                                },
-                            ]);
-                            // console.log("result[0]", result[0]);
-                            let amount = 0;
-
-                            remaining =
-                                result[0] === undefined
-                                    ? 0
-                                    : result[0].totalbed - result[0].totalbes;
-                            let payQueue = queue;
-
-                            if (Math.abs(remaining) < 10000) {
-                                amount = 0;
-                            } else {
-                                if (remaining > 10000) {
-                                    amount =
-                                        (Math.abs(payQueue.amount) *
-                                            Math.abs(remaining)) /
-                                        100;
-                                    amount = financial(amount);
-                                    // console.log("payQueue33.33.amount", payQueue.amount);
-                                } else {
-                                    amount = 0;
-                                    // console.log("payQueue2.amount", payQueue.amount);
-                                }
-                            }
-
-                            // console.log("payQueue.amountxxxx", amount);
-                            pays.push({
-                                queueCode: payQueue.code,
-                                amount: amount,
-                                docSanadNum: 0,
-                                desc: payQueue.desc,
-                                isOnline: false,
-                                studentCode: st.studentCode,
-                                delete: false,
-                                createdAt: new Date().toString(),
-                                updatedAt: new Date().toString(),
-                            });
-                        }
-
-                        list.push({ st, pays, phone: parent.phone });
-                    }
+            console.log("isOnline", isOnline);
+            if (page < 0) page = 0;
+            let match = {
+                code: { $in: queues },
+                isPaid,
+            };
+            if (isOnline != null) {
+                let oc = { $in: ["", null, " "] };
+                if (isOnline) {
+                    oc = { $nin: ["", null, " "] };
                 }
-                return this.response({
-                    res,
-                    message: "ok",
-                    data: list,
-                });
+                match.authority = oc;
             }
 
-            let list = [];
-            for (var st of students) {
-                // let qr = {
-                //     queueCode: { $in: queues },
-                //     studentCode: st.studentCode,
-                //     delete: false,
-                // };
-                let qr = [
-                    {
-                        $or: [
-                            { accCode: "003005" + st.studentCode },
-                            { forCode: "003005" + st.studentCode },
-                        ],
+            console.log("match", match);
+            const queueList = await this.PayQueue.aggregate([
+                {
+                    $match: match,
+                },
+                {
+                    $group: {
+                        _id: "$studentId",
+                        studentId: { $first: "$studentId" },
+                        queues: {
+                            $push: {
+                                authority: "$authority",
+                                amount: "$amount",
+                                cardNumber: "$cardNumber",
+                                isPaid: "$isPaid",
+                                title: "$title",
+                                payDate: "$payDate",
+                                code: "$code",
+                            },
+                        },
                     },
-                    { type: "invoice" },
-                    { mId: { $in: queues } },
-                ];
-                if (isOnline != null) {
-                    qr.push(isOnline);
-                }
-                // const pays = await this.PayAction.find(qr);
-                const pays = await this.DocListSanad.find({
-                    $and: qr,
-                }).lean();
-                if (pays.length > 0) {
+                },
+            ]);
+            console.log("queueList", queueList.length);
+            let list = [];
+            for (var qu of queueList) {
+                let queryStx = [];
+                queryStx = querySt;
+                queryStx._id = qu.studentId;
+
+                const student = await this.Student.findOne(
+                    queryStx,
+                    "name lastName serviceCost studentCode parent serviceNum school state stateTitle check createdAt"
+                );
+                if (student) {
+                    let sanads = [];
+                    if (isPaid) {
+                        sanads = await this.DocListSanad.find(
+                            {
+                                $and: [
+                                    {
+                                        $or: [
+                                            {
+                                                accCode:
+                                                    "003005" +
+                                                    student.studentCode,
+                                            },
+                                            {
+                                                forCode:
+                                                    "003005" +
+                                                    student.studentCode,
+                                            },
+                                        ],
+                                    },
+                                    { type: "invoice" },
+                                    { mId: { $in: queues } },
+                                ],
+                            },
+                            "isOnline doclistId bed bes mId note"
+                        ).lean();
+                        for (var sa of sanads) {
+                            for (var pq of qu.queues) {
+                                if (pq.code == sa.mId) {
+                                    pq.sanad = sa;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     const parent = await this.Parent.findById(
-                        st.parent,
+                        student.parent,
                         "phone"
                     );
-                    if (!parent) continue;
-                    list.push({ st, pays, phone: parent.phone });
+                    if (parent) {
+                        list.push({
+                            st: student,
+                            pays: qu.queues,
+                            phone: parent.phone,
+                        });
+                    }
                 }
             }
 
@@ -660,6 +382,214 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    // async studentPayState2(req, res) {
+    //     try {
+    //         console.log(
+    //             "use studentPayState2 in process user is",
+    //             req.user.lastName
+    //         );
+    //         const { isOnline, isPaid, stateStart, stateEnd, schools, queues } =
+    //             req.body;
+    //         let page = req.body.page;
+    //         let check = req.body.check || -1;
+    //         if (page < 0) page = 0;
+    //         const startDate = req.body.start;
+    //         const endDate = req.body.end;
+    //         let start = null,
+    //             end = null;
+
+    //         if (startDate) {
+    //             start = Date.parse(startDate);
+    //         }
+    //         if (endDate) {
+    //             end = Date.parse(endDate);
+    //         }
+
+    //         let querySt = {
+    //             delete: false,
+    //             state: { $gte: stateStart, $lte: stateEnd },
+    //             school: { $in: schools },
+    //         };
+    //         if (check != -1) {
+    //             querySt.check = check;
+    //         }
+
+    //         if (start && !end) {
+    //             querySt.createdAt = { $gte: start };
+    //         } else if (!start && end) {
+    //             querySt.createdAt = { $lte: end };
+    //         } else if (start && end) {
+    //             querySt.createdAt = { $gte: start, $lte: end };
+    //         }
+
+    //         const students = await this.Student.find(
+    //             querySt,
+    //             "studentCode school parent name lastName state check createdAt serviceDistance"
+    //         );
+
+    //         if (!isPaid) {
+    //             let list = [];
+    //             for (var st of students) {
+    //                 // const payAction = await this.PayAction.countDocuments({
+    //                 //     queueCode: { $in: queues },
+    //                 //     studentCode: st.studentCode,
+    //                 //     delete: false,
+    //                 // });
+
+    //                 const docListSanad = await this.DocListSanad.findOne(
+    //                     {
+    //                         $and: [
+    //                             {
+    //                                 $or: [
+    //                                     { accCode: "003005" + st.studentCode },
+    //                                     { forCode: "003005" + st.studentCode },
+    //                                 ],
+    //                             },
+    //                             { mId: { $in: queues } },
+    //                             { type: "invoice" },
+    //                         ],
+    //                     },
+    //                     ""
+    //                 ).lean();
+    //                 if (!docListSanad) {
+    //                     // const pays = await this.PayAction.find({
+    //                     //     queueCode: { $in: queues },
+    //                     //     studentCode: st.studentCode,
+    //                     //     delete: false,
+    //                     // });
+    //                     const pays = await this.DocListSanad.find({
+    //                         $and: [
+    //                             {
+    //                                 $or: [
+    //                                     { accCode: "003005" + st.studentCode },
+    //                                     { forCode: "003005" + st.studentCode },
+    //                                 ],
+    //                             },
+    //                             { type: "invoice" },
+    //                             { mId: { $in: queues } },
+    //                         ],
+    //                     }).lean();
+    //                     const parent = await this.Parent.findById(
+    //                         st.parent,
+    //                         "phone"
+    //                     );
+    //                     if (!parent) continue;
+
+    //                     if (
+    //                         queues.length === 1 &&
+    //                         kol != "" &&
+    //                         queue.type === 7
+    //                     ) {
+    //                         let remaining = 0;
+    //                         const code = kol + moeen + st.studentCode;
+    //                         const result = await this.DocListSanad.aggregate([
+    //                             {
+    //                                 $match: {
+    //                                     accCode: code,
+    //                                     agencyId: queue.agencyId,
+    //                                 },
+    //                             },
+    //                             {
+    //                                 $group: {
+    //                                     _id: null,
+    //                                     totalbed: { $sum: "$bed" },
+    //                                     totalbes: { $sum: "$bes" },
+    //                                 },
+    //                             },
+    //                         ]);
+    //                         // console.log("result[0]", result[0]);
+    //                         let amount = 0;
+
+    //                         remaining =
+    //                             result[0] === undefined
+    //                                 ? 0
+    //                                 : result[0].totalbed - result[0].totalbes;
+    //                         let payQueue = queue;
+
+    //                         if (Math.abs(remaining) < 10000) {
+    //                             amount = 0;
+    //                         } else {
+    //                             if (remaining > 10000) {
+    //                                 amount =
+    //                                     (Math.abs(payQueue.amount) *
+    //                                         Math.abs(remaining)) /
+    //                                     100;
+    //                                 amount = financial(amount);
+    //                                 // console.log("payQueue33.33.amount", payQueue.amount);
+    //                             } else {
+    //                                 amount = 0;
+    //                                 // console.log("payQueue2.amount", payQueue.amount);
+    //                             }
+    //                         }
+
+    //                         // console.log("payQueue.amountxxxx", amount);
+    //                         pays.push({
+    //                             queueCode: payQueue.code,
+    //                             amount: amount,
+    //                             docSanadNum: 0,
+    //                             desc: payQueue.desc,
+    //                             isOnline: false,
+    //                             studentCode: st.studentCode,
+    //                             delete: false,
+    //                             createdAt: new Date().toString(),
+    //                             updatedAt: new Date().toString(),
+    //                         });
+    //                     }
+
+    //                     list.push({ st, pays, phone: parent.phone });
+    //                 }
+    //             }
+    //             return this.response({
+    //                 res,
+    //                 message: "ok",
+    //                 data: list,
+    //             });
+    //         }
+
+    //         let list = [];
+    //         for (var st of students) {
+    //             // let qr = {
+    //             //     queueCode: { $in: queues },
+    //             //     studentCode: st.studentCode,
+    //             //     delete: false,
+    //             // };
+    //             let qr = [
+    //                 {
+    //                     $or: [
+    //                         { accCode: "003005" + st.studentCode },
+    //                         { forCode: "003005" + st.studentCode },
+    //                     ],
+    //                 },
+    //                 { type: "invoice" },
+    //                 { mId: { $in: queues } },
+    //             ];
+    //             if (isOnline != null) {
+    //                 qr.push(isOnline);
+    //             }
+    //             // const pays = await this.PayAction.find(qr);
+    //             const pays = await this.DocListSanad.find({
+    //                 $and: qr,
+    //             }).lean();
+    //             if (pays.length > 0) {
+    //                 const parent = await this.Parent.findById(
+    //                     st.parent,
+    //                     "phone"
+    //                 );
+    //                 if (!parent) continue;
+    //                 list.push({ st, pays, phone: parent.phone });
+    //             }
+    //         }
+
+    //         return this.response({
+    //             res,
+    //             message: "ok",
+    //             data: list,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error in studentPayState:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
     async studentListByIds(req, res) {
         try {
             const studentIds = req.body.studentIds;
@@ -2629,7 +2559,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 delete: false,
             });
-
+            console.log("services", services.length);
             if (!services.length) {
                 return this.response({
                     res,
@@ -2658,11 +2588,15 @@ module.exports = new (class extends controller {
             //     : "برای راننده";
 
             for (const service of services) {
-                const studentIds = service.student;
                 const studentDocs = await this.Student.find(
-                    { _id: { $in: studentIds } },
-                    "serviceDistance"
+                    { service: service._id },
+                    "serviceDistance _id"
                 ).lean();
+                // const studentIds = service.student;
+                // const studentDocs = await this.Student.find(
+                //     { _id: { $in: studentIds } },
+                //     "serviceDistance"
+                // ).lean();
 
                 const students = studentDocs.map((studentDoc) => ({
                     studentId: studentDoc._id,
@@ -2717,39 +2651,50 @@ module.exports = new (class extends controller {
 
                             overall += calculatedPrice;
                             driverShare += studentPrice;
-
-                            return { studentId, studentPrice: calculatedPrice };
+                            return {
+                                studentId,
+                                studentPrice: calculatedPrice,
+                                driverCost: studentPrice,
+                            };
                         }
                     );
                 } else {
+                    //
+                    for (let i = 0; i < pricing.length; i++) {
+                        const studentPrice = pricing[i].studentPrice;
+                        overall = overall + studentPrice;
+                        let driverCost = evaluateFormula(formula, {
+                            a: studentPrice,
+                            b: percent,
+                        });
+                        pricing[i].driverCost = driverCost;
+                        driverShare = driverShare + driverCost;
+                    }
                     studentPrices = pricing;
-                    driverShare = pricing.reduce((acc, { studentPrice }) => {
-                        overall += studentPrice;
-                        return (
-                            acc +
-                            evaluateFormula(formula, {
-                                a: studentPrice,
-                                b: percent,
-                            })
-                        );
-                    }, 0);
                 }
 
-                studentPrices.forEach(async ({ studentId, studentPrice }) => {
-                    bulkStudentUpdates.push({
-                        updateOne: {
-                            filter: { _id: studentId },
-                            update: { $set: { serviceCost: studentPrice } },
-                        },
-                    });
+                studentPrices.forEach(
+                    async ({ studentId, studentPrice, driverCost }) => {
+                        bulkStudentUpdates.push({
+                            updateOne: {
+                                filter: { _id: studentId },
+                                update: {
+                                    $set: {
+                                        serviceCost: studentPrice,
+                                        driverCost: driverCost,
+                                    },
+                                },
+                            },
+                        });
 
-                    const studentIndex = service.student.findIndex(
-                        (id) => id.toString() === studentId.toString()
-                    );
-                    if (studentIndex !== -1) {
-                        service.studentCost[studentIndex] = studentPrice;
+                        // const studentIndex = service.student.findIndex(
+                        //     (id) => id.toString() === studentId.toString()
+                        // );
+                        // if (studentIndex !== -1) {
+                        //     service.studentCost[studentIndex] = studentPrice;
+                        // }
                     }
-                });
+                );
 
                 bulkServiceUpdates.push({
                     updateOne: {
@@ -2758,7 +2703,7 @@ module.exports = new (class extends controller {
                             $set: {
                                 driverSharing: driverShare,
                                 cost: overall,
-                                studentCost: service.studentCost,
+                                // studentCost: service.studentCost,
                             },
                         },
                     },
