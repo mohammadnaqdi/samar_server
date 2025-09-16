@@ -98,7 +98,9 @@ router.get("/download", (req, res) => {
 router.get("/getApp", getLatest);
 async function getLatest(req, res) {
     let type = req.query.type;
-
+    if(type=='panel'){
+         return res.json(407);
+    }
     if (type != 1 && type != 2 && type != 3) {
         type = 1;
     }

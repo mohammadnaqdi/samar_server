@@ -142,11 +142,11 @@ async function verifyPaidBankNew(
                     "Content-Type": "application/json",
                 },
             });
- 
+
             let responseData = response.data;
- 
+
             console.log("Sepehr gate verify response", responseData);
- 
+
             if (responseData.Status === "NOk") {
                 response = await axios.post(url, payload, {
                     headers: {
@@ -157,7 +157,7 @@ async function verifyPaidBankNew(
                 console.log("nok", response.data);
                 throw new Error("response Sepehr verification failed");
             }
- 
+
             if (
                 (responseData.Status === "Ok" ||
                     responseData.Status === "OK" ||
@@ -177,13 +177,13 @@ async function verifyPaidBankNew(
                 saleOrderId: invoice,
                 saleReferenceId: rrn,
             };
- 
+
             var options = {
                 overrideRootElement: {
                     namespace: "ns1",
                 },
             };
- 
+
             const resVerify = await new Promise((resolve, reject) => {
                 soap.createClient(
                     "https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl",
@@ -199,7 +199,7 @@ async function verifyPaidBankNew(
                     }
                 );
             });
- 
+
             if (resVerify.return == 0) {
                 return true;
             }
@@ -212,9 +212,9 @@ async function verifyPaidBankNew(
                 Token: rrn,
                 RefNum: digitalreceipt,
             };
- 
+
             const res = await axios.post(verifyUrl, body);
- 
+
             if (res.data.Result === "erSucceed" && res.data.Amount !== "") {
                 return true;
             }
@@ -242,19 +242,19 @@ async function verifyPaidBankNew(
             const client = await soap.createClientAsync(
                 "https://pec.shaparak.ir/NewIPGServices/Confirm/ConfirmService.asmx?WSDL"
             );
- 
+
             const params = {
                 LoginAccount: terminalID,
                 Token: rrn,
             };
- 
+
             const [result] = await client.ConfirmPaymentAsync({
                 requestData: params,
             });
- 
+
             console.log("PEC response", result);
             const confirmRes = result.ConfirmPaymentResult;
- 
+
             if (confirmRes.Status === 0) {
                 return true;
             } else {
@@ -291,8 +291,6 @@ async function varifyPaidBank(
                     "Content-Type": "application/json",
                 },
             });
-
-            // console.log("response varifyPaidBank SADERAT=", response.data);
 
             let responseData = response.data;
             if (responseData.Status === "NOk") {
@@ -460,8 +458,6 @@ async function varifyPaidBank(
 }
 
 module.exports = new (class extends controller {
-
-    
     async verifyPrePayment(req, res) {
         // console.log("req.query", JSON.stringify(req.query));
         const {
@@ -2406,7 +2402,7 @@ module.exports = new (class extends controller {
             if (transAction.stCode === "") {
                 //dodo
             } else {
-                 if (
+                if (
                     transAction.payQueueId == null ||
                     transAction.payQueueId.toString() === ""
                 ) {
@@ -2462,18 +2458,25 @@ module.exports = new (class extends controller {
             await session.withTransaction(
                 async () => {
                     const agencyId = transAction.agencyId;
-                    const  agency =this.Agency.findById(agencyId, "settings").session(
-                            session
-                        );
+                    const agency = this.Agency.findById(
+                        agencyId,
+                        "settings"
+                    ).session(session);
                     let bankGate;
-                    if(transAction.payGateId === null || transAction.payGateId.toString().trim()===''){
-                            bankGate = await this.BankGate.findOne({
+                    if (
+                        transAction.payGateId === null ||
+                        transAction.payGateId.toString().trim() === ""
+                    ) {
+                        bankGate = await this.BankGate.findOne({
                             agencyId,
                             type: typeBank,
                         }).session(session);
-                        }else{
-                            bankGate=await this.PayGate.findById(transAction.payGateId,'-schools').session(session);
-                        }
+                    } else {
+                        bankGate = await this.PayGate.findById(
+                            transAction.payGateId,
+                            "-schools"
+                        ).session(session);
+                    }
                     // console.log("bankGate", bankGate);
                     if (!agency || !bankGate) {
                         throw new Error("Agency or bankGate not found");
@@ -2789,26 +2792,30 @@ module.exports = new (class extends controller {
                     }
 
                     if (typeBank !== "ZARIN") {
-                         const isNew=tr.payGateId===null || tr.payGateId.toString().trim()==='';
-                        const done =isNew?await verifyPaidBankNew(
-                            typeBank,
-                            digitalreceipt,
-                            tid,
-                            rrn,
-                            bankGate.userName,
-                            bankGate.userPass,
-                            tr.amount,
-                            tr.authority
-                        ) :await varifyPaidBank(
-                            typeBank,
-                            digitalreceipt,
-                            tid,
-                            rrn,
-                            bankGate.userName,
-                            bankGate.userPass,
-                            tr.amount,
-                            tr.authority
-                        ) ;
+                        const isOld =
+                            tr.payGateId === null ||
+                            tr.payGateId.toString().trim() === "";
+                        const done = isOld
+                            ? await varifyPaidBank(
+                                  typeBank,
+                                  digitalreceipt,
+                                  tid,
+                                  rrn,
+                                  bankGate.userName,
+                                  bankGate.userPass,
+                                  tr.amount,
+                                  tr.authority
+                              )
+                            : await verifyPaidBankNew(
+                                  typeBank,
+                                  digitalreceipt,
+                                  tid,
+                                  rrn,
+                                  bankGate.userName,
+                                  bankGate.userPass,
+                                  tr.amount,
+                                  tr.authority
+                              );
 
                         if (!done) {
                             throw new Error("Payment verification failed");
@@ -2882,13 +2889,19 @@ module.exports = new (class extends controller {
                             bankCode: "MEL",
                         };
                     } else {
-                        if(transAction.payGateId === null || transAction.payGateId.toString().trim()===''){
+                        if (
+                            transAction.payGateId === null ||
+                            transAction.payGateId.toString().trim() === ""
+                        ) {
                             bankGate = await this.BankGate.findOne({
-                            agencyId,
-                            type: typeBank,
-                        }).session(session);
-                        }else{
-                            bankGate=await this.PayGate.findById(transAction.payGateId,'-schools').session(session);
+                                agencyId,
+                                type: typeBank,
+                            }).session(session);
+                        } else {
+                            bankGate = await this.PayGate.findById(
+                                transAction.payGateId,
+                                "-schools"
+                            ).session(session);
                         }
                     }
 
@@ -3088,6 +3101,7 @@ module.exports = new (class extends controller {
                                 agencyId: student.agencyId,
                                 type: "prePayment",
                                 active: true,
+                                delete: false,
                             }).lean();
                             // console.log("!invoice2", !invoice2);
                             let amount2 = 0;
@@ -3133,42 +3147,52 @@ module.exports = new (class extends controller {
                                     }
                                 }
                             }
-                            prePayment = new this.PayQueue({
-                                inVoiceId: invoice2._id,
-                                code: invoice2.code,
-                                agencyId: student.agencyId,
-                                studentId: student._id,
-                                setter: tr.userId,
-                                type: invoice2.type,
-                                amount: amount2,
-                                title: invoice2.title,
-                                maxDate: invoice2.maxDate,
-                            });
-                            await prePayment.save({ session });
+                            if (amount2 > 0) {
+                                prePayment = new this.PayQueue({
+                                    inVoiceId: invoice2._id,
+                                    code: invoice2.code,
+                                    agencyId: student.agencyId,
+                                    studentId: student._id,
+                                    setter: tr.userId,
+                                    type: invoice2.type,
+                                    amount: amount2,
+                                    title: invoice2.title,
+                                    maxDate: invoice2.maxDate,
+                                });
+                                await prePayment.save({ session });
+                            } else {
+                                student.state = 3;
+                                student.stateTitle = "درانتظار تعیین سرویس";
+                                await student.save({ session });
+                            }
                         }
                     }
 
                     if (typeBank !== "ZARIN") {
-                        const isNew=tr.payGateId===null || tr.payGateId.toString().trim()==='';
-                        const done =isNew?await verifyPaidBankNew(
-                            typeBank,
-                            digitalreceipt,
-                            tid,
-                            rrn,
-                            bankGate.userName,
-                            bankGate.userPass,
-                            tr.amount,
-                            tr.authority
-                        ) :await varifyPaidBank(
-                            typeBank,
-                            digitalreceipt,
-                            tid,
-                            rrn,
-                            bankGate.userName,
-                            bankGate.userPass,
-                            tr.amount,
-                            tr.authority
-                        ) ;
+                        const isOld =
+                            tr.payGateId === null ||
+                            tr.payGateId.toString().trim() === "";
+                        const done = isOld
+                            ? await varifyPaidBank(
+                                  typeBank,
+                                  digitalreceipt,
+                                  tid,
+                                  rrn,
+                                  bankGate.userName,
+                                  bankGate.userPass,
+                                  tr.amount,
+                                  tr.authority
+                              )
+                            : await verifyPaidBankNew(
+                                  typeBank,
+                                  digitalreceipt,
+                                  tid,
+                                  rrn,
+                                  bankGate.userName,
+                                  bankGate.userPass,
+                                  tr.amount,
+                                  tr.authority
+                              );
 
                         if (!done) {
                             throw new Error("Payment verification failed");

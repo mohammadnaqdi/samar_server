@@ -108,6 +108,7 @@ async function generateMellatToken(
             additionalData,
             mobileNo: CellNumber,
             callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
+            // callBackUrl: `http://192.168.0.122:9000/api/pay/${link}`,
             payerId: parseInt(payerId),
         };
 
@@ -1246,6 +1247,7 @@ module.exports = new (class extends controller {
                         agencyId: agency._id,
                         type: "prePayment",
                         delete: false,
+                        active: true,
                     });
                     if (invoice) {
                         let amount2 = 0;
@@ -1301,8 +1303,13 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         });
                         await payQueue.save();
+                    } else {
+                        student.state = 3;
+                        student.stateTitle = "در انتظار سرویس بدون پیش پرداخت";
+                        await student.save();
                     }
                 }
+
                 return this.response({
                     res,
                     data: {
@@ -1434,6 +1441,7 @@ module.exports = new (class extends controller {
                         agencyId: agency._id,
                         type: "prePayment",
                         delete: false,
+                        active: true,
                     });
                     if (invoice) {
                         let amount2 = 0;
@@ -1488,6 +1496,10 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         });
                         await payQueue.save();
+                    } else {
+                        student.state = 3;
+                        student.stateTitle = "در انتظار سرویس بدون پیش پرداخت";
+                        await student.save();
                     }
                 }
             }
@@ -1589,8 +1601,6 @@ module.exports = new (class extends controller {
             } = req.body;
             const isDelete = req.body.delete;
             const fixPrice = req.body.fixPrice;
-
-            // console.log("distancePrice", distancePrice);
             // console.log("id", id);
             const agencyId =
                 req.body.agencyId.trim() === "" ? null : req.body.agencyId;
@@ -2338,6 +2348,7 @@ module.exports = new (class extends controller {
                     agencyId: student.agencyId,
                     type: "prePayment",
                     active: true,
+                    delete:false
                 }).lean();
 
                 let amount2 = 0;
@@ -2506,6 +2517,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 type: "prePayment",
                 active: true,
+                delete:false
             })
                 .session(session)
                 .lean();

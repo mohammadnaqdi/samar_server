@@ -88,6 +88,7 @@ module.exports = new (class extends controller {
                     "/startup/contracts/",
                     agency_contract
                 );
+                console.log("data", data);
 
                 const templateContent = fs.readFileSync(p, "binary");
 
@@ -97,23 +98,29 @@ module.exports = new (class extends controller {
                 const parentBase64 =
                     "data:image/jpeg;base64," + parentBuffer.toString("base64");
 
+                console.log("parent.agency_id", parent.agency_id);
+
                 let agencyBuffer = "";
                 if (parent.agency_id == "686ba83db884deb46134263c") {
                     agencyBuffer =
                         "./assets/signature/686ba83db884deb46134263c.png";
-                } else if (parent.agency_id == "686b69150c8889fd0f91b494") {
+                } else if (parent.agency_id == "688af959f04e0209ff689663") {
                     agencyBuffer =
-                        "./assets/signature/686b69150c8889fd0f91b494.png";
+                        "./assets/signature/688af959f04e0209ff689663.png";
                 } else if (parent.agency_id == "686659530ac17b8808ceaa11") {
                     agencyBuffer =
                         "./assets/signature/686659530ac17b8808ceaa11.png";
-                } else {
-                    const agencyPicUrl = `https://server.mysamar.ir/${parent.agency_pic}`;
-                    agencyB = await convertImage(agencyPicUrl);
-                    if (!agencyB) continue;
-
+                } else if (parent.agency_id == "68b81e1305f06f6f3ec0ae1b") {
                     agencyBuffer =
-                        "data:image/jpeg;base64," + agencyB.toString("base64");
+                        "./assets/signature/68b81e1305f06f6f3ec0ae1b.png";
+                } else {
+                    // const agencyPicUrl = `https://server.mysamar.ir/${parent.agency_pic}`;
+                    // agencyB = await convertImage(agencyPicUrl);
+                    // if (!agencyB) continue;
+
+                    // agencyBuffer =
+                    //     "data:image/jpeg;base64," + agencyB.toString("base64");
+                    agencyBuffer = "./assets/signature/Empty signiture.png";
                 }
 
                 const zip = new PizZip(templateContent);
@@ -123,7 +130,6 @@ module.exports = new (class extends controller {
                     linebreaks: true,
                     modules: [new ImageModule(imageOptions)],
                 });
-                console.log("parent", parent);
 
                 const co =
                     parent.contract.serviceCostMonth *
@@ -212,22 +218,26 @@ module.exports = new (class extends controller {
                     "data:image/jpeg;base64," + parentBuffer.toString("base64");
 
                 let agencyBuffer = "";
-                if (parent.agency_id == "686ba83db884deb46134263c") {
+                if (data.agency_id == "686ba83db884deb46134263c") {
                     agencyBuffer =
                         "./assets/signature/686ba83db884deb46134263c.png";
-                } else if (parent.agency_id == "686b69150c8889fd0f91b494") {
+                } else if (data.agency_id == "688af959f04e0209ff689663") {
                     agencyBuffer =
-                        "./assets/signature/686b69150c8889fd0f91b494.png";
-                } else if (parent.agency_id == "686659530ac17b8808ceaa11") {
+                        "./assets/signature/688af959f04e0209ff689663.png";
+                } else if (data.agency_id == "686659530ac17b8808ceaa11") {
                     agencyBuffer =
                         "./assets/signature/686659530ac17b8808ceaa11.png";
-                } else {
-                    const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
-                    const agencyB = await convertImage(agencyPicUrl);
-                    if (!agencyB) continue;
-
+                } else if (data.agency_id == "68b81e1305f06f6f3ec0ae1b") {
                     agencyBuffer =
-                        "data:image/jpeg;base64," + agencyB.toString("base64");
+                        "./assets/signature/68b81e1305f06f6f3ec0ae1b.png";
+                } else {
+                    // const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
+                    // const agencyB = await convertImage(agencyPicUrl);
+                    // if (!agencyB) continue;
+
+                    // agencyBuffer =
+                    //     "data:image/jpeg;base64," + agencyB.toString("base64");
+                    agencyBuffer = "./assets/signature/Empty signiture.png";
                 }
 
                 const zip = new PizZip(templateContent);
@@ -242,19 +252,22 @@ module.exports = new (class extends controller {
                 const price = addCommas(co);
                 const months = parent.contractMonths;
 
+                console.log("data.agency_name", data.agency_name);
+
                 doc.render({
                     parent_name: parent.parentName,
                     student_name:
                         parent.studentFirstName + " " + parent.studentLastName,
                     nationalCode: parent.studentNationalCode,
                     phone: parent.parentPhone,
-                    agency_name: parent.agency_name,
+                    agency_name: data.agency_name,
                     parent_address: parent.address,
                     agency_tel: data.agency_tel,
                     agency_signiture: agencyBuffer,
                     parent_signiture: parentBase64,
-                    regNumber: parent.agency_regNumber,
+                    regNumber: parent.agency_regNumber || "-",
                     agency_address: data.agency_address,
+                    agency_admin_name: data.agency_admin_name || "-",
                     agency_nationalID: data.agency_nationalID,
                     price: price,
                     start: parent.contractStart,
@@ -338,17 +351,18 @@ module.exports = new (class extends controller {
                 agencyBuffer =
                     "./assets/signature/686659530ac17b8808ceaa11.png";
             } else {
-                const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
-                const agencyB = await convertImage(agencyPicUrl);
-                if (!agencyB) {
-                    return res.status(400).json({
-                        message: "Failed to generate word file",
-                        downloadLink: null,
-                    });
-                }
+                // const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
+                // const agencyB = await convertImage(agencyPicUrl);
+                // if (!agencyB) {
+                //     return res.status(400).json({
+                //         message: "Failed to generate word file",
+                //         downloadLink: null,
+                //     });
+                // }
 
-                agencyBuffer =
-                    "data:image/jpeg;base64," + agencyB.toString("base64");
+                // agencyBuffer =
+                //     "data:image/jpeg;base64," + agencyB.toString("base64");
+                agencyBuffer = "./assets/signature/Empty signiture.png";
             }
 
             const zip = new PizZip(templateContent);
@@ -377,12 +391,13 @@ module.exports = new (class extends controller {
                 agency_tel: data.agency_tel,
                 agency_signiture: agencyBuffer,
                 parent_signiture: parentBase64,
-                regNumber: data.agency_regNumber,
+                regNumber: data.agency_regNumber || "-",
                 agency_address: data.agency_address,
                 agency_nationalID: data.agency_nationalID,
                 price: price,
                 start: data.contract.contractStart,
                 agency_phone: data.agency_name,
+                agency_admin_name: data.agency_admin_name || "-",
                 months: months,
             });
 
@@ -496,7 +511,9 @@ module.exports = new (class extends controller {
                 return null;
             }
 
-            const agency_admin = await this.User.findById(agency.admin).lean();
+            const agency_admin = await this.User.findById(
+                agency.users[0]
+            ).lean();
             if (!agency_admin) {
                 console.log("Agency admin not found");
                 return null;
@@ -511,6 +528,8 @@ module.exports = new (class extends controller {
                 agency_regNumber: agency.registrationNumber,
                 agency_tel: agency.tel,
                 agency_phone: agency_admin.phone,
+                agency_admin_name:
+                    agency_admin.name + " " + agency_admin.lastName,
                 agency_pic: agency.pic,
                 school_name: school.name,
                 contract: ctr,
@@ -574,7 +593,7 @@ module.exports = new (class extends controller {
                 }
 
                 const agency_admin = await this.User.findById(
-                    agency.admin
+                    agency.users[0]
                 ).lean();
                 if (!agency_admin) {
                     console.log(
@@ -590,6 +609,8 @@ module.exports = new (class extends controller {
                     agency_address: agency.address,
                     agency_nationalID: agency.nationalID,
                     agency_regNumber: agency.registrationNumber,
+                    agency_admin_name:
+                        agency_admin.name + " " + agency_admin.lastName,
                     agency_tel: agency.tel,
                     agency_phone: agency_admin.phone,
                     agency_pic: agency.pic,

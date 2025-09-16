@@ -395,6 +395,7 @@ module.exports = new (class extends controller {
                         agencyId: sch.agencyId,
                         type: "prePayment",
                         delete: false,
+                        active:true
                     },
                     null,
                     { session }
