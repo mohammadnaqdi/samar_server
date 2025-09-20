@@ -8,20 +8,33 @@ const axios = require("axios");
 const { lte } = require("lodash");
 
 const zonet = {
-    1: 21,
-    2: 22,
-    3: 23,
-    4: 24,
-    5: 25,
-    6: 26,
-    7: 27,
-    8: 28,
-    9: 29,
+    "1": 55,
+    "01": 55,
+    "2": 56,
+    "02": 56,
+    "3": 64,
+    "03": 64,
+    "4": 65,
+    "04": 65,
+    "5": 66,
+    "05": 66,
+    "6": 67,
+    "06": 67,
+    "7": 68,
+    "07": 68,
+    "8": 123,
+    "08": 123,
+    "9": 124,
+    "09": 124,
+    "10": 126,
+    "10": 126,
+    "11": 127,
+    "12": 128,
 };
 
 const genderz = {
-    1: 51,
-    2: 52,
+    'male': 21,
+    'female': 20,
 };
 
 function escapeRegExp(string) {
@@ -29,21 +42,20 @@ function escapeRegExp(string) {
 }
 
 module.exports = new (class extends controller {
-    async register(phone, name, lastName, gender) {
+    async register(phone, name, lastName) {
         try {
-            const newUser = new this.User({
+            const newUser = new this.Parent({
                 phone,
                 userName: phone,
                 password: phone,
                 name,
                 lastName,
-                gender,
             });
             await newUser.save();
-            await this.updateRedisDocument(
-                `user:${newUser._id}`,
-                newUser.toObject()
-            );
+            // await this.updateRedisDocument(
+            //     `parent:${newUser._id}`,
+            //     newUser.toObject()
+            // );
             return newUser;
         } catch (error) {
             console.error("Error while registering user:", error);
@@ -58,7 +70,7 @@ module.exports = new (class extends controller {
 
             for (const item of list) {
                 let info = {};
-                const user = await this.User.findOne({
+                const user = await this.Parent.findOne({
                     phone: item.parentPhoneNumber,
                 });
 
@@ -117,7 +129,7 @@ module.exports = new (class extends controller {
                                 gender,
                                 name: RegExp(`.*${schoolName}.*`),
                                 _id: { $in: schoolIDs },
-                                districtId: t,
+                                // districtId: t,
                             });
                             if (school.length === 0) {
                                 info.stuentChecked = false;
@@ -151,7 +163,6 @@ module.exports = new (class extends controller {
                         item.parentPhoneNumber,
                         item.parentFirstName,
                         item.parentLastName,
-                        item.parentGender
                     );
 
                     const t = zonet[item.schoolZoneNumber];
@@ -281,13 +292,13 @@ module.exports = new (class extends controller {
                 code: { $in: queues },
                 isPaid,
             };
-            if (isOnline != null) {
-                let oc = { $in: ["", null, " "] };
-                if (isOnline) {
-                    oc = { $nin: ["", null, " "] };
-                }
-                match.authority = oc;
-            }
+            // if (isOnline != null) {
+            //     let oc = { $in: ["", null, " "] };
+            //     if (isOnline) {
+            //         oc = { $nin: ["", null, " "] };
+            //     }
+            //     match.authority = oc;
+            // }
 
             console.log("match", match);
             const queueList = await this.PayQueue.aggregate([
@@ -689,8 +700,7 @@ module.exports = new (class extends controller {
                     address: students[i].address,
                     lat: students[i].location.coordinates[0],
                     lng: students[i].location.coordinates[1],
-                    details: students[i],
-                    addressDetails,
+                    details: students[i].addressDetails,
                     parentName: parent.name ?? "",
                     parentLastName: parent.lastName ?? "",
                     parentPhone: parent.phone ?? "",

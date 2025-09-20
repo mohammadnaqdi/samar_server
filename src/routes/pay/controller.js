@@ -2222,6 +2222,7 @@ module.exports = new (class extends controller {
         let bankName = "";
         let respCode = "";
         let typeBank = "";
+        const from = req.query.from || "";
         // console.log("waiting for tejarat:", req.body);
         if (
             "RefId" in req.body &&
@@ -2272,6 +2273,9 @@ module.exports = new (class extends controller {
             amount = 0;
             authority = Authority;
             if (!(Status === "OK" || Status === "ok" || Status === "Ok")) {
+                if (from === "panel") {
+                    return res.status(404).json("not find");
+                }
                 res.writeHead(404, { "Content-Type": "text/html" });
                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
                 res.end(html);
@@ -2372,6 +2376,9 @@ module.exports = new (class extends controller {
                 ],
             });
             if (!transAction) {
+                if (from === "panel") {
+                    return res.status(404).json("not find");
+                }
                 res.writeHead(404, { "Content-Type": "text/html" });
                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
                 res.end(html);
@@ -2381,6 +2388,9 @@ module.exports = new (class extends controller {
             // console.log("verify transAction.done=", transAction.done);
             // console.log("verify transAction.state=", transAction.state);
             if (transAction.done && transAction.state === 1) {
+                if (from === "panel") {
+                    return res.json("ok");
+                }
                 if (transAction.stCode === "") {
                     return res.redirect(
                         `https://panel.${process.env.URL}/finance`
@@ -2394,6 +2404,9 @@ module.exports = new (class extends controller {
             const checkResp = respCode == 0;
             // console.log("saderatCallback checkResp", checkResp);
             if (!checkResp) {
+                if (from === "panel") {
+                    return res.status(404).json("not find");
+                }
                 res.writeHead(404, { "Content-Type": "text/html" });
                 var html = fs.readFileSync("src/routes/pay/unsuccess.html");
                 res.end(html);
@@ -2416,7 +2429,8 @@ module.exports = new (class extends controller {
                         rrn,
                         digitalReceipt,
                         bankName,
-                        typeBank
+                        typeBank,
+                        from
                     );
                 } else {
                     await this.verifyPaymentStudent(
@@ -2429,7 +2443,8 @@ module.exports = new (class extends controller {
                         rrn,
                         digitalReceipt,
                         bankName,
-                        typeBank
+                        typeBank,
+                        from
                     );
                 }
             }
@@ -2451,7 +2466,8 @@ module.exports = new (class extends controller {
         rrn,
         digitalreceipt,
         issuerbank,
-        typeBank
+        typeBank,
+        from
     ) {
         const session = await this.Transactions.startSession();
         try {
@@ -2821,7 +2837,9 @@ module.exports = new (class extends controller {
                             throw new Error("Payment verification failed");
                         }
                     }
-
+                    if (from === "panel") {
+                        return res.json("ok");
+                    }
                     return res.redirect(
                         `https://${
                             process.env.URL
@@ -2838,6 +2856,9 @@ module.exports = new (class extends controller {
             );
         } catch (error) {
             console.error("Error in verifyPrePayment:", error);
+            if (from === "panel") {
+                return res.status(402).json("not ok");
+            }
             res.redirect(`https://pay.mysamar.ir/failed.html`);
             return;
         } finally {
@@ -2856,7 +2877,8 @@ module.exports = new (class extends controller {
         rrn,
         digitalreceipt,
         issuerbank,
-        typeBank
+        typeBank,
+        from
     ) {
         const session = await this.Transactions.startSession();
         try {
@@ -3198,6 +3220,9 @@ module.exports = new (class extends controller {
                             throw new Error("Payment verification failed");
                         }
                     }
+                    if (from === "panel") {
+                        return res.json("ok");
+                    }
                     const url = `https://${
                         process.env.URL
                     }/downloads/pay.html?amount=${amount}&transaction=${authority}&id=${
@@ -3214,6 +3239,9 @@ module.exports = new (class extends controller {
             );
         } catch (error) {
             console.error("Error in verifyPaymentStudent:", error);
+            if (from === "panel") {
+                return res.status(402).json("not ok");
+            }
             res.redirect(`https://pay.mysamar.ir/failed.html`);
             return;
         } finally {

@@ -46,6 +46,7 @@ const studentSchema = new mongoose.Schema(
         serviceCost: { type: Number, default: 0 },
         driverCost: { type: Number, default: 0 },
         serviceNum: { type: Number, default: -1 },
+        birthDate: { type: Date, default: null },
         location: {
             type: {
                 type: String,

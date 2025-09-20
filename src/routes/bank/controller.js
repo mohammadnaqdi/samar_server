@@ -886,6 +886,8 @@ module.exports = new (class extends controller {
                 "type bankName card terminal bankCode installments prePayment userName"
             ).lean();
 
+            
+
             return res.json(find);
         } catch (error) {
             console.error("Error in getPayGate4Parent:", error);

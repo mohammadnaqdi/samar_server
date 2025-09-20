@@ -107,8 +107,8 @@ async function generateMellatToken(
             localTime,
             additionalData,
             mobileNo: CellNumber,
-            callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
-            // callBackUrl: `http://192.168.0.122:9000/api/pay/${link}`,
+            // callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
+            callBackUrl: `http://192.168.0.122:9000/api/pay/${link}`,
             payerId: parseInt(payerId),
         };
 

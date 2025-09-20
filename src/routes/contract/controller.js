@@ -92,7 +92,8 @@ module.exports = new (class extends controller {
 
                 const templateContent = fs.readFileSync(p, "binary");
 
-                const parentPicUrl = `https://server.mysamar.ir/${parent.contract.pic}`;
+                // const parentPicUrl = `http://192.168.0.122:9000/${parent.contract.pic}`;
+                 const parentPicUrl = `https://server.mysamar.ir/${parent.contract.pic}`;
                 const parentBuffer = await convertImage(parentPicUrl);
                 if (!parentBuffer) continue;
                 const parentBase64 =
@@ -328,7 +329,8 @@ module.exports = new (class extends controller {
             );
             const templateContent = fs.readFileSync(dir, "binary");
 
-            const parentPicUrl = `https://server.mysamar.ir/${data.contract.pic}`;
+            // const parentPicUrl = `http://192.168.0.122:9000/${data.contract.pic}`;
+             const parentPicUrl = `https://server.mysamar.ir/${data.contract.pic}`;
             const parentBuffer = await convertImage(parentPicUrl);
             if (!parentBuffer) {
                 return res.status(400).json({

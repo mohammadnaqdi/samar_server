@@ -29,8 +29,11 @@ module.exports = new (class extends controller {
             } = req.body;
 
             const parent = req.user._id;
-            const checkDistance = req.body.checkDistance || false;
             const nationalCode = req.body.nationalCode ?? "";
+            const physicalCondition = req.body.physicalCondition ?? 1;
+            const physicalConditionDesc = req.body.physicalConditionDesc ?? "";
+            const supervisor = req.body.supervisor ?? [];
+            const birthDate = req.body.birthDate ?? null;
 
             const studentCount = await this.Student.countDocuments({
                 parent,
@@ -111,6 +114,11 @@ module.exports = new (class extends controller {
                 nationalCode,
                 setter: req.user._id,
                 setterISParent: req.user.isParent || false,
+                birthDate,
+                supervisor,
+                physicalConditionDesc,
+                physicalCondition,
+
             }).save({ session });
 
             const invoice = await this.Invoice.findOne({
@@ -476,7 +484,8 @@ module.exports = new (class extends controller {
             const physicalConditionDesc = req.body.physicalConditionDesc;
             const nationalCode = req.body.nationalCode ?? "";
             let state = 0;
-
+            const birthDate = req.body.birthDate ?? null;
+        
             // console.log("id ", id);
             // console.log("setStudent parentId", parentId);
             if (id === 0) {
@@ -589,6 +598,7 @@ module.exports = new (class extends controller {
                     nationalCode,
                     setter: req.user._id,
                     setterISParent: req.user.isParent || false,
+                    birthDate
                 });
                 await student.save();
                 const invoice = await this.Invoice.findOne({
@@ -636,6 +646,7 @@ module.exports = new (class extends controller {
                         isIranian,
                         serviceDistance,
                         nationalCode,
+                        birthDate
                     },
                     { returnOriginal: false }
                 );
@@ -1949,7 +1960,7 @@ module.exports = new (class extends controller {
                 });
             }
             let studentsLocations = [];
-            if (serviceId && serviceId != "") {
+            if (serviceId && serviceId != "" && sortBy === 1) {
                 studentsLocations = await this.Student.find(
                     {
                         service: serviceId,
@@ -1994,7 +2005,7 @@ module.exports = new (class extends controller {
                 ],
             };
             if (schoolId.toString() !== "") {
-                qr.push({ school: schoolId });
+                qr.push({ school: ObjectId.createFromHexString(schoolId) });
             } else {
                 qr.push({ school: { $in: onlySchool } });
             }
@@ -2032,7 +2043,7 @@ module.exports = new (class extends controller {
                                 },
                                 key: "location",
                                 distanceField: "dist.calculated",
-                                maxDistance: 20000,
+                                maxDistance: 30000,
                                 spherical: true,
                             },
                         },
