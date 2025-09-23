@@ -196,8 +196,6 @@ module.exports = new (class {
         ];
     }
 
-    
-    
     serviceListValidator() {
         return [
             check("page").not().isEmpty().withMessage("page cant be empty"),
@@ -230,10 +228,7 @@ module.exports = new (class {
     }
     setPricingTableValidator() {
         return [
-            check("city")
-                .not()
-                .isEmpty()
-                .withMessage("city cant be empty"),
+            check("city").not().isEmpty().withMessage("city cant be empty"),
             check("districtId")
                 .not()
                 .isEmpty()
@@ -270,12 +265,22 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("kilometer cant be empty"),
-            check("studentAmount").not().isEmpty().withMessage("studentAmount cant be empty"),
-            check("driverAmount").not().isEmpty().withMessage("driverPrice cant be empty"),
+            check("studentAmount")
+                .not()
+                .isEmpty()
+                .withMessage("studentAmount cant be empty"),
+            check("driverAmount")
+                .not()
+                .isEmpty()
+                .withMessage("driverPrice cant be empty"),
         ];
     }
-    searchPricingTableValidator() {
+    searchPriceTableValidator() {
         return [
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
             check("districtId")
                 .not()
                 .isEmpty()
@@ -287,12 +292,8 @@ module.exports = new (class {
                 .withMessage("gradeId cant be empty"),
         ];
     }
-    searchPriceTableValidator() {
+    searchPricingTableValidator() {
         return [
-            check("agencyId")
-                .not()
-                .isEmpty()
-                .withMessage("agencyId cant be empty"),
             check("districtId")
                 .not()
                 .isEmpty()

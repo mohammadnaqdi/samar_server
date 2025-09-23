@@ -32,7 +32,7 @@ async function calculateFee(merchant_id, amount) {
                 currency: "IRR",
             }
         );
-        console.log("کارمزد:", response.data.data.fee, "ریال");
+        // console.log("کارمزد:", response.data.data.fee, "ریال");
 
         return response.data.data.fee;
     } catch (error) {
@@ -45,6 +45,7 @@ async function generateTejaratToken(amount, orderId, pin) {
     const wsdl =
         "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?WSDL";
 
+    console.log(amount, orderId, pin);
     const params = {
         LoginAccount: pin,
         Amount: amount,
@@ -107,8 +108,7 @@ async function generateMellatToken(
             localTime,
             additionalData,
             mobileNo: CellNumber,
-            // callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
-            callBackUrl: `http://192.168.0.122:9000/api/pay/${link}`,
+            callBackUrl: `https://server.mysamar.ir/api/pay/${link}`,
             payerId: parseInt(payerId),
         };
 
@@ -246,10 +246,15 @@ async function generateSamanToken(
             RedirectUrl: redirect,
             CellNumber: phone,
         };
+        // console.log(body);
 
         const response = await axios.post(url, body);
+        // console.log(response.data);
+
         const token = response.data.token;
         if (!token) {
+            console.log("Error while generating saman token:", response.data);
+
             return null;
         }
         return token;
@@ -280,12 +285,12 @@ module.exports = new (class extends controller {
                       agencyId,
                       active: true,
                       type: { $ne: "CARD" },
-                  })
+                  }).lean()
                 : await this.PayGate.findOne({
                       agencyId,
                       active: true,
                       type: bank.trim(),
-                  });
+                  }).lean();
         // console.log("bankGate", bankGate);
         if (!bankGate) {
             bankGate =
@@ -294,12 +299,15 @@ module.exports = new (class extends controller {
                           agencyId,
                           active: true,
                           type: { $ne: "CARD" },
-                      })
+                      }).lean()
                     : await this.BankGate.findOne({
                           agencyId,
                           active: true,
                           type: bank.trim(),
-                      });
+                      }).lean();
+            if (bankGate) {
+                bankGate._id = null;
+            }
         }
         if (!bankGate) {
             return this.response({
@@ -341,6 +349,7 @@ module.exports = new (class extends controller {
             {
                 agencyId: agencyId,
                 type: "prePayment",
+                delete: false,
                 active: true,
             },
             "amount title desc distancePrice schools"
@@ -407,7 +416,7 @@ module.exports = new (class extends controller {
         }
 
         if (amount + amount2 < 10000) {
-            console.log("amount < 10000", amount);
+            // console.log("amount < 10000", amount);
             return this.response({
                 res,
                 code: 203,
@@ -424,12 +433,12 @@ module.exports = new (class extends controller {
         //     amount = 5000;
         //     amount2 = 5000;
         // }
-        // if (
-        //   req.user._id == "686e0cf5ee410a203824a9d5" ||
-        //   req.user._id == "687e1a4464a746341a0085b5"
-        // ) {
-        //   newAmount = 30000;
-        // }
+        if (
+            req.user._id == "686e0cf5ee410a203824a9d5" ||
+            req.user._id == "687e1a4464a746341a0085b5"
+        ) {
+            newAmount = 30000;
+        }
         try {
             let newTr = new this.Transactions({
                 userId: req.user._id,
@@ -440,10 +449,11 @@ module.exports = new (class extends controller {
                 stCode: student.studentCode,
                 agencyId,
                 phone: req.user.phone,
+                payGateId: bankGate._id,
             });
             await newTr.save();
 
-            console.log("bankGate.type", bankGate.type);
+            // console.log("bankGate.type", bankGate.type);
             if (bankGate.type === "SADERAT" || bankGate.type === "SEPEHR") {
                 //**********************************************SADERAT******************************************************* */
                 let token = await generateSepehrToken(
@@ -499,20 +509,22 @@ module.exports = new (class extends controller {
                     });
                 }
                 const zarinpal = Zarin.create(bankGate.terminal, false);
-                console.log("newAmount", newAmount);
                 let fee = await calculateFee(bankGate.terminal, newAmount);
-                console.log("fee", fee);
                 const am = newAmount / 10 + fee / 10;
-                console.log("amount with fee", am);
+                console.log(`Raw amount ${amount} | with fee ${newAmount}`);
+
+                const domain = `https://${bankGate.callback}/callback.php`;
+                console.log(`zarinpal domain: ${domain}`);
                 const response = await zarinpal.PaymentRequest({
                     Amount: Math.ceil(am),
                     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
                     // CallbackURL: `https://server.mysamar.ir/api/pay/callBack`,
-                    CallbackURL: `https://${bankGate.callback}/callback.php`,
+                    CallbackURL: domain,
                     Description: desc,
                     Email: "",
                     Mobile: req.user.phone,
                 });
+                console.log("zarinpal response", response);
                 newTr.zarinFee = fee;
                 await newTr.save();
                 if (response.status === 100) {
@@ -668,12 +680,12 @@ module.exports = new (class extends controller {
                           agencyId,
                           active: true,
                           type: { $ne: "CARD" },
-                      })
+                      }).lean()
                     : await this.PayGate.findOne({
                           agencyId,
                           active: true,
                           type: bank.trim(),
-                      });
+                      }).lean();
             // console.log("bankGate", bankGate);
             if (!bankGate) {
                 bankGate =
@@ -682,12 +694,15 @@ module.exports = new (class extends controller {
                               agencyId,
                               active: true,
                               type: { $ne: "CARD" },
-                          })
+                          }).lean()
                         : await this.BankGate.findOne({
                               agencyId,
                               active: true,
                               type: bank.trim(),
-                          });
+                          }).lean;
+                if (bankGate) {
+                    bankGate._id = null;
+                }
             }
             if (!bankGate) {
                 return this.response({
@@ -699,13 +714,17 @@ module.exports = new (class extends controller {
         }
         let amount = payQueue.amount;
         // /*for test dodo*/amount=10000;
-        console.log("amount", amount);
+        // console.log("amount", amount);
         if (amount < 10000) {
             return this.response({
                 res,
                 code: 203,
                 message: "amount not enough",
             });
+        }
+
+        if (req.user._id.toString() === "686e0cf5ee410a203824a9d5") {
+            amount = 20000;
         }
 
         let desc = payQueue.title + " " + student.name + " " + student.lastName;
@@ -745,6 +764,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 phone: req.user.phone,
                 payQueueId: payQueue._id,
+                payGateId: bankGate._id,
             });
             await newTr.save();
 
@@ -797,9 +817,8 @@ module.exports = new (class extends controller {
                 //**********************************************ZARIN******************************************************* */
                 const zarinpal = Zarin.create(bankGate.terminal, false);
                 let fee = await calculateFee(bankGate.terminal, amount);
-                console.log("fee", fee);
                 const am = amount / 10 + fee / 10;
-                console.log("amount with fee", am);
+                console.log(`Raw amount ${amount} | with fee ${am}`);
                 const response = await zarinpal.PaymentRequest({
                     Amount: Math.ceil(am),
                     // CallbackURL: "http://192.168.0.122:9000/api/pay/verify",
@@ -851,7 +870,7 @@ module.exports = new (class extends controller {
                     req.user._id.toString() === "686e0cf5ee410a203824a9d5" ||
                     req.user._id.toString() === "687e1a4464a746341a0085b5"
                 ) {
-                    amount = 100000;
+                    amount = 40000;
                 }
                 let token = await generateSamanToken(
                     amount,
@@ -886,6 +905,7 @@ module.exports = new (class extends controller {
                     newTr.authority,
                     bankGate.terminal
                 );
+
                 if (!token) {
                     return res.status(201).json({
                         message: `خطای بانک ${bankGate.bankName}`,
@@ -914,6 +934,7 @@ module.exports = new (class extends controller {
         //     return res.status(500).json({ error: "Internal Server Error." });
         // }
     }
+
     async paymentCo(req, res) {
         // console.log("paymentCorrrrrr")
         if (
@@ -1309,7 +1330,6 @@ module.exports = new (class extends controller {
                         await student.save();
                     }
                 }
-
                 return this.response({
                     res,
                     data: {
@@ -1601,6 +1621,8 @@ module.exports = new (class extends controller {
             } = req.body;
             const isDelete = req.body.delete;
             const fixPrice = req.body.fixPrice;
+
+            // console.log("distancePrice", distancePrice);
             // console.log("id", id);
             const agencyId =
                 req.body.agencyId.trim() === "" ? null : req.body.agencyId;
@@ -2348,7 +2370,7 @@ module.exports = new (class extends controller {
                     agencyId: student.agencyId,
                     type: "prePayment",
                     active: true,
-                    delete:false
+                    delete: false,
                 }).lean();
 
                 let amount2 = 0;
@@ -2429,7 +2451,7 @@ module.exports = new (class extends controller {
                 payDate,
             } = req.body;
             const isSheba = req.body.isSheba || false;
-            console.log("payGateId", payGateId);
+            // console.log("payGateId", payGateId);
 
             let student = await this.Student.findById(studentId).session(
                 session
@@ -2517,7 +2539,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 type: "prePayment",
                 active: true,
-                delete:false
+                delete: false,
             })
                 .session(session)
                 .lean();

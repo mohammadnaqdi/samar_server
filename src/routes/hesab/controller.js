@@ -1118,8 +1118,8 @@ module.exports = new (class extends controller {
                 firstDay = lastDay + 1;
                 lastDay = lastDay + monthsDays[x];
             }
-            console.log("firstDay", firstDay);
-            console.log("lastDay", lastDay);
+            // console.log("firstDay", firstDay);
+            // console.log("lastDay", lastDay);
             let result = [];
             for (var id of ids) {
                 const driver = await this.Driver.findById(

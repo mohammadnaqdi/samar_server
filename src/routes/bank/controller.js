@@ -25,6 +25,7 @@ module.exports = new (class extends controller {
     async getBankCreds(req, res) {
         return res.status(606).json({ message: "it is an old API" });
     }
+
     async getPayCreds(req, res) {
         try {
             const Banks = [
@@ -643,71 +644,11 @@ module.exports = new (class extends controller {
     }
 
     async setBankGate(req, res) {
-        try {
-            const {
-                agencyId,
-                bankName,
-                bankCode,
-                type,
-                card,
-                terminal,
-                userName,
-                userPass,
-                hesab,
-                active,
-                personal,
-                callback,
-            } = req.body;
+        return res.status(606).json({ message: "it is an old API" });
+    }
 
-            if (!agencyId) {
-                return this.response({
-                    res,
-                    code: 214,
-                    message: "agencyId required",
-                });
-            }
-
-            const find = await this.BankGate.findOne({ agencyId, type }).lean();
-            if (!find) {
-                await this.BankGate.create({
-                    agencyId,
-                    editor: req.user._id,
-                    bankName,
-                    bankCode,
-                    type,
-                    card,
-                    terminal,
-                    userName,
-                    userPass,
-                    hesab,
-                    active,
-                    personal,
-                    callback,
-                });
-
-                return res.json({ message: "Done" });
-            }
-
-            await this.BankGate.findByIdAndUpdate(find._id, {
-                agencyId,
-                editor: req.user._id,
-                bankName,
-                bankCode,
-                type,
-                card,
-                terminal,
-                userName,
-                userPass,
-                hesab,
-                active,
-                personal,
-                callback,
-            });
-            return res.json({ message: "Done" });
-        } catch (error) {
-            console.error("Error in setBankGate:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
+    async getBankGate(req, res) {
+        return res.status(606).json({ message: "it is an old API" });
     }
     async setPayGate(req, res) {
         try {
@@ -863,7 +804,7 @@ module.exports = new (class extends controller {
     // }
     async getPayGate4Parent(req, res) {
         try {
-            console.log("req.query", req.query);
+            // console.log("req.query", req.query);
             const { agencyId } = req.query;
             if (!agencyId) {
                 return res.status(404).json({ message: "Invalid agencyId!" });
@@ -885,8 +826,6 @@ module.exports = new (class extends controller {
                 { $and: match },
                 "type bankName card terminal bankCode installments prePayment userName"
             ).lean();
-
-            
 
             return res.json(find);
         } catch (error) {
@@ -999,6 +938,8 @@ module.exports = new (class extends controller {
 
         try {
             const { idPay, idReg, idPre, agencyId } = req.query;
+            console.log("idReg", idReg);
+            console.log("idPre", idPre);
             if (!agencyId) {
                 await session.abortTransaction();
                 session.endSession();

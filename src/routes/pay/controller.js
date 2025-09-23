@@ -31,7 +31,7 @@ async function calculateFee(merchant_id, amount) {
                 currency: "IRR",
             }
         );
-        console.log("کارمزد:", response.data.data.fee, "ریال");
+        // console.log("کارمزد:", response.data.data.fee, "ریال");
 
         return response.data.data.suggested_amount;
     } catch (error) {
@@ -131,7 +131,7 @@ async function verifyPaidBankNew(
     invoice
 ) {
     try {
-        if (typeBank === "SEPEHR") {
+        if (typeBank === "SEPEHR" || typeBank === "SADERAT") {
             const url = "https://sepehr.shaparak.ir:8081/V1/PeymentApi/Advice";
             const payload = {
                 digitalreceipt: digitalreceipt,
@@ -168,7 +168,7 @@ async function verifyPaidBankNew(
             } else {
                 throw new Error("Sepehr Payment verification failed");
             }
-        } else if (typeBank === "BPM") {
+        } else if (typeBank === "BPM" || typeBank === "MELLAT") {
             const args = {
                 terminalId: terminalID,
                 userName: userName,
@@ -204,7 +204,7 @@ async function verifyPaidBankNew(
                 return true;
             }
             return false;
-        } else if (typeBank === "FCP") {
+        } else if (typeBank === "FCP" || typeBank === "MEHR") {
             const verifyUrl =
                 "https://fcp.shaparak.ir/ref-payment/RestServices/mts/verifyMerchantTrans/";
             const body = {
@@ -224,7 +224,7 @@ async function verifyPaidBankNew(
                 res.data
             );
             return false;
-        } else if (typeBank === "SEP") {
+        } else if (typeBank === "SEP" || typeBank === "SAMAN") {
             const url =
                 "https://sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction";
             const body = {
@@ -238,7 +238,7 @@ async function verifyPaidBankNew(
             } else {
                 return false;
             }
-        } else if (typeBank === "PEC") {
+        } else if (typeBank === "PEC" || typeBank === "TEJARAT") {
             const client = await soap.createClientAsync(
                 "https://pec.shaparak.ir/NewIPGServices/Confirm/ConfirmService.asmx?WSDL"
             );
@@ -291,6 +291,8 @@ async function varifyPaidBank(
                     "Content-Type": "application/json",
                 },
             });
+
+            console.log("response varifyPaidBank SADERAT=", response.data);
 
             let responseData = response.data;
             if (responseData.Status === "NOk") {
@@ -887,7 +889,7 @@ module.exports = new (class extends controller {
     }
 
     async verifyCo(req, res) {
-        console.log("req.query", JSON.stringify(req.query));
+        // console.log("req.query", JSON.stringify(req.query));
         const auth = req.query.Authority;
 
         let transAction = await this.Transactions.findOne({
@@ -1888,7 +1890,7 @@ module.exports = new (class extends controller {
     }
 
     async verifyCoCharge(req, res) {
-        console.log("req.query", JSON.stringify(req.query));
+        // console.log("req.query", JSON.stringify(req.query));
         const auth = req.query.Authority;
 
         let transAction = await this.Transactions.findOne({
@@ -2348,6 +2350,12 @@ module.exports = new (class extends controller {
             } = req.body;
             console.log("TEJARAT calloback", req.body);
 
+            if (status != "0") {
+                res.writeHead(404, { "Content-Type": "text/html" });
+                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
+                return res.end(html);
+            }
+
             const normalizeAmount = (amountStr) => {
                 return parseInt(amountStr.replace(/[^\d]/g, ""), 10);
             };
@@ -2358,11 +2366,6 @@ module.exports = new (class extends controller {
             cardNumber = HashCardNumber;
             rrn = Token;
             digitalReceipt = RRN;
-            if (status != "0") {
-                res.writeHead(404, { "Content-Type": "text/html" });
-                var html = fs.readFileSync("src/routes/pay/unsuccess.html");
-                return res.end(html);
-            }
         } else {
             return res.status(400).json({ error: "Invalid request body" });
         }
@@ -2415,6 +2418,9 @@ module.exports = new (class extends controller {
             if (transAction.stCode === "") {
                 //dodo
             } else {
+                if (typeBank === "ZARIN") {
+                    amount = transAction.amount;
+                }
                 if (
                     transAction.payQueueId == null ||
                     transAction.payQueueId.toString() === ""
@@ -2474,7 +2480,8 @@ module.exports = new (class extends controller {
             await session.withTransaction(
                 async () => {
                     const agencyId = transAction.agencyId;
-                    const agency = this.Agency.findById(
+
+                    const agency = await this.Agency.findById(
                         agencyId,
                         "settings"
                     ).session(session);
@@ -2494,6 +2501,12 @@ module.exports = new (class extends controller {
                         ).session(session);
                     }
                     // console.log("bankGate", bankGate);
+                    const desc = transAction.desc;
+                    const [before, after] = desc.split("شرکت");
+                    console.log(
+                        `{"type": "log98", "amount": ${amount}, "typeBank": "${typeBank}", "agency": "${after.trim()}"}`
+                    );
+
                     if (!agency || !bankGate) {
                         throw new Error("Agency or bankGate not found");
                     }
@@ -2532,7 +2545,7 @@ module.exports = new (class extends controller {
                         }
                     }
 
-                    console.log("tr amount", amount);
+                    // console.log("tr amount", amount);
                     // Update transaction
                     const tr = await this.Transactions.findByIdAndUpdate(
                         transAction._id,
@@ -2628,6 +2641,8 @@ module.exports = new (class extends controller {
                         }
                         await payQueue.save({ session });
 
+                        // console.log("agency", agency);
+                        // console.log("agency settings", agency.settings);
                         const wallet = agency.settings.find(
                             (obj) => obj.wallet
                         )?.wallet;
@@ -2823,7 +2838,7 @@ module.exports = new (class extends controller {
                                   tr.authority
                               )
                             : await verifyPaidBankNew(
-                                  typeBank,
+                                  bankGate.type,
                                   digitalreceipt,
                                   tid,
                                   rrn,
@@ -2902,7 +2917,7 @@ module.exports = new (class extends controller {
                     let bankGate;
                     if (payQueue.type === "registration") {
                         bankGate = {
-                            type: "MELLAT",
+                            type: "BPM",
                             terminal: "8551948",
                             userName: "8551948",
                             userPass: "15806659",
@@ -2926,6 +2941,11 @@ module.exports = new (class extends controller {
                             ).session(session);
                         }
                     }
+                    const desc1 = transAction.desc;
+                    const [before, after] = desc1.split("شرکت");
+                    console.log(
+                        `{"type": "log98", "amount": ${amount}, "typeBank": "${typeBank}", "agency": "${after.trim()}"}`
+                    );
 
                     // console.log("bankGate", bankGate);
                     if (!bankGate) {
@@ -3206,7 +3226,7 @@ module.exports = new (class extends controller {
                                   tr.authority
                               )
                             : await verifyPaidBankNew(
-                                  typeBank,
+                                  bankGate.type,
                                   digitalreceipt,
                                   tid,
                                   rrn,

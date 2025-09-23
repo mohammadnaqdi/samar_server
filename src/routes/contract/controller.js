@@ -88,18 +88,14 @@ module.exports = new (class extends controller {
                     "/startup/contracts/",
                     agency_contract
                 );
-                console.log("data", data);
 
                 const templateContent = fs.readFileSync(p, "binary");
 
-                // const parentPicUrl = `http://192.168.0.122:9000/${parent.contract.pic}`;
-                 const parentPicUrl = `https://server.mysamar.ir/${parent.contract.pic}`;
+                const parentPicUrl = `https://server.mysamar.ir/${parent.contract.pic}`;
                 const parentBuffer = await convertImage(parentPicUrl);
                 if (!parentBuffer) continue;
                 const parentBase64 =
                     "data:image/jpeg;base64," + parentBuffer.toString("base64");
-
-                console.log("parent.agency_id", parent.agency_id);
 
                 let agencyBuffer = "";
                 if (parent.agency_id == "686ba83db884deb46134263c") {
@@ -114,9 +110,12 @@ module.exports = new (class extends controller {
                 } else if (parent.agency_id == "68b81e1305f06f6f3ec0ae1b") {
                     agencyBuffer =
                         "./assets/signature/68b81e1305f06f6f3ec0ae1b.png";
+                } else if (parent.agency_id == "686ba6b1b884deb4613424a0") {
+                    agencyBuffer =
+                        "./assets/signature/686ba6b1b884deb4613424a0.png";
                 } else {
-                    // const agencyPicUrl = `https://server.mysamar.ir/${parent.agency_pic}`;
-                    // agencyB = await convertImage(agencyPicUrl);
+                    // const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
+                    // const agencyB = await convertImage(agencyPicUrl);
                     // if (!agencyB) continue;
 
                     // agencyBuffer =
@@ -155,9 +154,14 @@ module.exports = new (class extends controller {
                     agency_tel: parent.agency_tel,
                     agency_signiture: agencyBuffer,
                     parent_signiture: parentBase64,
-                    price: price,
+                    price:
+                        typeof price === "number" && !isNaN(price)
+                            ? price
+                            : "...............",
                     start: parent.contract.contractStart,
                     months: months,
+                    school_name: parent.school_name,
+                    monthly_cost: parent.contract.serviceCostMonth,
                 });
 
                 const buf = doc.getZip().generate({ type: "nodebuffer" });
@@ -217,7 +221,6 @@ module.exports = new (class extends controller {
 
                 const parentBase64 =
                     "data:image/jpeg;base64," + parentBuffer.toString("base64");
-
                 let agencyBuffer = "";
                 if (data.agency_id == "686ba83db884deb46134263c") {
                     agencyBuffer =
@@ -231,6 +234,9 @@ module.exports = new (class extends controller {
                 } else if (data.agency_id == "68b81e1305f06f6f3ec0ae1b") {
                     agencyBuffer =
                         "./assets/signature/68b81e1305f06f6f3ec0ae1b.png";
+                } else if (data.agency_id == "686ba6b1b884deb4613424a0") {
+                    agencyBuffer =
+                        "./assets/signature/686ba6b1b884deb4613424a0.png";
                 } else {
                     // const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
                     // const agencyB = await convertImage(agencyPicUrl);
@@ -253,8 +259,6 @@ module.exports = new (class extends controller {
                 const price = addCommas(co);
                 const months = parent.contractMonths;
 
-                console.log("data.agency_name", data.agency_name);
-
                 doc.render({
                     parent_name: parent.parentName,
                     student_name:
@@ -270,10 +274,16 @@ module.exports = new (class extends controller {
                     agency_address: data.agency_address,
                     agency_admin_name: data.agency_admin_name || "-",
                     agency_nationalID: data.agency_nationalID,
-                    price: price,
+                    price:
+                        typeof price === "number" && !isNaN(price)
+                            ? price
+                            : "...............",
+
                     start: parent.contractStart,
                     months: months,
                     agency_phone: data.agency_name,
+                    school_name: data.school_name,
+                    monthly_cost: parent.serviceCostMonth,
                 });
 
                 const buf = doc.getZip().generate({ type: "nodebuffer" });
@@ -329,8 +339,7 @@ module.exports = new (class extends controller {
             );
             const templateContent = fs.readFileSync(dir, "binary");
 
-            // const parentPicUrl = `http://192.168.0.122:9000/${data.contract.pic}`;
-             const parentPicUrl = `https://server.mysamar.ir/${data.contract.pic}`;
+            const parentPicUrl = `https://server.mysamar.ir/${data.contract.pic}`;
             const parentBuffer = await convertImage(parentPicUrl);
             if (!parentBuffer) {
                 return res.status(400).json({
@@ -346,24 +355,19 @@ module.exports = new (class extends controller {
             if (data.agency_id == "686ba83db884deb46134263c") {
                 agencyBuffer =
                     "./assets/signature/686ba83db884deb46134263c.png";
-            } else if (data.agency_id == "686b69150c8889fd0f91b494") {
+            } else if (data.agency_id == "688af959f04e0209ff689663") {
                 agencyBuffer =
-                    "./assets/signature/686b69150c8889fd0f91b494.png";
+                    "./assets/signature/688af959f04e0209ff689663.png";
             } else if (data.agency_id == "686659530ac17b8808ceaa11") {
                 agencyBuffer =
                     "./assets/signature/686659530ac17b8808ceaa11.png";
+            } else if (data.agency_id == "68b81e1305f06f6f3ec0ae1b") {
+                agencyBuffer =
+                    "./assets/signature/68b81e1305f06f6f3ec0ae1b.png";
+            } else if (data.agency_id == "686ba6b1b884deb4613424a0") {
+                agencyBuffer =
+                    "./assets/signature/686ba6b1b884deb4613424a0.png";
             } else {
-                // const agencyPicUrl = `https://server.mysamar.ir/${data.agency_pic}`;
-                // const agencyB = await convertImage(agencyPicUrl);
-                // if (!agencyB) {
-                //     return res.status(400).json({
-                //         message: "Failed to generate word file",
-                //         downloadLink: null,
-                //     });
-                // }
-
-                // agencyBuffer =
-                //     "data:image/jpeg;base64," + agencyB.toString("base64");
                 agencyBuffer = "./assets/signature/Empty signiture.png";
             }
 
@@ -396,11 +400,16 @@ module.exports = new (class extends controller {
                 regNumber: data.agency_regNumber || "-",
                 agency_address: data.agency_address,
                 agency_nationalID: data.agency_nationalID,
-                price: price,
+                price:
+                    typeof price === "number" && !isNaN(price)
+                        ? price
+                        : "...............",
                 start: data.contract.contractStart,
                 agency_phone: data.agency_name,
                 agency_admin_name: data.agency_admin_name || "-",
                 months: months,
+                school_name: data.school_name,
+                monthly_cost: data.contract.serviceCostMonth,
             });
 
             const buf = doc.getZip().generate({ type: "nodebuffer" });

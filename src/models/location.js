@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const locationSchema = new mongoose.Schema(
     {
-        userCode: { type: Number, required: true },
+        userCode: { type: String, required: true },
         location: {
             type: { type: String, enum: ["Point"], default: "Point" },
             coordinates: {
@@ -19,15 +19,15 @@ const locationSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
-locationSchema.index({ location: '2dsphere' });
+locationSchema.index({ location: "2dsphere" });
 var Location = mongoose.model("Location", locationSchema);
 
 const driverActSchema = new mongoose.Schema(
     {
         driverCode: { type: String, required: true },
-         location: {
+        location: {
             type: { type: String, enum: ["Point"], default: "Point" },
             coordinates: {
                 type: [Number],
@@ -42,19 +42,19 @@ const driverActSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
-driverActSchema.index({ location: '2dsphere' });
+driverActSchema.index({ location: "2dsphere" });
 var DriverAct = mongoose.model("DriverAct", driverActSchema);
 
 const driverLocationSchema = new mongoose.Schema(
     {
-        dId:  {
+        dId: {
             type: mongoose.Types.ObjectId,
             ref: "Driver",
             required: true,
         },
-        agencyId:  {
+        agencyId: {
             type: mongoose.Types.ObjectId,
             ref: "Agency",
             required: true,
@@ -71,15 +71,16 @@ const driverLocationSchema = new mongoose.Schema(
         state: { type: Number },
         station: {
             type: mongoose.Types.ObjectId,
-            ref: "Station",defautl:null
+            ref: "Station",
+            defautl: null,
         },
-        tripId: { type: String,default:0 },
+        tripId: { type: String, default: 0 },
     },
     {
         timestamps: true,
     }
 );
-driverLocationSchema.index({ location: '2dsphere' });
+driverLocationSchema.index({ location: "2dsphere" });
 const DriverLocation = mongoose.model("DriverLocation", driverLocationSchema);
 
 module.exports = { Location, DriverAct };

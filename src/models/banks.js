@@ -198,12 +198,12 @@ const payGateSchema = new mongoose.Schema(
             type: String,
             enum: [
                 "CARD",
-                "SEPEHR",//saderat
-                "BPM",//mellat
+                "SEPEHR", //saderat
+                "BPM", //mellat
                 "ZARIN",
-                "SEP",//ayandeh , refah
-                "FCP",//mehr
-                "PEC",// tejart
+                "SEP", //ayandeh , refah
+                "FCP", //mehr
+                "PEC", // tejart
             ],
             default: "ZARIN",
         },
@@ -214,14 +214,14 @@ const payGateSchema = new mongoose.Schema(
         userPass: { type: String, default: "" },
         hesab: { type: String, required: true },
         active: { type: Boolean, default: true },
-        schools:{
-            type:[
+        schools: {
+            type: [
                 {
-                    name:String,
-                    schoolId:String
-                }
+                    name: String,
+                    schoolId: String,
+                },
             ],
-            default:[]
+            default: [],
         },
         personal: { type: Boolean, default: false },
         prePayment: { type: Boolean, default: true },
@@ -235,4 +235,11 @@ payGateSchema.index({ agencyId: 1, terminal: 1 }, { unique: true });
 
 const PayGate = mongoose.model("PayGate", payGateSchema);
 
-module.exports = { CostCenter, BankInfo, CheckBook, CheckPage, BankGate,PayGate };
+module.exports = {
+    CostCenter,
+    BankInfo,
+    CheckBook,
+    CheckPage,
+    BankGate,
+    PayGate,
+};

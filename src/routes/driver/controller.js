@@ -834,6 +834,7 @@ module.exports = new (class extends controller {
             }
             await user.save();
             await this.updateRedisDocument(`user:${user._id}`, user);
+            // console.log("car", car);
             await car.save();
             await driver.save();
             await driverInfo.save();
@@ -2332,12 +2333,16 @@ module.exports = new (class extends controller {
             qr.push({ userCode: driverCode });
             qr.push({ createdAt: { $lte: dateY, $gte: dateX } });
 
-            // console.log(JSON.stringify(qr));
+            console.log(JSON.stringify(qr));
             let location = await this.Location.find({ $and: qr }).lean();
-            for(var lc of location){
-                lc.lat=lc.location.coordinates[0];
-                lc.lng=lc.location.coordinates[1];
+            for (var lc of location) {
+                lc.lat = lc.location.coordinates[0];
+                lc.lng = lc.location.coordinates[1];
             }
+            // console.log("location", location);
+            // const redisKey = `routing:${driverCode}:${servicn}`;
+            // const existing = await this.redisClient.get(redisKey);
+
             // console.log("location", location.length);
             return this.response({
                 res,
@@ -2739,6 +2744,7 @@ module.exports = new (class extends controller {
                     ).sort({
                         _id: -1,
                     });
+
                     const students = await this.Student.find({
                         service: services[i]._id,
                     }).lean();

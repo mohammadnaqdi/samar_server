@@ -28,13 +28,16 @@ async function isLoggined(req, res, next) {
     try {
         const decodedX = jwt.decode(token);
         let userSalt;
-        const checkSalt = !(decodedX.isParent || decodedX.isDriver);
+        const checkSalt = !(
+            (decodedX.isParent || decodedX.isDriver) // superAdmin user
+        );
         if (checkSalt) {
             userSalt = await getUserSalt(decodedX._id);
             if (!userSalt) {
                 return res.status(401).json({ message: "Invalid token salt" });
             }
         }
+
         const dynamicKey = !checkSalt
             ? process.env.JWT_KEY
             : process.env.JWT_KEY + userSalt;
@@ -91,8 +94,8 @@ async function isLoggined(req, res, next) {
         req.user = user;
         next();
     } catch (error) {
-        console.error("Error verifying token:", "jwt expired");
-        return res.status(401).json({ message: "Invalid token" });
+        // console.error("Error verifying token:", "jwt expired");
+        return res.status(401).json({ message: "jwt expired" });
     }
 }
 

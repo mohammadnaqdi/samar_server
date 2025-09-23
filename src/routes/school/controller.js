@@ -456,7 +456,6 @@ module.exports = new (class extends controller {
         }
     }
 
-
     async setSchoolTeacher(req, res) {
         try {
             const schoolId = req.body.schoolId;
@@ -1029,6 +1028,7 @@ module.exports = new (class extends controller {
             res.status(500).json({ error: "Internal Server Error" });
         }
     }
+
     async deleteSchool(req, res) {
         try {
             const schoolId = req.query.schoolId;
@@ -1039,7 +1039,7 @@ module.exports = new (class extends controller {
                     message: "schoolId need",
                 });
             }
- 
+
             const school = await this.School.findById(schoolId);
             if (!school) {
                 return this.response({
@@ -1048,7 +1048,50 @@ module.exports = new (class extends controller {
                     message: "school not found",
                 });
             }
- 
+
+            const students = await this.Student.find({
+                school: school._id,
+            }).lean();
+            if (students.length > 0) {
+                return this.response({
+                    res,
+                    code: 203,
+                    message: "school has students",
+                });
+            }
+
+            await this.School.findByIdAndDelete(schoolId);
+            return this.response({
+                res,
+                code: 200,
+                message: "Deleted",
+            });
+        } catch (error) {
+            console.error("Error getting deleteSchool:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    async deleteSchool(req, res) {
+        try {
+            const schoolId = req.query.schoolId;
+            if (schoolId === undefined || schoolId.trim() === "") {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "schoolId need",
+                });
+            }
+
+            const school = await this.School.findById(schoolId);
+            if (!school) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "school not found",
+                });
+            }
+
             const student = await this.Student.findOne({
                 school: school._id,
             });
@@ -1059,7 +1102,7 @@ module.exports = new (class extends controller {
                     message: "school has students",
                 });
             }
- 
+
             await this.School.findByIdAndDelete(schoolId);
             return this.response({
                 res,

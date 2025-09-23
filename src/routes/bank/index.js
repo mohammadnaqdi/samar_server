@@ -61,7 +61,7 @@ router.post(
     controller.validate.bind(controller),
     controller.setPayGate.bind(controller)
 );
-
+router.get("/getBankGate", controller.getBankGate.bind(controller));
 router.get("/GetPayGate", controller.getPayGate.bind(controller));
 router.get(
     "/GetBankGateOnlyCard",
@@ -75,10 +75,7 @@ router.get(
     "/GetBankGate4Parent",
     controller.getPayGate4Parent.bind(controller)
 );
-router.get(
-    "/GetPayGate4Parent",
-    controller.getPayGate4Parent.bind(controller)
-);
+router.get("/GetPayGate4Parent", controller.getPayGate4Parent.bind(controller));
 router.get(
     "/GetAgencyPayCards",
     isAgencyAdmin,

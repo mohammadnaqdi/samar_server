@@ -551,6 +551,7 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+
     async setPriceTable(req, res) {
         try {
             const agencyId = req.body.agencyId;
@@ -1485,7 +1486,7 @@ module.exports = new (class extends controller {
             //console.log(JSON.stringify(qr));
             let pricingTable = await this.PricingTable.find(
                 { $and: qr },
-                "kilometer price gradeId"
+                "kilometer studentAmount driverAmount gradeId"
             ).sort({ kilometer: 1 });
             if (pricingTable.length === 0) {
                 qr = [];
@@ -1502,7 +1503,7 @@ module.exports = new (class extends controller {
                 qr.push({ carId: 0 });
                 pricingTable = await this.PricingTable.find(
                     { $and: qr },
-                    "kilometer price gradeId"
+                    "kilometer studentAmount driverAmount gradeId"
                 );
             }
 

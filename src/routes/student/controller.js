@@ -118,7 +118,6 @@ module.exports = new (class extends controller {
                 supervisor,
                 physicalConditionDesc,
                 physicalCondition,
-
             }).save({ session });
 
             const invoice = await this.Invoice.findOne({
@@ -403,7 +402,7 @@ module.exports = new (class extends controller {
                         agencyId: sch.agencyId,
                         type: "prePayment",
                         delete: false,
-                        active:true
+                        active: true,
                     },
                     null,
                     { session }
@@ -485,7 +484,7 @@ module.exports = new (class extends controller {
             const nationalCode = req.body.nationalCode ?? "";
             let state = 0;
             const birthDate = req.body.birthDate ?? null;
-        
+
             // console.log("id ", id);
             // console.log("setStudent parentId", parentId);
             if (id === 0) {
@@ -598,7 +597,7 @@ module.exports = new (class extends controller {
                     nationalCode,
                     setter: req.user._id,
                     setterISParent: req.user.isParent || false,
-                    birthDate
+                    birthDate,
                 });
                 await student.save();
                 const invoice = await this.Invoice.findOne({
@@ -646,7 +645,7 @@ module.exports = new (class extends controller {
                         isIranian,
                         serviceDistance,
                         nationalCode,
-                        birthDate
+                        birthDate,
                     },
                     { returnOriginal: false }
                 );
@@ -1335,7 +1334,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type cardNumber"
+                        "title isPaid maxDate type cardNumber refId"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1609,7 +1608,7 @@ module.exports = new (class extends controller {
                             delete: false,
                             type: { $in: ["prePayment", "installment"] },
                         },
-                        "title isPaid maxDate type cardNumber"
+                        "title isPaid maxDate type cardNumber refId"
                     )
                         .sort({ counter: 1 })
                         .lean();
@@ -1774,7 +1773,7 @@ module.exports = new (class extends controller {
                     agencyId: agencyId,
                 }).lean();
                 schools.forEach((scId) => {
-                    onlySchool.push(ObjectId.createFromHexString(scId._id));
+                    onlySchool.push(scId._id);
                 });
 
                 if (onlySchool.length === 0) {
@@ -1994,7 +1993,7 @@ module.exports = new (class extends controller {
                     message: "schoolId need",
                 });
             if (page < 0) page = 0;
-            let students=[];
+            let students = [];
             var qr = [];
             var searchQ = {
                 $or: [
@@ -2043,7 +2042,7 @@ module.exports = new (class extends controller {
                                 },
                                 key: "location",
                                 distanceField: "dist.calculated",
-                                maxDistance: 30000,
+                                maxDistance: 20000,
                                 spherical: true,
                             },
                         },

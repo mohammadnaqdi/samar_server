@@ -1,24 +1,24 @@
 const mongoose = require("mongoose");
-const {CounterKey} =  require('./keys');
+const { CounterKey } = require("./keys");
 async function getNextSequence(name) {
-  const result = await CounterKey.findOneAndUpdate(
-    { name },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return result.seq;
+    const result = await CounterKey.findOneAndUpdate(
+        { name },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+    );
+    return result.seq;
 }
 const serviceSchema = new mongoose.Schema(
     {
         serviceNum: { type: Number, unique: true },
         distance: { type: Number },
-        cost: { type: Number, required: true  },
-        driverSharing: { type: Number, required: true  },
+        cost: { type: Number, required: true },
+        driverSharing: { type: Number, required: true },
         driverPic: { type: String },
-        driverName: { type: String, required: true  },
-        driverCar: { type: String, required: true  },
-        driverCarPelak: { type: String, required: true  },
-        driverPhone: { type: String, required: true  },
+        driverName: { type: String, required: true },
+        driverCar: { type: String, required: true },
+        driverCarPelak: { type: String, required: true },
+        driverPhone: { type: String, required: true },
         // students: { type: [
         //     {
         //         studentCost:{ type: Number },
@@ -27,10 +27,18 @@ const serviceSchema = new mongoose.Schema(
         //     }
 
         // ], default: [] },
-        agencyId: { type: mongoose.Schema.Types.ObjectId, ref: "Agency", required: true },
-        driverId: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true  },
+        agencyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Agency",
+            required: true,
+        },
+        driverId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Driver",
+            required: true,
+        },
         routeSave: { type: [], default: [] },
-        schoolIds: { type: [],},
+        schoolIds: { type: [] },
         percentInfo: { type: [], default: [] },
         delete: { type: Boolean, default: false, required: false },
         active: { type: Boolean, default: true, required: false },
@@ -38,13 +46,13 @@ const serviceSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 serviceSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    this.serviceNum = await getNextSequence("service");
-  }
-  next();
+    if (this.isNew) {
+        this.serviceNum = await getNextSequence("service");
+    }
+    next();
 });
 const Service = mongoose.model("Service", serviceSchema);
 
@@ -71,13 +79,13 @@ const driverChangeSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const DriverChange = mongoose.model("DriverChange", driverChangeSchema);
 
 const pricingTableSchema = new mongoose.Schema(
     {
-        city: { type: Number, required: true, },
+        city: { type: Number, required: true },
         districtId: [],
         gradeId: [],
         carId: Number,
@@ -91,7 +99,7 @@ const pricingTableSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const PricingTable = mongoose.model("PricingTable", pricingTableSchema);
 
@@ -116,7 +124,7 @@ const priceTableSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const PriceTable = mongoose.model("PriceTable", priceTableSchema);
 
@@ -136,8 +144,14 @@ const servicePackSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
-    },
+    }
 );
 const ServicePack = mongoose.model("ServicePack", servicePackSchema);
 
-module.exports = { Service, DriverChange, PricingTable, ServicePack,PriceTable };
+module.exports = {
+    Service,
+    DriverChange,
+    PricingTable,
+    ServicePack,
+    PriceTable,
+};

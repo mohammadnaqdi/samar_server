@@ -1452,7 +1452,7 @@ module.exports = new (class extends controller {
                     message: "agencyId driverCode month need",
                 });
             }
-            console.log("req.query", req.query);
+            // console.log("req.query", req.query);
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             let driverCode = req.query.driverCode;
             if (mongoose.isValidObjectId(driverCode)) {
@@ -1627,22 +1627,22 @@ module.exports = new (class extends controller {
     }
 
     // async getPricingTable(carId, districtId, grade) {
-    //     const query = [
-    //         { delete: false },
-    //         {
-    //             $or: [{ districtId }, { districtId: 0 }],
-    //         },
-    //         {
-    //             $or: [{ gradeId: { $in: grade } }, { gradeId: 0 }],
-    //         },
-    //     ];
-    //     if (carId && carId != 0) {
-    //         query.push({ carId });
-    //     }
+    //   const query = [
+    //     { delete: false },
+    //     {
+    //       $or: [{ districtId }, { districtId: 0 }],
+    //     },
+    //     {
+    //       $or: [{ gradeId: { $in: grade } }, { gradeId: 0 }],
+    //     },
+    //   ];
+    //   if (carId && carId != 0) {
+    //     query.push({ carId });
+    //   }
 
-    //     return this.PricingTable.find({ $and: query }, "kilometer price -_id")
-    //         .sort({ kilometer: 1 })
-    //         .lean();
+    //   return this.PricingTable.find({ $and: query }, "kilometer price -_id")
+    //     .sort({ kilometer: 1 })
+    //     .lean();
     // }
     async getPricingTableNew(carId, districtId, grade) {
         const query = [
@@ -1665,7 +1665,6 @@ module.exports = new (class extends controller {
             .sort({ kilometer: 1 })
             .lean();
     }
-
     async percent(agencyId) {
         try {
             const prec = await this.ListAcc.find({
@@ -2127,7 +2126,7 @@ module.exports = new (class extends controller {
                             }
                         }
                         let serviceCost = 0;
-                         let driverShare = 0;
+                        let driverShare = 0;
                         for (var s in ddsList[0].service[i].students) {
                             serviceCost +=
                                 ddsList[0].service[i].students[s].cost;
@@ -2408,190 +2407,186 @@ module.exports = new (class extends controller {
     }
 
     // async resetPrices(req, res) {
-    //     try {
-    //         const { agencyId } = req.query;
+    //   try {
+    //     const { agencyId } = req.query;
 
-    //         const services = await this.Service.find({
-    //             agencyId,
-    //             delete: false,
-    //         });
-    //         console.log("services", services.length);
-    //         if (!services.length) {
-    //             return this.response({
-    //                 res,
-    //                 code: 404,
-    //                 message: "No services found!",
-    //             });
-    //         }
+    //     const services = await this.Service.find({
+    //       agencyId,
+    //       delete: false,
+    //     });
 
-    //         let servs = [];
-
-    //         let count = 0;
-    //         const bulkStudentUpdates = [];
-    //         const bulkServiceUpdates = [];
-
-    //         // const percent = await this.percent(agencyId);
-    //         // const setting = await this.AgencySet.findOne({ agencyId });
-    //         // let formula = "a-(a*(b/100))";
-    //         // let forStudent = false;
-    //         // if (setting) {
-    //         //     formula = setting.formula;
-    //         //     forStudent = setting.formulaForStudent;
-    //         //     // console.log("formula changed", formula);
-    //         // }
-    //         // const type = setting.formulaForStudent
-    //         //     ? "برای دانش آموز"
-    //         //     : "برای راننده";
-
-    //         for (const service of services) {
-    //             const studentDocs = await this.Student.find(
-    //                 { service: service._id },
-    //                 "serviceDistance _id"
-    //             ).lean();
-    //             // const studentIds = service.student;
-    //             // const studentDocs = await this.Student.find(
-    //             //     { _id: { $in: studentIds } },
-    //             //     "serviceDistance"
-    //             // ).lean();
-
-    //             const students = studentDocs.map((studentDoc) => ({
-    //                 studentId: studentDoc._id,
-    //                 studentDistance: studentDoc.serviceDistance,
-    //             }));
-
-    //             const [school, driver] = await Promise.all([
-    //                 this.School.findById(
-    //                     service.schoolIds[0],
-    //                     "districtId grade"
-    //                 ).lean(),
-    //                 this.Driver.findById(service.driverId, "carId").lean(),
-    //             ]);
-
-    //             if (!school || !driver) continue;
-
-    //             const car = await this.Car.findById(
-    //                 driver.carId,
-    //                 "capacity"
-    //             ).lean();
-    //             if (!car) continue;
-
-    //             const carId = car.capacity;
-    //             const { districtId, grade } = school;
-
-    //             let pricingTable = await this.getPricingTable(
-    //                 carId,
-    //                 districtId,
-    //                 grade
-    //             );
-
-    //             if (!pricingTable.length) {
-    //                 pricingTable = await this.getPricingTable(
-    //                     0,
-    //                     districtId,
-    //                     grade
-    //                 );
-    //             }
-    //             if (!pricingTable.length) continue;
-    //             const pricing = calculate(pricingTable, students);
-    //             let driverShare = 0;
-    //             let overall = 0;
-    //             let studentPrices = [];
-
-    //             if (forStudent) {
-    //                 studentPrices = pricing.map(
-    //                     ({ studentId, studentPrice }) => {
-    //                         const values = { a: studentPrice, b: percent };
-    //                         const calculatedPrice = Math.floor(
-    //                             evaluateFormula(formula, values)
-    //                         );
-
-    //                         overall += calculatedPrice;
-    //                         driverShare += studentPrice;
-    //                         return {
-    //                             studentId,
-    //                             studentPrice: calculatedPrice,
-    //                             driverCost: studentPrice,
-    //                         };
-    //                     }
-    //                 );
-    //             } else {
-    //                 //
-    //                 for (let i = 0; i < pricing.length; i++) {
-    //                     const studentPrice = pricing[i].studentPrice;
-    //                     overall = overall + studentPrice;
-    //                     let driverCost = evaluateFormula(formula, {
-    //                         a: studentPrice,
-    //                         b: percent,
-    //                     });
-    //                     pricing[i].driverCost = driverCost;
-    //                     driverShare = driverShare + driverCost;
-    //                 }
-    //                 studentPrices = pricing;
-    //             }
-
-    //             studentPrices.forEach(
-    //                 async ({ studentId, studentPrice, driverCost }) => {
-    //                     bulkStudentUpdates.push({
-    //                         updateOne: {
-    //                             filter: { _id: studentId },
-    //                             update: {
-    //                                 $set: {
-    //                                     serviceCost: studentPrice,
-    //                                     driverCost: driverCost,
-    //                                 },
-    //                             },
-    //                         },
-    //                     });
-
-    //                     // const studentIndex = service.student.findIndex(
-    //                     //     (id) => id.toString() === studentId.toString()
-    //                     // );
-    //                     // if (studentIndex !== -1) {
-    //                     //     service.studentCost[studentIndex] = studentPrice;
-    //                     // }
-    //                 }
-    //             );
-
-    //             bulkServiceUpdates.push({
-    //                 updateOne: {
-    //                     filter: { _id: service._id },
-    //                     update: {
-    //                         $set: {
-    //                             driverSharing: driverShare,
-    //                             cost: overall,
-    //                             // studentCost: service.studentCost,
-    //                         },
-    //                     },
-    //                 },
-    //             });
-
-    //             servs.push(service.id);
-
-    //             count++;
-    //         }
-    //         await new this.OperationLog({
-    //             userId: req.user._id,
-    //             name: req.user.name + " " + req.user.lastName,
-    //             agencyId: agencyId,
-    //             targetIds: [],
-    //             targetTable: "",
-    //             sanadId: 0,
-    //             actionName: "resetPrice",
-    //             actionNameFa: `بازنویسی هزینه سرویس`,
-    //             desc: `بازنویسی هزینه تعداد ${count} سرویس`,
-    //         }).save();
-    //         if (bulkStudentUpdates.length) {
-    //             await this.Student.bulkWrite(bulkStudentUpdates);
-    //         }
-    //         if (bulkServiceUpdates.length) {
-    //             await this.Service.bulkWrite(bulkServiceUpdates);
-    //         }
-
-    //         return this.response({ res, message: `${count} services updated` });
-    //     } catch (error) {
-    //         console.error("Error while resetting prices:", error);
-    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     if (!services.length) {
+    //       return this.response({
+    //         res,
+    //         code: 404,
+    //         message: "No services found!",
+    //       });
     //     }
+
+    //     let servs = [];
+
+    //     let count = 0;
+    //     const bulkStudentUpdates = [];
+    //     const bulkServiceUpdates = [];
+
+    //     const percent = await this.percent(agencyId);
+    //     const setting = await this.AgencySet.findOne({ agencyId });
+    //     let formula = "a-(a*(b/100))";
+    //     let forStudent = false;
+    //     if (setting) {
+    //       formula = setting.formula;
+    //       forStudent = setting.formulaForStudent;
+    //       // console.log("formula changed", formula);
+    //     }
+    //     // const type = setting.formulaForStudent
+    //     //     ? "برای دانش آموز"
+    //     //     : "برای راننده";
+
+    //     for (const service of services) {
+    //       const studentDocs = await this.Student.find(
+    //         { service: service._id },
+    //         "serviceDistance _id"
+    //       ).lean();
+    //       // const studentIds = service.student;
+    //       // const studentDocs = await this.Student.find(
+    //       //     { _id: { $in: studentIds } },
+    //       //     "serviceDistance"
+    //       // ).lean();
+
+    //       const students = studentDocs.map((studentDoc) => ({
+    //         studentId: studentDoc._id,
+    //         studentDistance: studentDoc.serviceDistance,
+    //       }));
+
+    //       const [school, driver] = await Promise.all([
+    //         this.School.findById(service.schoolIds[0], "districtId grade").lean(),
+    //         this.Driver.findById(service.driverId, "carId").lean(),
+    //       ]);
+
+    //       if (!school || !driver) continue;
+
+    //       const car = await this.Car.findById(driver.carId, "capacity").lean();
+    //       if (!car) continue;
+
+    //       const carId = car.capacity;
+    //       const { districtId, grade } = school;
+
+    //       let pricingTable = await this.getPricingTable(carId, districtId, grade);
+
+    //       if (!pricingTable.length) {
+    //         pricingTable = await this.getPricingTable(0, districtId, grade);
+    //       }
+
+    //       const pricing = calculate(pricingTable, students);
+    //       let driverShare = 0;
+    //       let overall = 0;
+    //       let studentPrices = [];
+
+    //       if (forStudent) {
+    //         studentPrices = pricing.map(({ studentId, studentPrice }) => {
+    //           const values = { a: studentPrice, b: percent };
+    //           const calculatedPrice = Math.floor(
+    //             evaluateFormula(formula, values)
+    //           );
+
+    //           overall += calculatedPrice;
+    //           driverShare += studentPrice;
+    //           return {
+    //             studentId,
+    //             studentPrice: calculatedPrice,
+    //             driverCost: studentPrice,
+    //           };
+    //         });
+    //       } else {
+    //         //
+    //         for (let i = 0; i < pricing.length; i++) {
+    //           const studentPrice = pricing[i].studentPrice;
+    //           overall = overall + studentPrice;
+    //           let driverCost = evaluateFormula(formula, {
+    //             a: studentPrice,
+    //             b: percent,
+    //           });
+    //           pricing[i].driverCost = driverCost;
+    //           driverShare = driverShare + driverCost;
+    //         }
+    //         studentPrices = pricing;
+    //       }
+
+    //       // console.log("studentPrices", studentPrices);
+
+    //       studentPrices.forEach(
+    //         async ({ studentId, studentPrice, driverCost }) => {
+    //           bulkStudentUpdates.push({
+    //             updateOne: {
+    //               filter: { _id: studentId },
+    //               update: {
+    //                 $set: {
+    //                   serviceCost: studentPrice,
+    //                   driverCost: driverCost,
+    //                 },
+    //               },
+    //             },
+    //           });
+
+    //           // const studentIndex = service.student.findIndex(
+    //           //     (id) => id.toString() === studentId.toString()
+    //           // );
+    //           // if (studentIndex !== -1) {
+    //           //     service.studentCost[studentIndex] = studentPrice;
+    //           // }
+    //         }
+    //       );
+
+    //       bulkServiceUpdates.push({
+    //         updateOne: {
+    //           filter: { _id: service._id },
+    //           update: {
+    //             $set: {
+    //               driverSharing: driverShare,
+    //               cost: overall,
+    //               // studentCost: service.studentCost,
+    //             },
+    //           },
+    //         },
+    //       });
+
+    //       console.log(
+    //         `calculated driverShare price ${driverShare} for service ${service._id}`
+    //       );
+    //       console.log(
+    //         `calculated overall price ${overall} for service ${service._id}`
+    //       );
+
+    //       servs.push(service.id);
+
+    //       count++;
+    //     }
+    //     await new this.OperationLog({
+    //       userId: req.user._id,
+    //       name: req.user.name + " " + req.user.lastName,
+    //       agencyId: agencyId,
+    //       targetIds: [],
+    //       targetTable: "",
+    //       sanadId: 0,
+    //       actionName: "resetPrice",
+    //       actionNameFa: `بازنویسی هزینه سرویس`,
+    //       desc: `بازنویسی هزینه تعداد ${count} سرویس`,
+    //     }).save();
+    //     if (bulkStudentUpdates.length) {
+    //       console.log("updating students");
+
+    //       await this.Student.bulkWrite(bulkStudentUpdates);
+    //     }
+    //     if (bulkServiceUpdates.length) {
+    //       console.log("updating services");
+    //       await this.Service.bulkWrite(bulkServiceUpdates);
+    //     }
+
+    //     return this.response({ res, message: `${count} services updated` });
+    //   } catch (error) {
+    //     console.error("Error while resetting prices:", error);
+    //     return res.status(500).json({ error: "Internal Server Error." });
+    //   }
     // }
     async resetPricesNew(req, res) {
         try {
@@ -2743,7 +2738,6 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
-
     async resetDDSByServiceNum(req, res) {
         try {
             const { driverId, serviceNum, start, end } = req.query;
@@ -2881,7 +2875,6 @@ function logWithTime(message) {
     const formattedTimestamp = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
     console.log(`[${formattedTimestamp}] ${message}`);
 }
-
 // function calculate(pricingTable, students) {
 //     const result = [];
 //     for (const student of students) {
@@ -2921,48 +2914,48 @@ function calculateNew(pricingTable, students) {
 }
 
 // function evaluateFormula(formula, values) {
-//     if (typeof formula !== "string") {
-//         console.error("Formula must be a string.");
-//         return null;
-//     }
+//   if (typeof formula !== "string") {
+//     console.error("Formula must be a string.");
+//     return null;
+//   }
 
-//     for (const [key, value] of Object.entries(values)) {
-//         const regex = new RegExp(`\\b${key}\\b`, "g");
-//         formula = formula.replace(regex, value);
-//     }
+//   for (const [key, value] of Object.entries(values)) {
+//     const regex = new RegExp(`\\b${key}\\b`, "g");
+//     formula = formula.replace(regex, value);
+//   }
 
-//     try {
-//         return new Function(`return ${formula};`)();
-//     } catch (error) {
-//         console.error("Error evaluating formula:", error);
-//         return null;
-//     }
+//   try {
+//     return new Function(`return ${formula};`)();
+//   } catch (error) {
+//     console.error("Error evaluating formula:", error);
+//     return null;
+//   }
 // }
 // function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
-//     if (typeof formulaTemplate !== "string") {
-//         console.error("Formula must be a string.");
-//         return null;
+//   if (typeof formulaTemplate !== "string") {
+//     console.error("Formula must be a string.");
+//     return null;
+//   }
+
+//   const tolerance = 1e-6;
+//   let low = 0;
+//   let high = targetAnswer * 2;
+//   let mid;
+
+//   while (high - low > tolerance) {
+//     mid = (low + high) / 2;
+
+//     let formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
+
+//     const result = new Function(`return ${formula};`)();
+
+//     if (result < targetAnswer) {
+//       low = mid;
+//     } else {
+//       high = mid;
 //     }
-
-//     const tolerance = 1e-6;
-//     let low = 0;
-//     let high = targetAnswer * 2;
-//     let mid;
-
-//     while (high - low > tolerance) {
-//         mid = (low + high) / 2;
-
-//         let formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
-
-//         const result = new Function(`return ${formula};`)();
-
-//         if (result < targetAnswer) {
-//             low = mid;
-//         } else {
-//             high = mid;
-//         }
-//     }
-//     return Math.floor(mid);
+//   }
+//   return Math.floor(mid);
 // }
 function financial(x) {
     x = x / 10000;

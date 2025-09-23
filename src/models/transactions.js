@@ -67,7 +67,7 @@ const payQueueSchema = new mongoose.Schema(
             ref: "Invoice",
             required: true,
         },
-        code: { type: Number,required: true, },
+        code: { type: Number, required: true },
         agencyId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Agency",
