@@ -18,7 +18,7 @@ const {
     Service,
     DriverChange,
     PricingTable,
-    ServicePack,
+    ServicePack,PriceTable
 } = require("./../models/service");
 // const Ledger = require("./../models/ledger");
 const { Location, DriverAct } = require("./../models/location");
@@ -138,6 +138,7 @@ module.exports = class {
         this.DriverAct = DriverAct;
         this.DriverChange = DriverChange;
         this.PricingTable = PricingTable;
+        this.PriceTable = PriceTable;
         this.ServicePack = ServicePack;
         this.Transactions = Transactions;
         this.MessageCode = MessageCode;

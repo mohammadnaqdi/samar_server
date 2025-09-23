@@ -82,7 +82,6 @@ module.exports = new (class extends controller {
                 ),
                 this.StReport.deleteMany({ driverId: id }).session(session),
                 this.RatingDriver.deleteMany({ driverId: id }).session(session),
-                this.Car.findByIdAndDelete(driver.carId).session(session),
                 this.ServicePack.deleteMany({ driverId: id }).session(session),
                 this.DriverInfo.deleteMany({ driverId: id }).session(session),
             ]);
@@ -1779,11 +1778,11 @@ module.exports = new (class extends controller {
     async driversByUserIds(req, res) {
         try {
             const ids = req.body.ids;
-            // console.log("ids", ids);
+            console.log("ids", ids);
 
             let drivers = await this.Driver.find(
                 { $and: [{ _id: { $in: ids } }, { delete: false }] },
-                "userId carId pic active driverCode moreData"
+                "agencyId userId carId pic active driverCode moreData"
             );
 
             for (var d in drivers) {
@@ -1791,10 +1790,34 @@ module.exports = new (class extends controller {
                     drivers[d].userId,
                     "phone name lastName gender"
                 );
-                const car = await this.Car.findById(
+                let car = await this.Car.findById(
                     drivers[d].carId,
                     "pelak colorCar carModel capacity"
                 );
+                if (!car) {
+                    const agency = await this.Agency.findById(
+                        drivers[d].agencyId,
+                        "cityId"
+                    );
+
+                    if (agency) {
+                        const keyCar = await this.Keys.findOne({
+                            active: true,
+                            delete: false,
+                            type: "car",
+                            cityCode: agency.cityId,
+                        });
+                        if (!keyCar) {
+                            continue;
+                        }
+                        car = new this.Car({
+                            pelak: "0",
+                            capacity: keyCar.keyId,
+                            drivers: [user.id],
+                        });
+                        await car.save();
+                    }
+                }
                 const services = await this.Service.countDocuments({
                     driverId: drivers[d].id,
                     delete: false,
@@ -1816,7 +1839,6 @@ module.exports = new (class extends controller {
 
                 drivers[d].moreData.services = services;
             }
-
             return this.response({
                 res,
                 data: drivers,
@@ -2311,7 +2333,11 @@ module.exports = new (class extends controller {
             qr.push({ createdAt: { $lte: dateY, $gte: dateX } });
 
             // console.log(JSON.stringify(qr));
-            const location = await this.Location.find({ $and: qr });
+            let location = await this.Location.find({ $and: qr }).lean();
+            for(var lc of location){
+                lc.lat=lc.location.coordinates[0];
+                lc.lng=lc.location.coordinates[1];
+            }
             // console.log("location", location.length);
             return this.response({
                 res,
@@ -2637,7 +2663,7 @@ module.exports = new (class extends controller {
             let driversList = [];
             for (var i in drivers) {
                 let driver = drivers[i];
-                const car = await this.Car.findById(driver.carId);
+                let car = await this.Car.findById(driver.carId);
                 const agency = await this.Agency.findById(
                     driver.agencyId,
                     "name code location.coordinates address active tel cityId"
@@ -2647,6 +2673,23 @@ module.exports = new (class extends controller {
                 }
                 if (!agency.active) {
                     continue;
+                }
+                if (!car) {
+                    const keyCar = await this.Keys.findOne({
+                        active: true,
+                        delete: false,
+                        type: "car",
+                        cityCode: agency.cityId,
+                    });
+                    if (!keyCar) {
+                        continue;
+                    }
+                    car = new this.Car({
+                        pelak: "0",
+                        capacity: keyCar.keyId,
+                        drivers: [req.user._id],
+                    });
+                    await car.save();
                 }
                 let agencySet;
                 agencySet = await this.AgencySet.findOne({

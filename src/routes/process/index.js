@@ -73,7 +73,8 @@ router.post(
     controller.insertDDS.bind(controller)
 );
 
-router.get("/ResetPrices", controller.resetPrices.bind(controller));
+// router.get("/ResetPrices", controller.resetPrices.bind(controller));
+router.get("/ResetPricesNew", controller.resetPricesNew.bind(controller));
 
 router.get(
     "/GetAgencyDDS",

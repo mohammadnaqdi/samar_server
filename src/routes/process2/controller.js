@@ -2,6 +2,7 @@ const controller = require("../controller");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const persianDate = require("persian-date");
+const jMoment = require("moment-jalaali");
 const neshan = process.env.NESHAN;
 const axios = require("axios");
 module.exports = new (class extends controller {
@@ -283,14 +284,13 @@ module.exports = new (class extends controller {
         agencyId,
         ddses,
         studentId,
-        formula,
-        formulaForStudent
     ) {
         try {
             const monthLen = getMonth(date);
             for (var dds of ddses) {
                 for (var i in dds.service) {
                     var serv = dds.service[i];
+                 
                     for (var st of serv.students) {
                         if (st.id.toString() === studentId.toString()) {
                             dds.sc -= serv.serviceCost / monthLen;
@@ -298,13 +298,16 @@ module.exports = new (class extends controller {
                             let allStudents = [];
                             // console.log("serv.students", serv.students.length);
                             serv.serviceCost = 0;
+                            serv.driverShare = 0;
                             for (var st of serv.students) {
                                 if (st.id != studentId) {
                                     allStudents.push({
                                         id: st.id,
                                         cost: st.cost,
+                                        driverCost: st.driverCost,
                                     });
                                     serv.serviceCost += st.cost;
+                                    serv.driverShare += st.driverCost;
                                 }
                             }
                             // console.log("allStudents", allStudents.length);
@@ -314,25 +317,6 @@ module.exports = new (class extends controller {
                                 dds.service[i].students = allStudents;
                                 break;
                             } else {
-                                const percent = await this.percent(agencyId);
-                                if (formulaForStudent) {
-                                    serv.driverShare = reverseEvaluateFormula(
-                                        serv.serviceCost,
-                                        percent,
-                                        formula
-                                    );
-                                } else {
-                                    serv.driverShare = evaluateFormula(
-                                        formula,
-                                        {
-                                            a: serv.serviceCost,
-                                            b: percent,
-                                        }
-                                    );
-                                }
-                                if (serv.driverShare == null) {
-                                    serv.driverShare = 0;
-                                }
                                 dds.service[i].serviceCost = serv.serviceCost;
                                 dds.service[i].driverShare = serv.driverShare;
                                 dds.service[i].students = allStudents;
@@ -378,13 +362,15 @@ module.exports = new (class extends controller {
                 phone,
             } = req.body;
             const cost = req.body.cost || 0;
-
+            const dCost = req.body.dCost || 0;
+            
             let startDate = new Date(start);
             startDate.setHours(0, 0, 0, 0);
             let endDate = new Date(end);
             endDate.setHours(0, 0, 0, 0);
             console.log("editStudentContract", startDate);
             console.log("editStudentContract", endDate);
+            
             await new this.OperationLog({
                 userId: req.user._id,
                 name: req.user.name + " " + req.user.lastName,
@@ -401,16 +387,16 @@ module.exports = new (class extends controller {
                 )} به راننده جدید با نام ${name} شماره ${phone} `,
             }).save();
 
-            let formula = "a-(a*(b/100))";
-            let formulaForStudent = false;
-            const percent = await this.percent(agencyId);
-            const setting = await this.AgencySet.findOne({
-                agencyId: agencyId,
-            });
-            if (setting) {
-                formula = setting.formula;
-                formulaForStudent = setting.formulaForStudent;
-            }
+            // let formula = "a-(a*(b/100))";
+            // let formulaForStudent = false;
+            // const percent = await this.percent(agencyId);
+            // const setting = await this.AgencySet.findOne({
+            //     agencyId: agencyId,
+            // });
+            // if (setting) {
+            //     formula = setting.formula;
+            //     formulaForStudent = setting.formulaForStudent;
+            // }
 
             if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
                 return this.response({
@@ -433,12 +419,15 @@ module.exports = new (class extends controller {
             }
 
             const studentCost = cost === 0 ? student.serviceCost : cost;
+            const driverCost = dCost === 0 ? student.driverCost : dCost;
             const daysDifference = Math.ceil(
                 (endDate - startDate) / (24 * 60 * 60 * 1000)
             );
 
             for (let d = 0; d <= daysDifference; d++) {
                 const day = getDateByOffset(startDate, d);
+                const jalaliDate = jMoment(day).format("jYYYY/jMM/jDD");
+                            const year = jalaliDate.split("/").map(Number)[0];
                 // console.log("day", day);
                 const month = getMonth(day);
                 const startSearch = new Date(
@@ -469,8 +458,6 @@ module.exports = new (class extends controller {
                         agencyId,
                         oldDDss,
                         studentId,
-                        formula,
-                        formulaForStudent
                     );
 
                     // for (var n = 1; n < oldDDss.length; n++) {
@@ -526,25 +513,14 @@ module.exports = new (class extends controller {
                             oldDDs.service[i].students.push({
                                 id: studentId,
                                 cost: studentCost,
+                                driverCost: driverCost,
                             });
                             oldDDs.service[i].serviceCost =
                                 oldDDs.service[i].serviceCost + studentCost;
-                            let driverShare = 0;
-                            if (formulaForStudent) {
-                                driverShare = reverseEvaluateFormula(
-                                    oldDDs.service[i].serviceCost,
-                                    percent,
-                                    formula
-                                );
-                            } else {
-                                driverShare = evaluateFormula(formula, {
-                                    a: oldDDs.service[i].serviceCost,
-                                    b: percent,
-                                });
-                            }
+                            oldDDs.service[i].driverShare =
+                                oldDDs.service[i].driverShare + driverCost;
                             newCost += oldDDs.service[i].serviceCost;
-                            newDDS += driverShare;
-                            oldDDs.service[i].driverShare = driverShare;
+                            newDDS += oldDDs.service[i].driverShare;
                         }
                         if (!ex) {
                             newCost += oldDDs.service[i].serviceCost;
@@ -553,33 +529,21 @@ module.exports = new (class extends controller {
                     }
                     // console.log("findService", findService);
                     if (!findService) {
-                        let driverShare = 0;
-                        if (formulaForStudent) {
-                            driverShare = reverseEvaluateFormula(
-                                studentCost,
-                                percent,
-                                formula
-                            );
-                        } else {
-                            driverShare = evaluateFormula(formula, {
-                                a: studentCost,
-                                b: percent,
-                            });
-                        }
                         let newService = {
                             num: parseInt(newServiceNum),
                             students: [],
                             serviceCost: studentCost,
-                            driverShare: driverShare,
+                            driverShare: driverCost,
                         };
                         newService.students.push({
                             id: studentId,
                             cost: studentCost,
+                            driverCost:driverCost
                         });
 
                         oldDDs.service.push(newService);
                         newCost += studentCost;
-                        newDDS += driverShare;
+                        newDDS += driverCost;
                     }
                     newDDS = Math.round(newDDS / month);
                     newCost = Math.round(newCost / month);
@@ -602,21 +566,10 @@ module.exports = new (class extends controller {
                         service: oldDDs.service,
                     });
                 } else {
-                    let driverShare = 0;
-                    if (formulaForStudent) {
-                        driverShare = reverseEvaluateFormula(
-                            studentCost,
-                            percent,
-                            formula
-                        );
-                    } else {
-                        driverShare = evaluateFormula(formula, {
-                            a: studentCost,
-                            b: percent,
-                        });
-                    }
+                    
                     const newDDS = Math.round(driverShare / month);
                     const newCost = Math.round(studentCost / month);
+                    // const newDCost = Math.round(driverCost / month);
                     const dd = new this.DDS({
                         agencyId,
                         driverId: newDriverId,
@@ -626,17 +579,20 @@ module.exports = new (class extends controller {
                             {
                                 num: newServiceNum,
                                 serviceCost: studentCost,
-                                driverShare: driverShare,
+                                driverShare: driverCost,
                                 students: [
                                     {
                                         id: studentId,
                                         cost: studentCost,
+                                        driverCost:driverCost
                                     },
                                 ],
                             },
                         ],
                         dds: newDDS,
                         sc: newCost,
+                        day:getDayOfYear(day),
+                        year:parseInt(year),
                         status: "Edited",
                         desc: "بازنویسی شده dsc",
                         createdAt: day,
@@ -891,47 +847,31 @@ module.exports = new (class extends controller {
         try {
             const { schools, agencyId } = req.body;
 
-            let formula = "a-(a*(b/100))";
-            let formulaForStudent = false;
-            const percent = await this.percent(agencyId);
-            const setting = await this.AgencySet.findOne({
-                agencyId: agencyId,
-            });
-            if (setting) {
-                formula = setting.formula;
-                formulaForStudent = setting.formulaForStudent;
-            }
+            // let formula = "a-(a*(b/100))";
+            // let formulaForStudent = false;
+            // const percent = await this.percent(agencyId);
+            // const setting = await this.AgencySet.findOne({
+            //     agencyId: agencyId,
+            // });
+            // if (setting) {
+            //     formula = setting.formula;
+            //     formulaForStudent = setting.formulaForStudent;
+            // }
 
             const students = await this.Student.find(
                 { school: { $in: schools }, delete: false, state: 4 },
-                "name lastName serviceId serviceDistance serviceCost"
+                "name lastName service serviceNum serviceDistance serviceCost driverCost"
             );
             let services = [];
 
             for (var st of students) {
-                const service = await this.Service.findOne(
-                    { serviceNum: st.serviceId },
-                    "driverName driverCar driverSharing percentInfo"
-                );
+                const service = await this.Service.findById(st.service);
                 if (!service) continue;
-                let driverShare = 0;
-                if (formulaForStudent) {
-                    driverShare = reverseEvaluateFormula(
-                        st.serviceCost,
-                        percent,
-                        formula
-                    );
-                } else {
-                    driverShare = evaluateFormula(formula, {
-                        a: st.serviceCost,
-                        b: percent,
-                    });
-                }
                 services.push({
                     studentName: st.name + " " + st.lastName,
                     serviceDistance: st.serviceDistance,
                     serviceCost: st.serviceCost,
-                    driverShare: driverShare,
+                    driverShare: st.driverCost,
                     driverName: service.driverName,
                     driverCar: service.driverCar,
                 });
@@ -1366,16 +1306,16 @@ module.exports = new (class extends controller {
                     message: "dds not find.",
                 });
             }
-            const setting = await this.AgencySet.findOne({
-                agencyId: agencyId,
-            });
-            let formula = "a-(a*(b/100))";
-            let formulaForStudent = false;
-            if (setting) {
-                formula = setting.formula;
-                formulaForStudent = setting.formulaForStudent;
-            }
-            const percent = await this.percent(agencyId);
+            // const setting = await this.AgencySet.findOne({
+            //     agencyId: agencyId,
+            // });
+            // let formula = "a-(a*(b/100))";
+            // let formulaForStudent = false;
+            // if (setting) {
+            //     formula = setting.formula;
+            //     formulaForStudent = setting.formulaForStudent;
+            // }
+            // const percent = await this.percent(agencyId);
             //
             // console.log("serviceNum", serviceNum);
             // console.log("studentId", studentId);
@@ -1401,8 +1341,10 @@ module.exports = new (class extends controller {
                             allStudents.push({
                                 id: st.id,
                                 cost: st.cost,
+                                driverCost:st.driverCost
                             });
                             serv.serviceCost += st.cost;
+                            serv.driverShare += st.driverCost;
                         }
                     }
                     if (allStudents.length === 0) {
@@ -1411,21 +1353,7 @@ module.exports = new (class extends controller {
                         dds.service[i].students = allStudents;
                         break;
                     } else {
-                        if (formulaForStudent) {
-                            serv.driverShare = reverseEvaluateFormula(
-                                serv.serviceCost,
-                                percent,
-                                formula
-                            );
-                        } else {
-                            serv.driverShare = evaluateFormula(formula, {
-                                a: serv.serviceCost,
-                                b: percent,
-                            });
-                        }
-                        if (serv.driverShare == null) {
-                            serv.driverShare = 0;
-                        }
+                       
                         dds.service[i].serviceCost = serv.serviceCost;
                         dds.service[i].driverShare = serv.driverShare;
                         dds.service[i].students = allStudents;
@@ -1702,6 +1630,21 @@ module.exports = new (class extends controller {
         }
     }
 })();
+function getDayOfYear(currentDate) {
+    const jalaliDate = jMoment(currentDate).format("jYYYY/jMM/jDD");
+
+    const [year, month, day] = jalaliDate.split("/").map(Number);
+
+    const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+
+    const daysBeforeCurrentMonth = monthsDays
+        .slice(0, month - 1)
+        .reduce((acc, days) => acc + days, 0);
+
+    const dayOfYear = daysBeforeCurrentMonth + day;
+
+    return dayOfYear;
+}
 function countDriverIdOccurrences(arr, targetId) {
     return arr.filter(
         (item) => item.driverId.toString() === targetId.toString()
@@ -1710,50 +1653,50 @@ function countDriverIdOccurrences(arr, targetId) {
 function getDateByOffset(startDate, offsetDays) {
     return new Date(startDate.getTime() + offsetDays * 24 * 60 * 60 * 1000);
 }
-function evaluateFormula(formula, values) {
-    if (typeof formula !== "string") {
-        console.error("Formula must be a string.");
-        return null;
-    }
+// function evaluateFormula(formula, values) {
+//     if (typeof formula !== "string") {
+//         console.error("Formula must be a string.");
+//         return null;
+//     }
 
-    for (const [key, value] of Object.entries(values)) {
-        const regex = new RegExp(`\\b${key}\\b`, "g");
-        formula = formula.replace(regex, value);
-    }
+//     for (const [key, value] of Object.entries(values)) {
+//         const regex = new RegExp(`\\b${key}\\b`, "g");
+//         formula = formula.replace(regex, value);
+//     }
 
-    try {
-        return new Function(`return ${formula};`)();
-    } catch (error) {
-        console.error("Error evaluating formula:", error);
-        return null;
-    }
-}
-function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
-    if (typeof formulaTemplate !== "string") {
-        console.error("Formula must be a string.");
-        return null;
-    }
+//     try {
+//         return new Function(`return ${formula};`)();
+//     } catch (error) {
+//         console.error("Error evaluating formula:", error);
+//         return null;
+//     }
+// }
+// function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
+//     if (typeof formulaTemplate !== "string") {
+//         console.error("Formula must be a string.");
+//         return null;
+//     }
 
-    const tolerance = 1e-6;
-    let low = 0;
-    let high = targetAnswer * 2;
-    let mid;
+//     const tolerance = 1e-6;
+//     let low = 0;
+//     let high = targetAnswer * 2;
+//     let mid;
 
-    while (high - low > tolerance) {
-        mid = (low + high) / 2;
+//     while (high - low > tolerance) {
+//         mid = (low + high) / 2;
 
-        let formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
+//         let formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
 
-        const result = new Function(`return ${formula};`)();
+//         const result = new Function(`return ${formula};`)();
 
-        if (result < targetAnswer) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-    }
-    return Math.floor(mid);
-}
+//         if (result < targetAnswer) {
+//             low = mid;
+//         } else {
+//             high = mid;
+//         }
+//     }
+//     return Math.floor(mid);
+// }
 function getMonth(now) {
     // console.log("now", now);
     const month = now.getMonth() + 1;

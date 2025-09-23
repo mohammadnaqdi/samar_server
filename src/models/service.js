@@ -95,6 +95,31 @@ const pricingTableSchema = new mongoose.Schema(
 );
 const PricingTable = mongoose.model("PricingTable", pricingTableSchema);
 
+const priceTableSchema = new mongoose.Schema(
+    {
+        agencyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Agency",
+            required: true,
+        },
+        districtId: [],
+        gradeId: [],
+        carId: Number,
+        kilometer: Number,
+        studentAmount: Number,
+        driverAmount: Number,
+        capacity: { type: Number, required: false, default: 0 },
+        carGrade: { type: Number, required: false, default: 0 },
+        schoolGrade: { type: Number, required: false, default: 0 },
+        delete: { type: Boolean, default: false, required: false },
+        active: { type: Boolean, default: true, required: false },
+    },
+    {
+        timestamps: true,
+    },
+);
+const PriceTable = mongoose.model("PriceTable", priceTableSchema);
+
 const servicePackSchema = new mongoose.Schema(
     {
         agencyId: {
@@ -115,4 +140,4 @@ const servicePackSchema = new mongoose.Schema(
 );
 const ServicePack = mongoose.model("ServicePack", servicePackSchema);
 
-module.exports = { Service, DriverChange, PricingTable, ServicePack };
+module.exports = { Service, DriverChange, PricingTable, ServicePack,PriceTable };

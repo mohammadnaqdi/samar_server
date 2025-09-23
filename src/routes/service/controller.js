@@ -551,6 +551,36 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async setPriceTable(req, res) {
+        try {
+            const agencyId = req.body.agencyId;
+            const districtId = req.body.districtId;
+            const carId = req.body.carId;
+            const gradeId = req.body.gradeId;
+            const kilometer = req.body.kilometer;
+            const studentAmount = req.body.studentAmount;
+            const driverAmount = req.body.driverAmount;
+
+            let pricingTable = new this.PriceTable({
+                agencyId,
+                districtId,
+                carId,
+                gradeId,
+                kilometer,
+                studentAmount,
+                driverAmount,
+            });
+            await pricingTable.save();
+
+            return this.response({
+                res,
+                data: pricingTable.id,
+            });
+        } catch (error) {
+            console.error("Error in setPriceTable:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async serviceList(req, res) {
         try {
@@ -611,7 +641,7 @@ module.exports = new (class extends controller {
                 // console.log("service school=", school.name);
                 let studentService = await this.Student.find(
                     { delete: false, service: service[i]._id },
-                    "state stateTitle service serviceNum serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract"
+                    "state stateTitle service serviceNum serviceCost name lastName school gradeTitle studentCode time address addressDetails startOfContract endOfContract driverCost"
                 ).lean();
                 let students = [];
                 for (let st of studentService) {
@@ -1128,7 +1158,7 @@ module.exports = new (class extends controller {
                 delete: false,
                 city: parseInt(city),
             };
-            let cardId = req.query.cardId || "";
+            let cardId = req.query.carId || "";
             if (cardId.trim() !== "") {
                 qr.carId = parseInt(cardId);
             }
@@ -1139,6 +1169,55 @@ module.exports = new (class extends controller {
             return this.response({ res, message: "ok", data: pricingTable });
         } catch (error) {
             console.error("Error in getAllPricing:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getAllPrices(req, res) {
+        try {
+            const agencyId = req.query.agencyId;
+            if (!agencyId) {
+                return this.response({
+                    res,
+                    code: 604,
+                    message: "agencyId id need",
+                });
+            }
+            let qr = {
+                delete: false,
+                agencyId: ObjectId.createFromHexString(agencyId),
+            };
+            let carId = req.query.carId || "";
+            if (carId.trim() !== "") {
+                qr.carId = parseInt(carId);
+            }
+            const pricingTable = await this.PriceTable.aggregate([
+                { $match: qr }, // apply your filter
+                { $sort: { kilometer: 1 } }, // optional: sort before grouping
+                {
+                    $project: {
+                        createdAt: 0,
+                        updatedAt: 0,
+                        active: 0,
+                        delete: 0,
+                        agencyId: 0,
+                        schoolGrade: 0,
+                        carGrade: 0,
+                        capacity: 0,
+                        __v: 0,
+                    },
+                },
+                {
+                    $group: {
+                        _id: "$kilometer", // group by kilometer
+                        items: { $push: "$$ROOT" }, // collect all documents for each kilometer
+                    },
+                },
+                { $sort: { _id: 1 } }, // final sort by kilometer value
+            ]);
+
+            return this.response({ res, message: "ok", data: pricingTable });
+        } catch (error) {
+            console.error("Error in getAllPrices:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1153,6 +1232,19 @@ module.exports = new (class extends controller {
             return this.response({ res, message: "delete" });
         } catch (error) {
             console.error("Error in deletePrice:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async deletePriceNew(req, res) {
+        try {
+            if (req.query.id === undefined || req.query.id.trim() === "") {
+                return this.response({ res, code: 604, message: "id need!" });
+            }
+            const id = req.query.id;
+            await this.PriceTable.findByIdAndUpdate(id, { delete: true });
+            return this.response({ res, message: "delete" });
+        } catch (error) {
+            console.error("Error in deletePriceNew:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1326,7 +1418,7 @@ module.exports = new (class extends controller {
                 for (var a in service[i].student) {
                     let st = await this.Student.findById(
                         service[i].student[a],
-                        "state stateTitle serviceNum serviceCost name lastName school gradeTitle studentCode startOfContract endOfContract"
+                        "state stateTitle serviceNum serviceCost name lastName school gradeTitle studentCode startOfContract endOfContract driverCost"
                     );
                     let sch = await this.School.findById(
                         st.school,
@@ -1421,6 +1513,60 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error while searchPricingTable:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async searchPriceTable(req, res) {
+        try {
+            const agencyId = req.body.agencyId;
+            const districtId = req.body.districtId;
+            const carId = req.body.carId;
+            const gradeId = req.body.gradeId;
+
+            var qr = [{ agencyId }];
+            var searchDistrictId = {
+                $or: [{ districtId }, { districtId: 0 }],
+            };
+            var searchGradeId = {
+                $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
+            };
+
+            qr.push({ delete: false });
+            qr.push(searchDistrictId);
+            qr.push(searchGradeId);
+            if (carId != 0) qr.push({ carId });
+
+            //console.log(JSON.stringify(qr));
+            let pricingTable = await this.PriceTable.find(
+                { $and: qr },
+                "kilometer studentAmount driverAmount gradeId"
+            ).sort({ kilometer: 1 });
+            if (pricingTable.length === 0) {
+                qr = [{ agencyId }];
+                var searchDistrictId = {
+                    $or: [{ districtId }, { districtId: 0 }],
+                };
+                var searchGradeId = {
+                    $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
+                };
+
+                qr.push({ delete: false });
+                qr.push(searchDistrictId);
+                qr.push(searchGradeId);
+                qr.push({ carId: 0 });
+                pricingTable = await this.PriceTable.find(
+                    { $and: qr },
+                    "kilometer studentAmount driverAmount gradeId"
+                );
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+                data: pricingTable,
+            });
+        } catch (error) {
+            console.error("Error while searchPriceTable:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

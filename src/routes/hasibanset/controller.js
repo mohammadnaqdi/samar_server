@@ -1621,7 +1621,7 @@ module.exports = new (class extends controller {
                 agencyId,
                 percent: { $gte: 0 },
                 enable: true,
-            });
+            }).sort({percent: 1});
 
             let sarafsl = [];
             for (const acc of listAccs) {

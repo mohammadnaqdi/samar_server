@@ -251,8 +251,48 @@ module.exports = new (class {
             check("city").isNumeric().withMessage("city cant be empty"),
         ];
     }
+    setPriceTableValidator() {
+        return [
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+            check("districtId")
+                .not()
+                .isEmpty()
+                .withMessage("districtId cant be empty"),
+            check("carId").not().isEmpty().withMessage("carId cant be empty"),
+            check("gradeId")
+                .not()
+                .isEmpty()
+                .withMessage("gradeId cant be empty"),
+            check("kilometer")
+                .not()
+                .isEmpty()
+                .withMessage("kilometer cant be empty"),
+            check("studentAmount").not().isEmpty().withMessage("studentAmount cant be empty"),
+            check("driverAmount").not().isEmpty().withMessage("driverPrice cant be empty"),
+        ];
+    }
     searchPricingTableValidator() {
         return [
+            check("districtId")
+                .not()
+                .isEmpty()
+                .withMessage("districtId cant be empty"),
+            check("carId").not().isEmpty().withMessage("carId cant be empty"),
+            check("gradeId")
+                .not()
+                .isEmpty()
+                .withMessage("gradeId cant be empty"),
+        ];
+    }
+    searchPriceTableValidator() {
+        return [
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
             check("districtId")
                 .not()
                 .isEmpty()

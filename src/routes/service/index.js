@@ -87,10 +87,22 @@ router.post(
     controller.setPricingTable.bind(controller),
 );
 router.post(
+    "/SetPriceTable",
+    validator.setPriceTableValidator(),
+    controller.validate.bind(controller),
+    controller.setPriceTable.bind(controller),
+);
+router.post(
     "/SearchPricingTable",
     validator.searchPricingTableValidator(),
     controller.validate.bind(controller),
     controller.searchPricingTable.bind(controller),
+);
+router.post(
+    "/SearchPriceTable",
+    validator.searchPriceTableValidator(),
+    controller.validate.bind(controller),
+    controller.searchPriceTable.bind(controller),
 );
 router.post(
     "/SetServicePack",
@@ -105,7 +117,9 @@ router.get(
     controller.getSelectPack.bind(controller),
 );
 router.get("/GetAllPricing", controller.getAllPricing.bind(controller));
+router.get("/GetAllPrices", controller.getAllPrices.bind(controller));
 router.delete("/DeletePrice", isAdmin, controller.deletePrice.bind(controller));
+router.delete("/DeletePriceNew", isAgencyAdmin, controller.deletePriceNew.bind(controller));
 router.delete(
     "/DeleteService",
     isAgencyAdmin,

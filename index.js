@@ -28,10 +28,17 @@ const { isLoggined } = require("./src/middleware/auth");
 const router = require("./src/routes");
 const { checkUsers, checkKeys,checkParents,checkSchools } = require("./startup/redis");
 
-checkUsers();
-checkKeys();
-checkParents();
-checkSchools();
+(async () => {
+    try {
+        await checkUsers();
+        await checkKeys();
+        await checkParents();
+        await checkSchools();
+    } catch (err) {
+        console.error("Error checking redis values:", err);
+    }
+})();
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(helmet({

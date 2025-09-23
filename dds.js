@@ -83,49 +83,49 @@ function getDayOfYear() {
     return dayOfYear;
 }
 
-function evaluateFormula(formula, values) {
-    if (typeof formula !== "string") {
-        console.error("Formula must be a string.");
-        return null;
-    }
+// function evaluateFormula(formula, values) {
+//     if (typeof formula !== "string") {
+//         console.error("Formula must be a string.");
+//         return null;
+//     }
 
-    for (const [key, value] of Object.entries(values)) {
-        const regex = new RegExp(`\\b${key}\\b`, "g");
-        formula = formula.replace(regex, value);
-    }
+//     for (const [key, value] of Object.entries(values)) {
+//         const regex = new RegExp(`\\b${key}\\b`, "g");
+//         formula = formula.replace(regex, value);
+//     }
 
-    try {
-        return new Function(`return ${formula};`)();
-    } catch (error) {
-        console.error("Error evaluating formula:", error);
-        return null;
-    }
-}
+//     try {
+//         return new Function(`return ${formula};`)();
+//     } catch (error) {
+//         console.error("Error evaluating formula:", error);
+//         return null;
+//     }
+// }
 
-function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
-    if (typeof formulaTemplate !== "string") {
-        console.error("Formula template must be a string.");
-        return null;
-    }
+// function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
+//     if (typeof formulaTemplate !== "string") {
+//         console.error("Formula template must be a string.");
+//         return null;
+//     }
 
-    const tolerance = 1e-6;
-    let low = 0;
-    let high = targetAnswer * 2;
-    let mid;
+//     const tolerance = 1e-6;
+//     let low = 0;
+//     let high = targetAnswer * 2;
+//     let mid;
 
-    while (high - low > tolerance) {
-        mid = (low + high) / 2;
-        const formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
+//     while (high - low > tolerance) {
+//         mid = (low + high) / 2;
+//         const formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
 
-        const result = new Function(`return ${formula};`)();
-        if (result < targetAnswer) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-    }
-    return Math.floor(mid);
-}
+//         const result = new Function(`return ${formula};`)();
+//         if (result < targetAnswer) {
+//             low = mid;
+//         } else {
+//             high = mid;
+//         }
+//     }
+//     return Math.floor(mid);
+// }
 
 async function percent(agencyId) {
     try {

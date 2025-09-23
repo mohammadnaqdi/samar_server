@@ -8,33 +8,33 @@ const axios = require("axios");
 const { lte } = require("lodash");
 
 const zonet = {
-    "1": 55,
+    1: 55,
     "01": 55,
-    "2": 56,
+    2: 56,
     "02": 56,
-    "3": 64,
+    3: 64,
     "03": 64,
-    "4": 65,
+    4: 65,
     "04": 65,
-    "5": 66,
+    5: 66,
     "05": 66,
-    "6": 67,
+    6: 67,
     "06": 67,
-    "7": 68,
+    7: 68,
     "07": 68,
-    "8": 123,
+    8: 123,
     "08": 123,
-    "9": 124,
+    9: 124,
     "09": 124,
-    "10": 126,
-    "10": 126,
-    "11": 127,
-    "12": 128,
+    10: 126,
+    10: 126,
+    11: 127,
+    12: 128,
 };
 
 const genderz = {
-    'male': 21,
-    'female': 20,
+    male: 21,
+    female: 20,
 };
 
 function escapeRegExp(string) {
@@ -162,7 +162,7 @@ module.exports = new (class extends controller {
                     const user_id = await this.register(
                         item.parentPhoneNumber,
                         item.parentFirstName,
-                        item.parentLastName,
+                        item.parentLastName
                     );
 
                     const t = zonet[item.schoolZoneNumber];
@@ -1626,7 +1626,25 @@ module.exports = new (class extends controller {
         }
     }
 
-    async getPricingTable(carId, districtId, grade) {
+    // async getPricingTable(carId, districtId, grade) {
+    //     const query = [
+    //         { delete: false },
+    //         {
+    //             $or: [{ districtId }, { districtId: 0 }],
+    //         },
+    //         {
+    //             $or: [{ gradeId: { $in: grade } }, { gradeId: 0 }],
+    //         },
+    //     ];
+    //     if (carId && carId != 0) {
+    //         query.push({ carId });
+    //     }
+
+    //     return this.PricingTable.find({ $and: query }, "kilometer price -_id")
+    //         .sort({ kilometer: 1 })
+    //         .lean();
+    // }
+    async getPricingTableNew(carId, districtId, grade) {
         const query = [
             { delete: false },
             {
@@ -1640,7 +1658,10 @@ module.exports = new (class extends controller {
             query.push({ carId });
         }
 
-        return this.PricingTable.find({ $and: query }, "kilometer price -_id")
+        return this.PriceTable.find(
+            { $and: query },
+            "kilometer studentAmount driverAmount -_id"
+        )
             .sort({ kilometer: 1 })
             .lean();
     }
@@ -1903,161 +1924,6 @@ module.exports = new (class extends controller {
         }
     }
 
-    async createDDS2(driverId, daysDifference, startDate, serviceNum) {
-        const month = getMonth(startDate);
-        console.log("month", month);
-        const driver = await this.Driver.findById(driverId);
-
-        if (!driver) return null;
-        const user = await this.User.findById(driver.userId).lean();
-        const name = `${user.name} ${user.lastName}`;
-        const phone = user.phone;
-        const setting = await this.AgencySet.findOne({
-            agencyId: driver.agencyId,
-        });
-        let formula = "a-(a*(b/100))";
-        let formulaForStudent = false;
-        if (setting) {
-            formula = setting.formula;
-            formulaForStudent = setting.formulaForStudent;
-        }
-        const percent = await this.percent(driver.agencyId);
-        console.log("daysDifference", daysDifference);
-        for (let i = 0; i <= daysDifference; i++) {
-            const day = getDateByOffset(startDate, i);
-            const startOfDay = new Date(
-                day.getFullYear(),
-                day.getMonth(),
-                day.getDate(),
-                0,
-                0,
-                0
-            );
-            const endOfDay = new Date(
-                day.getFullYear(),
-                day.getMonth(),
-                day.getDate(),
-                23,
-                59,
-                59
-            );
-            // console.log("day", day);
-            const services = await this.Service.find({
-                driverId: driverId,
-                delete: false,
-            }).lean();
-            let dds = 0;
-            let sc = 0;
-            let status = "Edited";
-            const desc = "بازنویسی شده";
-
-            const snum = [];
-
-            let service = [];
-            if (services.length !== 0) {
-                for (let serv of services) {
-                    let allStudents = serv.student.map((std, index) => ({
-                        id: std,
-                        cost: serv.studentCost[index],
-                    }));
-                    if (serviceNum === serv.serviceNum.toString()) {
-                        const studentIds = serv.student;
-                        // console.log(" serv.studen", serv.student.length);
-                        const studentDocs = await this.Student.find(
-                            {
-                                $and: [
-                                    {
-                                        _id: { $in: studentIds },
-                                    },
-                                    { delete: false },
-                                    {
-                                        $or: [
-                                            { date: { $lte: day } },
-                                            { date: undefined },
-                                        ],
-                                    },
-                                ],
-                            },
-                            "serviceDistance serviceCost"
-                        ).lean();
-                        // console.log("studentDocs", studentDocs.length);
-                        if (studentDocs.length === 0) {
-                            allStudents = [];
-                            serv.cost = 0;
-                            serv.driverSharing = 0;
-                        } else if (studentIds.length === studentDocs.length) {
-                            sc += serv.cost;
-                            dds += serv.driverSharing;
-                        } else {
-                            allStudents = [];
-                            let serviceCost = 0;
-                            for (var st of studentDocs) {
-                                allStudents.push({
-                                    id: st._id.toString(),
-                                    cost: st.serviceCost,
-                                });
-                                serviceCost += st.serviceCost;
-                            }
-                            let driverShare = 0;
-                            if (formulaForStudent) {
-                                driverShare = reverseEvaluateFormula(
-                                    serviceCost,
-                                    percent,
-                                    formula
-                                );
-                            } else {
-                                driverShare = evaluateFormula(formula, {
-                                    a: serviceCost,
-                                    b: percent,
-                                });
-                            }
-                            sc += serviceCost;
-                            dds += driverShare;
-                            serv.cost = serviceCost;
-                            serv.driverSharing = driverShare;
-                        }
-                    } else {
-                        // console.log("serv.cost", serv.cost);
-                        sc += serv.cost;
-                        dds += serv.driverSharing;
-                    }
-                    snum.push(serv.serviceNum);
-                    service.push({
-                        num: serv.serviceNum,
-                        serviceCost: serv.cost,
-                        driverShare: serv.driverSharing,
-                        students: allStudents,
-                    });
-                }
-            }
-            dds = dds / month;
-            sc = sc / month;
-
-            const change = await this.DriverChange.findOne({
-                delete: false,
-                agencyId: driver.agencyId,
-                serviceNum: { $in: snum },
-                createdAt: { $gte: startOfDay, $lte: endOfDay },
-            });
-            if (change) {
-                status = "Absent";
-            }
-
-            const dd = new this.DDS({
-                agencyId: driver.agencyId,
-                driverId: driver._id,
-                name,
-                phone,
-                service,
-                dds,
-                sc,
-                status,
-                desc,
-                createdAt: day,
-            });
-            await dd.save();
-        }
-    }
     async editCreateDDS(req, driverId, daysDifference, startDate, serviceNum) {
         const month = getMonth(startDate);
         console.log("month", month);
@@ -2172,25 +2038,15 @@ module.exports = new (class extends controller {
                             } else {
                                 allStudents = [];
                                 let serviceCost = 0;
+                                let driverShare = 0;
                                 for (var st of studentDocs) {
                                     allStudents.push({
                                         id: st._id.toString(),
                                         cost: st.serviceCost,
+                                        driverCost: st.driverCost,
                                     });
                                     serviceCost += st.serviceCost;
-                                }
-                                let driverShare = 0;
-                                if (formulaForStudent) {
-                                    driverShare = reverseEvaluateFormula(
-                                        serviceCost,
-                                        percent,
-                                        formula
-                                    );
-                                } else {
-                                    driverShare = evaluateFormula(formula, {
-                                        a: serviceCost,
-                                        b: percent,
-                                    });
+                                    driverShare += st.driverCost;
                                 }
                                 sc += serviceCost;
                                 dds += driverShare;
@@ -2271,22 +2127,12 @@ module.exports = new (class extends controller {
                             }
                         }
                         let serviceCost = 0;
+                         let driverShare = 0;
                         for (var s in ddsList[0].service[i].students) {
                             serviceCost +=
                                 ddsList[0].service[i].students[s].cost;
-                        }
-                        let driverShare = 0;
-                        if (formulaForStudent) {
-                            driverShare = reverseEvaluateFormula(
-                                serviceCost,
-                                percent,
-                                formula
-                            );
-                        } else {
-                            driverShare = evaluateFormula(formula, {
-                                a: serviceCost,
-                                b: percent,
-                            });
+                            driverShare +=
+                                ddsList[0].service[i].students[s].driverCost;
                         }
                         ddsList[0].service[i].serviceCost = serviceCost;
                         ddsList[0].service[i].driverShare = driverShare;
@@ -2561,10 +2407,195 @@ module.exports = new (class extends controller {
         }
     }
 
-    async resetPrices(req, res) {
+    // async resetPrices(req, res) {
+    //     try {
+    //         const { agencyId } = req.query;
+
+    //         const services = await this.Service.find({
+    //             agencyId,
+    //             delete: false,
+    //         });
+    //         console.log("services", services.length);
+    //         if (!services.length) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "No services found!",
+    //             });
+    //         }
+
+    //         let servs = [];
+
+    //         let count = 0;
+    //         const bulkStudentUpdates = [];
+    //         const bulkServiceUpdates = [];
+
+    //         // const percent = await this.percent(agencyId);
+    //         // const setting = await this.AgencySet.findOne({ agencyId });
+    //         // let formula = "a-(a*(b/100))";
+    //         // let forStudent = false;
+    //         // if (setting) {
+    //         //     formula = setting.formula;
+    //         //     forStudent = setting.formulaForStudent;
+    //         //     // console.log("formula changed", formula);
+    //         // }
+    //         // const type = setting.formulaForStudent
+    //         //     ? "برای دانش آموز"
+    //         //     : "برای راننده";
+
+    //         for (const service of services) {
+    //             const studentDocs = await this.Student.find(
+    //                 { service: service._id },
+    //                 "serviceDistance _id"
+    //             ).lean();
+    //             // const studentIds = service.student;
+    //             // const studentDocs = await this.Student.find(
+    //             //     { _id: { $in: studentIds } },
+    //             //     "serviceDistance"
+    //             // ).lean();
+
+    //             const students = studentDocs.map((studentDoc) => ({
+    //                 studentId: studentDoc._id,
+    //                 studentDistance: studentDoc.serviceDistance,
+    //             }));
+
+    //             const [school, driver] = await Promise.all([
+    //                 this.School.findById(
+    //                     service.schoolIds[0],
+    //                     "districtId grade"
+    //                 ).lean(),
+    //                 this.Driver.findById(service.driverId, "carId").lean(),
+    //             ]);
+
+    //             if (!school || !driver) continue;
+
+    //             const car = await this.Car.findById(
+    //                 driver.carId,
+    //                 "capacity"
+    //             ).lean();
+    //             if (!car) continue;
+
+    //             const carId = car.capacity;
+    //             const { districtId, grade } = school;
+
+    //             let pricingTable = await this.getPricingTable(
+    //                 carId,
+    //                 districtId,
+    //                 grade
+    //             );
+
+    //             if (!pricingTable.length) {
+    //                 pricingTable = await this.getPricingTable(
+    //                     0,
+    //                     districtId,
+    //                     grade
+    //                 );
+    //             }
+    //             if (!pricingTable.length) continue;
+    //             const pricing = calculate(pricingTable, students);
+    //             let driverShare = 0;
+    //             let overall = 0;
+    //             let studentPrices = [];
+
+    //             if (forStudent) {
+    //                 studentPrices = pricing.map(
+    //                     ({ studentId, studentPrice }) => {
+    //                         const values = { a: studentPrice, b: percent };
+    //                         const calculatedPrice = Math.floor(
+    //                             evaluateFormula(formula, values)
+    //                         );
+
+    //                         overall += calculatedPrice;
+    //                         driverShare += studentPrice;
+    //                         return {
+    //                             studentId,
+    //                             studentPrice: calculatedPrice,
+    //                             driverCost: studentPrice,
+    //                         };
+    //                     }
+    //                 );
+    //             } else {
+    //                 //
+    //                 for (let i = 0; i < pricing.length; i++) {
+    //                     const studentPrice = pricing[i].studentPrice;
+    //                     overall = overall + studentPrice;
+    //                     let driverCost = evaluateFormula(formula, {
+    //                         a: studentPrice,
+    //                         b: percent,
+    //                     });
+    //                     pricing[i].driverCost = driverCost;
+    //                     driverShare = driverShare + driverCost;
+    //                 }
+    //                 studentPrices = pricing;
+    //             }
+
+    //             studentPrices.forEach(
+    //                 async ({ studentId, studentPrice, driverCost }) => {
+    //                     bulkStudentUpdates.push({
+    //                         updateOne: {
+    //                             filter: { _id: studentId },
+    //                             update: {
+    //                                 $set: {
+    //                                     serviceCost: studentPrice,
+    //                                     driverCost: driverCost,
+    //                                 },
+    //                             },
+    //                         },
+    //                     });
+
+    //                     // const studentIndex = service.student.findIndex(
+    //                     //     (id) => id.toString() === studentId.toString()
+    //                     // );
+    //                     // if (studentIndex !== -1) {
+    //                     //     service.studentCost[studentIndex] = studentPrice;
+    //                     // }
+    //                 }
+    //             );
+
+    //             bulkServiceUpdates.push({
+    //                 updateOne: {
+    //                     filter: { _id: service._id },
+    //                     update: {
+    //                         $set: {
+    //                             driverSharing: driverShare,
+    //                             cost: overall,
+    //                             // studentCost: service.studentCost,
+    //                         },
+    //                     },
+    //                 },
+    //             });
+
+    //             servs.push(service.id);
+
+    //             count++;
+    //         }
+    //         await new this.OperationLog({
+    //             userId: req.user._id,
+    //             name: req.user.name + " " + req.user.lastName,
+    //             agencyId: agencyId,
+    //             targetIds: [],
+    //             targetTable: "",
+    //             sanadId: 0,
+    //             actionName: "resetPrice",
+    //             actionNameFa: `بازنویسی هزینه سرویس`,
+    //             desc: `بازنویسی هزینه تعداد ${count} سرویس`,
+    //         }).save();
+    //         if (bulkStudentUpdates.length) {
+    //             await this.Student.bulkWrite(bulkStudentUpdates);
+    //         }
+    //         if (bulkServiceUpdates.length) {
+    //             await this.Service.bulkWrite(bulkServiceUpdates);
+    //         }
+
+    //         return this.response({ res, message: `${count} services updated` });
+    //     } catch (error) {
+    //         console.error("Error while resetting prices:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
+    async resetPricesNew(req, res) {
         try {
             const { agencyId } = req.query;
-
             const services = await this.Service.find({
                 agencyId,
                 delete: false,
@@ -2579,24 +2610,9 @@ module.exports = new (class extends controller {
             }
 
             let servs = [];
-
             let count = 0;
             const bulkStudentUpdates = [];
             const bulkServiceUpdates = [];
-
-            const percent = await this.percent(agencyId);
-            const setting = await this.AgencySet.findOne({ agencyId });
-            let formula = "a-(a*(b/100))";
-            let forStudent = false;
-            if (setting) {
-                formula = setting.formula;
-                forStudent = setting.formulaForStudent;
-                // console.log("formula changed", formula);
-            }
-            // const type = setting.formulaForStudent
-            //     ? "برای دانش آموز"
-            //     : "برای راننده";
-
             for (const service of services) {
                 const studentDocs = await this.Student.find(
                     { service: service._id },
@@ -2632,79 +2648,53 @@ module.exports = new (class extends controller {
                 const carId = car.capacity;
                 const { districtId, grade } = school;
 
-                let pricingTable = await this.getPricingTable(
+                let pricingTable = await this.getPricingTableNew(
                     carId,
                     districtId,
                     grade
                 );
 
                 if (!pricingTable.length) {
-                    pricingTable = await this.getPricingTable(
+                    pricingTable = await this.getPricingTableNew(
                         0,
                         districtId,
                         grade
                     );
                 }
+                if (!pricingTable.length) continue;
+                const studentPrices = calculateNew(pricingTable, students);
 
-                const pricing = calculate(pricingTable, students);
                 let driverShare = 0;
                 let overall = 0;
-                let studentPrices = [];
-
-                if (forStudent) {
-                    studentPrices = pricing.map(
-                        ({ studentId, studentPrice }) => {
-                            const values = { a: studentPrice, b: percent };
-                            const calculatedPrice = Math.floor(
-                                evaluateFormula(formula, values)
-                            );
-
-                            overall += calculatedPrice;
-                            driverShare += studentPrice;
-                            return {
-                                studentId,
-                                studentPrice: calculatedPrice,
-                                driverCost: studentPrice,
-                            };
-                        }
-                    );
-                } else {
-                    //
-                    for (let i = 0; i < pricing.length; i++) {
-                        const studentPrice = pricing[i].studentPrice;
-                        overall = overall + studentPrice;
-                        let driverCost = evaluateFormula(formula, {
-                            a: studentPrice,
-                            b: percent,
-                        });
-                        pricing[i].driverCost = driverCost;
-                        driverShare = driverShare + driverCost;
-                    }
-                    studentPrices = pricing;
+                for (var pr of studentPrices) {
+                    driverShare = driverShare + pr.driverAmount;
+                    overall = overall + pr.studentAmount;
                 }
+                for (const {
+                    studentId,
+                    studentAmount,
+                    driverAmount,
+                } of studentPrices) {
+                    // Validate that studentAmount and driverAmount are valid numbers
+                    if (isNaN(studentAmount) || isNaN(driverAmount)) {
+                        console.warn(
+                            `Skipping update for studentId ${studentId}: Invalid amount (studentAmount: ${studentAmount}, driverAmount: ${driverAmount})`
+                        );
+                        continue; // Skip invalid entries
+                    }
 
-                studentPrices.forEach(
-                    async ({ studentId, studentPrice, driverCost }) => {
-                        bulkStudentUpdates.push({
-                            updateOne: {
-                                filter: { _id: studentId },
-                                update: {
-                                    $set: {
-                                        serviceCost: studentPrice,
-                                        driverCost: driverCost,
-                                    },
+                    bulkStudentUpdates.push({
+                        updateOne: {
+                            filter: { _id: studentId },
+                            update: {
+                                $set: {
+                                    serviceCost: Number(studentAmount), // Ensure it's a number
+                                    driverCost: Number(driverAmount), // Ensure it's a number
                                 },
                             },
-                        });
-
-                        // const studentIndex = service.student.findIndex(
-                        //     (id) => id.toString() === studentId.toString()
-                        // );
-                        // if (studentIndex !== -1) {
-                        //     service.studentCost[studentIndex] = studentPrice;
-                        // }
-                    }
-                );
+                        },
+                    });
+                }
 
                 bulkServiceUpdates.push({
                     updateOne: {
@@ -2735,7 +2725,13 @@ module.exports = new (class extends controller {
                 desc: `بازنویسی هزینه تعداد ${count} سرویس`,
             }).save();
             if (bulkStudentUpdates.length) {
-                await this.Student.bulkWrite(bulkStudentUpdates);
+                try {
+                    await this.Student.bulkWrite(bulkStudentUpdates);
+                    console.log("Bulk update successful");
+                } catch (error) {
+                    console.error("Error during bulkWrite:", error);
+                    throw error; // Rethrow or handle as needed
+                }
             }
             if (bulkServiceUpdates.length) {
                 await this.Service.bulkWrite(bulkServiceUpdates);
@@ -2743,7 +2739,7 @@ module.exports = new (class extends controller {
 
             return this.response({ res, message: `${count} services updated` });
         } catch (error) {
-            console.error("Error while resetting prices:", error);
+            console.error("Error while resetPricesNew:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -2885,7 +2881,26 @@ function logWithTime(message) {
     const formattedTimestamp = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
     console.log(`[${formattedTimestamp}] ${message}`);
 }
-function calculate(pricingTable, students) {
+
+// function calculate(pricingTable, students) {
+//     const result = [];
+//     for (const student of students) {
+//         const { studentId, studentDistance } = student;
+
+//         const matchedPricing = pricingTable.find(
+//             (priceItem) => priceItem.kilometer * 1000 >= studentDistance
+//         );
+
+//         if (matchedPricing) {
+//             result.push({
+//                 studentId,
+//                 studentPrice: matchedPricing.price,
+//             });
+//         }
+//     }
+//     return result;
+// }
+function calculateNew(pricingTable, students) {
     const result = [];
     for (const student of students) {
         const { studentId, studentDistance } = student;
@@ -2897,57 +2912,58 @@ function calculate(pricingTable, students) {
         if (matchedPricing) {
             result.push({
                 studentId,
-                studentPrice: matchedPricing.price,
+                studentAmount: matchedPricing.studentAmount,
+                driverAmount: matchedPricing.driverAmount,
             });
         }
     }
     return result;
 }
 
-function evaluateFormula(formula, values) {
-    if (typeof formula !== "string") {
-        console.error("Formula must be a string.");
-        return null;
-    }
+// function evaluateFormula(formula, values) {
+//     if (typeof formula !== "string") {
+//         console.error("Formula must be a string.");
+//         return null;
+//     }
 
-    for (const [key, value] of Object.entries(values)) {
-        const regex = new RegExp(`\\b${key}\\b`, "g");
-        formula = formula.replace(regex, value);
-    }
+//     for (const [key, value] of Object.entries(values)) {
+//         const regex = new RegExp(`\\b${key}\\b`, "g");
+//         formula = formula.replace(regex, value);
+//     }
 
-    try {
-        return new Function(`return ${formula};`)();
-    } catch (error) {
-        console.error("Error evaluating formula:", error);
-        return null;
-    }
-}
-function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
-    if (typeof formulaTemplate !== "string") {
-        console.error("Formula must be a string.");
-        return null;
-    }
+//     try {
+//         return new Function(`return ${formula};`)();
+//     } catch (error) {
+//         console.error("Error evaluating formula:", error);
+//         return null;
+//     }
+// }
+// function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
+//     if (typeof formulaTemplate !== "string") {
+//         console.error("Formula must be a string.");
+//         return null;
+//     }
 
-    const tolerance = 1e-6;
-    let low = 0;
-    let high = targetAnswer * 2;
-    let mid;
+//     const tolerance = 1e-6;
+//     let low = 0;
+//     let high = targetAnswer * 2;
+//     let mid;
 
-    while (high - low > tolerance) {
-        mid = (low + high) / 2;
+//     while (high - low > tolerance) {
+//         mid = (low + high) / 2;
 
-        let formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
+//         let formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
 
-        const result = new Function(`return ${formula};`)();
+//         const result = new Function(`return ${formula};`)();
 
-        if (result < targetAnswer) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-    }
-    return Math.floor(mid);
-}
+//         if (result < targetAnswer) {
+//             low = mid;
+//         } else {
+//             high = mid;
+//         }
+//     }
+//     return Math.floor(mid);
+// }
 function financial(x) {
     x = x / 10000;
     x = Number.parseFloat(x).toFixed();
