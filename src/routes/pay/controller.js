@@ -806,6 +806,7 @@ module.exports = new (class extends controller {
                         accCode: bank,
                         peigiri: digitalreceipt,
                         isOnline: true,
+                         sanadDate: new Date(),
                     }).save({ session });
 
                     await new this.DocListSanad({
@@ -822,6 +823,7 @@ module.exports = new (class extends controller {
                         note: ` ${tr.desc} به شماره پیگیری ${invoiceid}`,
                         accCode: "003005" + student.studentCode,
                         peigiri: digitalreceipt,
+                         sanadDate: new Date(),
                     }).save({ session });
                     // console.log("doc.sanadId", doc.sanadId);
                     // console.log("checkInfo.id", checkInfo.id);
@@ -2125,6 +2127,7 @@ module.exports = new (class extends controller {
                         note: `افزایش اعتبار پنل به شماره پیگیری ${response.RefID}`,
                         accCode: bank,
                         peigiri: infoNum,
+                         sanadDate: new Date(),
                     }).save();
 
                     await new this.DocListSanad({
@@ -2138,6 +2141,7 @@ module.exports = new (class extends controller {
                         note: `افزایش اعتبار پنل به شماره پیگیری ${response.RefID}`,
                         accCode: charge,
                         peigiri: infoNum,
+                         sanadDate: new Date(),
                     }).save();
                     await new this.CheckHistory({
                         agencyId,
@@ -2791,6 +2795,7 @@ module.exports = new (class extends controller {
                                 note: `${tr.desc} به شماره پیگیری ${authority}`,
                                 accCode: bankCode,
                                 peigiri: digitalreceipt,
+                                 sanadDate: new Date(),
                             }).save({ session }),
                             new this.DocListSanad({
                                 agencyId,
@@ -2806,6 +2811,7 @@ module.exports = new (class extends controller {
                                 note: `${tr.desc} به شماره پیگیری ${authority}`,
                                 accCode: "003005" + student.studentCode,
                                 peigiri: digitalreceipt,
+                                 sanadDate: new Date(),
                             }).save({ session }),
                             new this.CheckHistory({
                                 agencyId,
@@ -3102,6 +3108,7 @@ module.exports = new (class extends controller {
                                 note: `${tr.desc} به شماره پیگیری ${authority}`,
                                 accCode: bankCode,
                                 peigiri: digitalreceipt,
+                                 sanadDate: new Date(),
                             }).save({ session }),
                             new this.DocListSanad({
                                 agencyId,
@@ -3117,6 +3124,7 @@ module.exports = new (class extends controller {
                                 note: `${tr.desc} به شماره پیگیری ${authority}`,
                                 accCode: "003005" + student.studentCode,
                                 peigiri: digitalreceipt,
+                                 sanadDate: new Date(),
                             }).save({ session }),
                             new this.CheckHistory({
                                 agencyId,

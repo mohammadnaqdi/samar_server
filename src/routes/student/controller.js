@@ -178,6 +178,10 @@ module.exports = new (class extends controller {
                 gender,
                 nationalCode = "",
             } = req.body;
+            const physicalCondition = req.body.physicalCondition ?? 1;
+            const physicalConditionDesc = req.body.physicalConditionDesc ?? "";
+            const supervisor = req.body.supervisor ?? [];
+            const birthDate = req.body.birthDate ?? null;
 
             // ✅ Duplication check
             const studentCount = await this.Student.countDocuments(
@@ -276,6 +280,10 @@ module.exports = new (class extends controller {
                 nationalCode,
                 setter: req.user._id,
                 setterISParent: false,
+                birthDate,
+                supervisor,
+                physicalConditionDesc,
+                physicalCondition,
             });
             await studentDoc.save({ session });
 
@@ -2365,19 +2373,6 @@ module.exports = new (class extends controller {
             }
             // const agencyId = req.query.agencyId;
             const groupId = parseInt(req.query.groupId);
-            // const myAgency = await this.Agency.findById(
-            //     agencyId,
-            //     "delete active"
-            // );
-
-            // if (!myAgency || myAgency.delete || !myAgency.active) {
-            //     return this.response({
-            //         res,
-            //         code: 404,
-            //         message: "not active agency",
-            //         data: { fa_m: "شرکت غیرفعال است یا حذف شده" },
-            //     });
-            // }
             let onlyPack = [];
             const schls = await this.Pack.find({
                 groupId,
@@ -2393,8 +2388,8 @@ module.exports = new (class extends controller {
             };
             if (req.query.schoolId && req.query.schoolId.trim() !== "") {
                 qr.school = ObjectId.createFromHexString(req.query.schoolId);
-                qr.pack = -1;
                 qr.packed = false;
+                delete qr.pack;
             }
             // // var qr = [];
             // console.log("qr", qr);

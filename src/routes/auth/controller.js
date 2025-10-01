@@ -49,13 +49,14 @@ module.exports = new (class extends controller {
                 },
                 data: data,
             };
-            axios(config)
-                .then(function (response) {
-                    // console.log("response", JSON.stringify(response.data));
-                })
-                .catch(function (error) {
-                    console.error("Error axios service sendSmsAndSAve", error);
-                });
+            //dodo
+            // axios(config)
+            //     .then(function (response) {
+            //         // console.log("response", JSON.stringify(response.data));
+            //     })
+            //     .catch(function (error) {
+            //         console.error("Error axios service sendSmsAndSAve", error);
+            //     });
 
             //for this 'smsResult i add 'return result' to ghasedak.verification in modules
             // if(smsResult.result.code==200){

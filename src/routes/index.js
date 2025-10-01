@@ -32,6 +32,7 @@ const process2Router = require("./process2");
 const reporterRouter = require("./reporter");
 const finnotechRouter = require("./finnotech");
 const hesabRouter = require("./hesab");
+const offRouter = require("./off");
 const { isLoggined, isAdmin, isEnyAdmin } = require("./../middleware/auth");
 const error = require("./../middleware/error");
 const Versionsoft = require("./../models/versionsoft");
@@ -39,6 +40,7 @@ const Versionsoft = require("./../models/versionsoft");
 router.use("/auth", authRouter);
 
 router.use("/contract", contractRouter);
+router.use("/off", isLoggined, offRouter);
 router.use("/user", isLoggined, userRouter);
 router.use("/student", isLoggined, studentRouter);
 router.use("/student2", isLoggined, student2Router);

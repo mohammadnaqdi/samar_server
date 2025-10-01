@@ -1302,21 +1302,21 @@ module.exports = new (class extends controller {
                         lastName: { $first: "$lastName" },
                         phone: { $first: "$phone" },
                         driverCode: { $first: "$driverCode" },
-                        // totalServiceCount: { $first: { $size: "$service" } },
-                        // studentCount: {
-                        //     $first: {
-                        //         $reduce: {
-                        //             input: "$service",
-                        //             initialValue: 0,
-                        //             in: {
-                        //                 $add: [
-                        //                     "$$value",
-                        //                     { $size: "$$this.students" },
-                        //                 ],
-                        //             },
-                        //         },
-                        //     },
-                        // },
+                        totalServiceCount: { $first: { $size: "$service" } },
+                        studentCount: {
+                            $first: {
+                                $reduce: {
+                                    input: "$service",
+                                    initialValue: 0,
+                                    in: {
+                                        $add: [
+                                            "$$value",
+                                            { $size: "$$this.students" },
+                                        ],
+                                    },
+                                },
+                            },
+                        },
                         totalCost: { $sum: "$sc" },
                         totalDDS: { $sum: "$dds" },
                         dayCount: { $sum: 1 },
@@ -1332,6 +1332,8 @@ module.exports = new (class extends controller {
                         totalCost: 1,
                         totalDDS: 1,
                         dayCount: 1,
+                        studentCount:1,
+                        totalServiceCount:1,
                     },
                 },
             ]);

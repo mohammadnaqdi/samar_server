@@ -206,7 +206,6 @@ module.exports = new (class extends controller {
                     serviceCost: 0,
                     driverCost: 0,
                     driverCode: "",
-                    agencyId: null,
                     state: 5,
                     stateTitle: `حذف از سرویس ${service.serviceNum}`,
                 });
@@ -382,6 +381,12 @@ module.exports = new (class extends controller {
                     state: stu.newState,
                     stateTitle: stu.stateDesc,
                 });
+                if (stu.newState != 4) {
+                    await this.Student.findByIdAndUpdate(stu.id, {
+                        pack: -1,
+                        packed: false,
+                    });
+                }
                 const payQueue = await this.PayQueue.findOne({
                     inVoiceId: invoice._id,
                     studentId: stu.id,
@@ -1269,6 +1274,8 @@ module.exports = new (class extends controller {
                     serviceCost: 0,
                     driverCode: "",
                     driverCost: 0,
+                    packed: false,
+                    pack: -1,
                     state: 3,
                     stateTitle: "حذف سرویس درانتظار",
                 }

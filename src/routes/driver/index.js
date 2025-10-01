@@ -130,6 +130,9 @@ router.get(
 );
 router.post("/GetMyInfo", controller.getMyInfo.bind(controller));
 router.post("/GetMyInfo2", controller.getMyInfo2.bind(controller));
+router.post("/GetMyInfo3", controller.getMyInfo3.bind(controller));
+router.get("/GetMyServices", controller.getMyServices.bind(controller));
+router.get("/GetDriverInfoById", controller.getDriverInfoById.bind(controller));
 
 router.get(
     "/LocationDriver",

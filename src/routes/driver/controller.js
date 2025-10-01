@@ -2908,6 +2908,336 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async getMyInfo3(req, res) {
+        try {
+            // console.log("req.user._id", req.user._id);
+            const drivers = await this.Driver.find({
+                userId: req.user._id,
+                delete: false,
+                active: true,
+            },'userId agencyId carId driverCode drivingLicence pic dLicencePic isAgent').lean();
+
+            // console.log("drivers", drivers);
+            if (drivers.length === 0) {
+                return this.response({
+                    res,
+                    code: 221,
+                    message: "this driver is not exist",
+                    data: {
+                        fa_m: "راننده ممکن است حذف شده باشد",
+                    },
+                });
+            }
+
+            if (req.body.fcm != undefined && req.body.device != undefined) {
+                const firebaseToken = req.body.fcm;
+                const device = req.body.device;
+                let fcm = req.user.fcm;
+                if (!fcm) {
+                    fcm = [];
+                }
+                let find = false;
+                for (var i in fcm) {
+                    if (fcm[i].device === device) {
+                        fcm[i].token = firebaseToken;
+                        find = true;
+                        break;
+                    }
+                }
+                if (!find) {
+                    fcm.push({ device: device, token: firebaseToken });
+                }
+                await this.User.findByIdAndUpdate(req.user._id, { fcm });
+                await this.updateRedisDocument(`user:${req.user._id}`, {
+                    fcm,
+                });
+                // req.user.fcm = fcm;
+                // req.user.save();
+            }
+            let driversList = [];
+            for (var i in drivers) {
+                let driver = drivers[i];
+                let car = await this.Car.findById(driver.carId);
+                const agency = await this.Agency.findById(
+                    driver.agencyId,
+                    "name code location.coordinates address active tel cityId"
+                );
+                if (!agency) {
+                    continue;
+                }
+                if (!agency.active) {
+                    continue;
+                }
+                if (!car) {
+                    const keyCar = await this.Keys.findOne({
+                        active: true,
+                        delete: false,
+                        type: "car",
+                        cityCode: agency.cityId,
+                    });
+                    if (!keyCar) {
+                        continue;
+                    }
+                    car = new this.Car({
+                        pelak: "0",
+                        capacity: keyCar.keyId,
+                        drivers: [req.user._id],
+                    });
+                    await car.save();
+                }
+                let agencySet;
+                agencySet = await this.AgencySet.findOne({
+                    agencyId: agency._id,
+                },'showCostToDriver');
+                let showCostToDriver=true;
+                if (agencySet) {
+                   showCostToDriver=agencySet.showCostToDriver;
+                }
+               
+                driversList.push({
+                    driver,
+                    car,
+                    agency,
+                    name: req.user.name,
+                    phone: req.user.phone,
+                    lastName: req.user.lastName,
+                    gender: req.user.gender,
+                    showCostToDriver,
+                });
+            }
+
+            // console.log("services=",JSON.stringify(services));
+            return this.response({
+                res,
+                message: "ok",
+                data: driversList,
+            });
+        } catch (error) {
+            console.error("Error while getMyInfo3:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getDriverInfoById(req, res) {
+        try {
+             if (
+                req.query.id === undefined ||
+                req.query.id.trim() === ""
+            ) {
+                return this.response({
+                    res,
+                    code: 604,
+                    message: "id need!",
+                });
+            }
+            let driver = await this.Driver.findById(req.query.id).lean();
+
+            // console.log("drivers", drivers);
+            if (!driver) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "this driver is not exist",
+                    data: {
+                        fa_m: "راننده ممکن است حذف شده باشد",
+                    },
+                });
+            }
+                driver.car = await this.Car.findById(driver.carId);
+                let driverInfo = await this.DriverInfo.findOne({
+                    driverId: driver._id,
+                });
+                if (!driverInfo) {
+                    driverInfo = new this.DriverInfo({
+                        driverId: driver._id,
+                    });
+                    await driverInfo.save();
+                } else {
+                    driver.location = driverInfo.location;
+                    driver.address = driverInfo.address;
+                    driver.birthday = driverInfo.birthday;
+                    driver.expireSh = driverInfo.expireSh;
+                    driver.healthPic = driverInfo.healthPic;
+                    driver.confirmHealthPic = driverInfo.confirmHealthPic;
+                    driver.technicalDiagPic = driverInfo.technicalDiagPic;
+                    driver.confirmTechincalPic = driverInfo.confirmTechincalPic;
+                    driver.clearancesPic = driverInfo.clearancesPic;
+                    driver.confirmClearPic = driverInfo.confirmClearPic;
+                    driver.dLicencePic = driverInfo.dLicencePic;
+                    driver.confirmDriverLcPic = driverInfo.confirmDriverLcPic;
+                    driver.dLicenceBackPic = driverInfo.dLicenceBackPic;
+                    driver.confirmDriverLcBackPic =
+                        driverInfo.confirmDriverLcBackPic;
+                    driver.carDocPic = driverInfo.carDocPic;
+                    driver.confirmcarDocPic = driverInfo.confirmcarDocPic;
+                    driver.backCarDocPic = driverInfo.backCarDocPic;
+                    console.log("driverInfo.backCarDocPic",driverInfo.backCarDocPic)
+                    driver.confirmBackCarDocPic =
+                        driverInfo.confirmBackCarDocPic;
+                    driver.taxiDriverLicense = driverInfo.taxiDriverLicense;
+                    driver.insPic = driverInfo.insPic;
+                    driver.confirmInsPic = driverInfo.confirmInsPic;
+                    driver.isDriverCarOwner = driverInfo.isDriverCarOwner;
+                }
+            
+
+            // console.log("services=",JSON.stringify(services));
+            return this.response({
+                res,
+                message: "ok",
+                data: driver,
+            });
+        } catch (error) {
+            console.error("Error while getDriverInfoById:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getMyServices(req, res) {
+        try {
+            // console.log("req.user._id", req.user._id);
+            if (
+                req.query.driverId === undefined ||
+                req.query.driverId.trim() === ""
+            ) {
+                return this.response({
+                    res,
+                    code: 604,
+                    message: "driverId need!",
+                });
+            }
+            let services = await this.Service.find(
+                {
+                    driverId: req.query.driverId,
+                    delete: false,
+                },
+                "serviceNum distance driverSharing routeSave active time"
+            ).lean();
+            const start = new Date();
+            start.setHours(2, 0, 0, 0);
+            const end = new Date();
+            end.setHours(19, 0, 0, 0);
+            for (var i = 0; i < services.length; i++) {
+                let myStudents = [];
+                const lastAct = await this.DriverAct.findOne(
+                    {
+                        serviceId: services[i].serviceNum,
+                        isWarning: false,
+                        createdAt: { $gt: start, $lt: end },
+                    },
+                    "model start"
+                ).sort({
+                    _id: -1,
+                });
+
+                const students = await this.Student.find({
+                    service: services[i]._id,
+                }).lean();
+                for (var student of students) {
+                    let studentInfo = {};
+                    studentInfo.studentCode = student.studentCode;
+                    studentInfo.gradeTitle = student.gradeTitle;
+                    studentInfo.name = student.name;
+                    studentInfo.lastName = student.lastName;
+                    studentInfo.fatherName = student.fatherName;
+                    studentInfo.physicalConditionDesc =
+                        student.physicalConditionDesc;
+                    studentInfo.physicalCondition = student.physicalCondition;
+                    studentInfo.stateTitle = student.stateTitle;
+                    studentInfo.active = student.active;
+                    studentInfo.isIranian = student.isIranian;
+                    studentInfo.gender = student.gender;
+                    studentInfo.state = student.state;
+                    studentInfo.stateTitle = student.stateTitle;
+                    studentInfo.serviceNum = student.serviceNum;
+                    studentInfo.stateTitle = student.stateTitle;
+                    studentInfo.serviceDistance = student.serviceDistance;
+                    studentInfo.gradeId = student.gradeId;
+                    studentInfo.parentId = student.parent;
+                    studentInfo.id = student._id;
+                    studentInfo.supervisor = student.supervisor;
+                    studentInfo.avanak =
+                        student.avanak && student.avanakNumber.length > 6;
+
+                    let school = await this.School.findById(
+                        student.school,
+                        "name location.coordinates schoolTime"
+                    );
+                    if (school) {
+                        studentInfo.schoolName = school.name;
+                        studentInfo.schoolAddress = school.address;
+                        studentInfo.schoolLat = school.location.coordinates[0];
+                        studentInfo.schoolLng = school.location.coordinates[1];
+                        let shiftName = "",
+                            shiftType = "";
+                        if (school.schoolTime.length > student.time) {
+                            shiftName = school.schoolTime[student.time].name;
+                            shiftType =
+                                school.schoolTime[student.time].start +
+                                " " +
+                                school.schoolTime[student.time].end;
+                            var stt = "";
+                            for (var t in school.schoolTime) {
+                                if (t == student.time) continue;
+                                if (shiftName === school.schoolTime[t].name) {
+                                    stt +=
+                                        " + " +
+                                        school.schoolTime[t].start +
+                                        " " +
+                                        school.schoolTime[t].end +
+                                        " " +
+                                        school.schoolTime[t].shiftdayTitle;
+                                }
+                            }
+                            if (stt != "") {
+                                shiftType +=
+                                    school.schoolTime[student.time]
+                                        .shiftdayTitle + stt;
+                            }
+                        } else {
+                            shiftName = school.schoolTime[0].name;
+                            shiftType =
+                                school.schoolTime[0].start +
+                                " " +
+                                school.schoolTime[0].end;
+                        }
+                        studentInfo.shiftName = shiftName;
+                        studentInfo.shiftType = shiftType;
+                    }
+                    studentInfo.homeAddress =
+                        student.address + " " + student.addressDetails;
+                    studentInfo.homeLat = student.location.coordinates[0];
+                    studentInfo.homeLng = student.location.coordinates[1];
+                    let parent = await this.Parent.findById(
+                        student.parent,
+                        "name lastName phone"
+                    );
+                    if (parent) {
+                        studentInfo.parentName =
+                            parent.name + " " + parent.lastName;
+                        studentInfo.parentPhone = parent.phone;
+                    }
+                    myStudents.push(studentInfo);
+                }
+                if (myStudents.length === 0) {
+                    services.splice(i, 1);
+                    i--;
+                } else {
+                    services[i].student = myStudents;
+                    services[i].lastAct = lastAct;
+
+                    // console.log("myStudents=",JSON.stringify(myStudents));
+                }
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+                data: services,
+            });
+        } catch (error) {
+            console.error("Error while getMyServices:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
     async startService(req, res) {
         try {
             const {

@@ -2186,8 +2186,13 @@ module.exports = new (class extends controller {
 
     async allAgencies(req, res) {
         try {
+            const city=req.query.city || '';
+            let match={delete: false, active: true};
+            if(city.trim()!=''){
+                match.cityId=parseInt(city);
+            }
             const agencies = await this.Agency.find(
-                { delete: false, active: true },
+                match,
                 "code name"
             );
             return this.response({

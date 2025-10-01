@@ -10,15 +10,15 @@ const { Pack, Exception, GroupPack } = require("../models/pack");
 const UserInfo = require("./../models/userInfo");
 const { Keys, CounterKey, City, SearchLog } = require("./../models/keys");
 const { Agency, AgencySet } = require("./../models/agency");
-// const Payoff = require("./../models/payoff");
-// const Payment = require("./../models/payment");
-const {Driver,DriverInfo} = require("./../models/driver");
+const { Company, Address, OffPack, OffCode } = require("./../models/off");
+const { Driver, DriverInfo } = require("./../models/driver");
 const Car = require("./../models/car");
 const {
     Service,
     DriverChange,
     PricingTable,
-    ServicePack,PriceTable
+    ServicePack,
+    PriceTable,
 } = require("./../models/service");
 // const Ledger = require("./../models/ledger");
 const { Location, DriverAct } = require("./../models/location");
@@ -62,7 +62,8 @@ const {
     BankInfo,
     CheckBook,
     CheckPage,
-    BankGate,PayGate
+    BankGate,
+    PayGate,
 } = require("./../models/banks");
 const Rule = require("./../models/rules");
 const { Feedback, OperationLog } = require("./../models/feedback");
@@ -77,6 +78,10 @@ const { redisClient } = require("../../startup/redis");
 
 module.exports = class {
     constructor() {
+        this.Company = Company;
+        this.Address = Address;
+        this.OffPack = OffPack;
+        this.OffCode = OffCode;
         this.PayGate = PayGate;
         this.DriverInfo = DriverInfo;
         this.FinnotechUsage = FinnotechUsage;

@@ -1,13 +1,14 @@
+#!/usr/bin/env node
 const mongoose = require("mongoose");
 const jalaali = require("jalaali-js");
 const jMoment = require("moment-jalaali");
-const Driver = require("./src/models/driver");
-const Student = require("./src//models/student");
-const { DDS } = require("./src//models/dds");
-const { AgencySet } = require("./src//models/agency");
-const { User } = require("./src//models/user");
-const { Service, DriverChange } = require("./src//models/service");
-const { ListAcc } = require("./src//models/levels");
+const { Driver } = require("./src/models/driver");
+const Student = require("./src/models/student");
+const { DDS } = require("./src/models/dds");
+const { AgencySet, Agency } = require("./src/models/agency");
+const { User } = require("./src/models/user");
+const { Service, DriverChange } = require("./src/models/service");
+const { ListAcc } = require("./src/models/levels");
 
 function logWithTime(message) {
     const now = new Date();
@@ -21,37 +22,6 @@ function logWithTime(message) {
     const formattedTimestamp = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
     console.log(`[${formattedTimestamp}] ${message}`);
 }
-
-// function getMonth() {
-//   const today = new Date();
-//   const { jy, jm } = jalaali.toJalaali(today);
-
-//   if (jm >= 1 && jm <= 6) return 31;
-//   if (jm >= 7 && jm <= 11) return 30;
-
-//   // Esfand
-//   const isLeap = jalaali.isLeapJalaaliYear(jy);
-//   return isLeap ? 30 : 29;
-// }
-
-// function getMonth() {
-//     const now = new Date();
-//     const month = now.getMonth() + 1;
-//     const day = now.getDate();
-//     const isBeforeFarvardin = month === 3 && day < 22;
-//     const isAfterShahrivar = month === 9 && day >= 22;
-
-//     if (
-//         month >= 10 ||
-//         month <= 6 ||
-//         (month === 9 && isAfterShahrivar) ||
-//         (month === 3 && isBeforeFarvardin)
-//     ) {
-//         return 30;
-//     } else {
-//         return 31;
-//     }
-// }
 
 function getMonthDayCount(dayOfYear) {
     if (dayOfYear >= 1 && dayOfYear <= 186) {
@@ -72,7 +42,20 @@ function getDayOfYear() {
 
     const [year, month, day] = jalaliDate.split("/").map(Number);
 
-    const monthsDays = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, jMoment.jDaysInMonth(year, 11)];
+    const monthsDays = [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31,
+        30,
+        30,
+        30,
+        30,
+        30,
+        jMoment.jDaysInMonth(year, 11),
+    ];
 
     const daysBeforeCurrentMonth = monthsDays
         .slice(0, month - 1)
@@ -83,62 +66,11 @@ function getDayOfYear() {
     return dayOfYear;
 }
 
-// function evaluateFormula(formula, values) {
-//     if (typeof formula !== "string") {
-//         console.error("Formula must be a string.");
-//         return null;
-//     }
-
-//     for (const [key, value] of Object.entries(values)) {
-//         const regex = new RegExp(`\\b${key}\\b`, "g");
-//         formula = formula.replace(regex, value);
-//     }
-
-//     try {
-//         return new Function(`return ${formula};`)();
-//     } catch (error) {
-//         console.error("Error evaluating formula:", error);
-//         return null;
-//     }
-// }
-
-// function reverseEvaluateFormula(targetAnswer, b, formulaTemplate) {
-//     if (typeof formulaTemplate !== "string") {
-//         console.error("Formula template must be a string.");
-//         return null;
-//     }
-
-//     const tolerance = 1e-6;
-//     let low = 0;
-//     let high = targetAnswer * 2;
-//     let mid;
-
-//     while (high - low > tolerance) {
-//         mid = (low + high) / 2;
-//         const formula = formulaTemplate.replace(/a/g, mid).replace(/b/g, b);
-
-//         const result = new Function(`return ${formula};`)();
-//         if (result < targetAnswer) {
-//             low = mid;
-//         } else {
-//             high = mid;
-//         }
-//     }
-//     return Math.floor(mid);
-// }
-
-async function percent(agencyId) {
-    try {
-        const percents = await ListAcc.find({
-            enable: true,
-            agencyId,
-            percent: { $gt: 0 },
-        });
-        return percents.reduce((sum, item) => sum + item.percent, 0);
-    } catch (error) {
-        console.error("Error calculating driver share:", error);
-        return null;
-    }
+function isInSummerBan(date) {
+    const year = date.getFullYear();
+    const summerStart = new Date(year, 5, 22);
+    const summerEnd = new Date(year, 8, 22);
+    return date >= summerStart && date <= summerEnd;
 }
 
 async function removeStudentFromService(
@@ -177,7 +109,6 @@ async function removeStudentFromService(
             }
         }
         await service.save();
-
         return service.serviceNum;
     } catch (error) {
         console.error("Error while removing student from service:", error);
@@ -228,8 +159,43 @@ async function deleteStudent() {
 
 async function process() {
     try {
-        const drivers = await Driver.find({ delete: false }).lean();
+        const agencies = await Agency.find({
+            delete: false,
+            active: true,
+        })
+            .distinct("_id")
+            .lean();
+        // const agencySets = await AgencySet.find({
+        //     _id: { $in: agencyIDs },
+        // }).lean();
+
         const now = new Date();
+
+        // const agencyI = agencySets
+        //     .filter((agency) => {
+        //         if (!agency.activeDDS) return false;
+
+        //         const isInOffTime = agency.offDDSTimes.some(
+        //             (offTime) => now >= offTime.start && now <= offTime.end
+        //         );
+
+        //         return !isInOffTime;
+        //     })
+        //     .map((agency) => agency.agencyId);
+        // console.log("agencyI", agencyI.length);
+
+        const drivers = await Driver.find({
+            delete: false,
+            active: true,
+            agencyId: { $in: agencies },
+        }).lean();
+        // console.log("drivers", drivers.length);
+        // const a = new mongoose.Types.ObjectId("686659530ac17b8808ceaa11");
+        // const drivers = await Driver.find({
+        //     delete: false,
+        //     active: true,
+        //     agencyId: a,
+        // }).lean();
         const startOfDay = new Date(
             now.getFullYear(),
             now.getMonth(),
@@ -248,8 +214,8 @@ async function process() {
         );
         const today = getDayOfYear().toString();
         const currentMonth = getMonthDayCount(today);
-
         const ddsPromises = drivers.map(async (driver) => {
+            // console.log("driver", driver.driverCode);
             try {
                 const services = await Service.find({
                     driverId: driver._id,
@@ -276,6 +242,14 @@ async function process() {
                                 delete: false,
                                 service: service._id,
                             }).lean();
+
+                            if (stds.length === 0) {
+                                await Service.findByIdAndUpdate(service._id, {
+                                    delete: true,
+                                });
+                                return null;
+                            }
+
                             const students = stds.map((std) => ({
                                 id: std._id,
                                 cost: std.serviceCost,
@@ -295,10 +269,16 @@ async function process() {
                         })
                     );
 
-                    let name = services[0].driverName.split(" ");
-                    driverName = name[0];
-                    driverLastName = name[1];
-                    driverPhone = services[0].driverPhone;
+                    serviceDetails = serviceDetails.filter(Boolean);
+
+                    // let name = services[0].driverName.split(" ");
+                    // driverName = name[0];
+                    // driverLastName = name[1];
+                    // driverPhone = services[0].driverPhone;
+                    const user = await User.findById(driver.userId).lean();
+                    driverName = user.name;
+                    driverLastName = user.lastName;
+                    driverPhone = user.phone;
                 } else {
                     const user = await User.findById(driver.userId).lean();
                     driverName = user.name;
@@ -328,7 +308,7 @@ async function process() {
                 const currentDate = new Date();
                 const jalaliDate = jMoment(currentDate).format("jYYYY/jMM/jDD");
                 const year = jalaliDate.split("/").map(Number)[0];
-                return new DDS({
+                return {
                     agencyId: driver.agencyId,
                     driverId: driver._id,
                     driverCode: driver.driverCode,
@@ -341,7 +321,7 @@ async function process() {
                     year: parseInt(year),
                     sc: totalServiceCost,
                     status,
-                });
+                };
             } catch (error) {
                 logWithTime(
                     `Error processing driver ${driver._id}: ${error.message}`
@@ -353,7 +333,18 @@ async function process() {
         const ddsInstances = await Promise.all(ddsPromises);
         const validDDSInstances = ddsInstances.filter((dds) => dds !== null);
 
-        await Promise.all(validDDSInstances.map((newDDS) => newDDS.save()));
+        await Promise.all(
+            validDDSInstances.map(async (data) => {
+                const exists = await DDS.findOne({
+                    driverCode: data.driverCode,
+                    day: data.day,
+                }).lean();
+
+                if (!exists) {
+                    await DDS.create(data);
+                }
+            })
+        );
 
         logWithTime("DDS saved for all drivers.");
     } catch (error) {
@@ -363,7 +354,13 @@ async function process() {
 
 async function main() {
     try {
-        await mongoose.connect("mongodb://localhost:27017/samar");
+        const now = new Date();
+        if (isInSummerBan(now)) {
+            return;
+        }
+        await mongoose.connect(
+            "mongodb://admin:samar789@localhost:27017/samar2?authSource=admin"
+        );
         await process();
 
         await deleteStudent();

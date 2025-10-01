@@ -575,9 +575,15 @@ module.exports = new (class extends controller {
                     });
                 }
 
+                let re = `https://${bankGate.callback}/saman.html?token=${token}`;
+
+                if (bankGate.callback.includes("mysamar")) {
+                    re = `https://pay.mysamar.ir/saman.html?token=${token}`;
+                }
+
                 return res.json({
                     success: true,
-                    message: `https://pay.mysamar.ir/saman.html?token=${token}`,
+                    message: re,
                 });
             } else if (bankGate.type === "TEJARAT" || bankGate.type === "PEC") {
                 //**********************************************TEJARAT******************************************************* */
