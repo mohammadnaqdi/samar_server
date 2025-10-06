@@ -17,10 +17,12 @@ router.get("/GetCompanies", isSuperAdmin,
     controller.getCompanies.bind(controller));
 router.get("/GetCompanyById",
     controller.getCompanyById.bind(controller));
-router.get("/GetOffPackByCompanyId", isSuperAdmin,
+router.get("/GetOffPackByCompanyId",
     controller.getOffPackByCompanyId.bind(controller));
 router.get("/GetMyOffer",
     controller.getMyOffer.bind(controller));
+router.get("/SetAndGetMyOffer",
+    controller.setAndGetMyOffer.bind(controller));
 router.post("/SetOffPack", isSuperAdmin,
     validator.setOffPackValidator(),
     controller.validate.bind(controller),
@@ -29,6 +31,9 @@ router.post("/SetNewUserForOffCo", isSuperAdmin,
     validator.setNewUserForOffCoValidator(),
     controller.validate.bind(controller),
     controller.setNewUserForOffCo.bind(controller));
+router.get("/SetOfferP", 
+    controller.setOfferP.bind(controller));
+
 
 
 

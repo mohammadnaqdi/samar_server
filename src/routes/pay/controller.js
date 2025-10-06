@@ -3210,7 +3210,7 @@ module.exports = new (class extends controller {
                                     maxDate: invoice2.maxDate,
                                 });
                                 await prePayment.save({ session });
-                            } else {
+                            } else if(student.state!==4) {
                                 student.state = 3;
                                 student.stateTitle = "درانتظار تعیین سرویس";
                                 await student.save({ session });

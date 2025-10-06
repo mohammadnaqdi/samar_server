@@ -902,6 +902,102 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async loginOfferCo(req, res) {
+        try {
+            const userName = fixNumbers(req.body.userName);
+            const password = fixNumbers(req.body.password);
+
+            const user = await this.User.findOne({
+                $or: [
+                    { userName, password },
+                    { phone: userName, password },
+                ],
+            });
+
+            if (!user) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "user not found",
+                    data: { fa_m: "کاربر یافت نشد" },
+                });
+            }
+
+            if (user.delete) {
+                return this.response({
+                    res,
+                    code: 301,
+                    message: "user is deleted",
+                    data: { fa_m: "کاربر حذف شده است" },
+                });
+            }
+
+            if (!user.active) {
+                return this.response({
+                    res,
+                    code: 302,
+                    message: "user is inactive",
+                    data: {
+                        fa_m: "کاربر غیرفعال شده است",
+                        inActiveReason: user.inActvieReason,
+                    },
+                });
+            }
+            const userSalt = "OfferCompany";
+            
+            const dynamicKey = JWT_KEY + userSalt;
+            let token = jwt.sign(
+                { _id: user.id, date: Date.now() },
+                dynamicKey,
+                {
+                    // expiresIn: "72h",
+                    algorithm: "HS256",
+                }
+            );
+            await this.User.findByIdAndUpdate(user._id, { jwtSalt: userSalt });
+            await this.updateRedisDocument(`user:${user._id}`, {
+                jwtSalt: userSalt,
+            });
+
+            let companiesO = await this.Company.find(
+                    {
+                        $and: [
+                            { delete: false },
+                            {
+                                $or: [
+                                    { operator: user._id  },
+                                ],
+                            },
+                        ],
+                    },
+                'name cityId active logo').lean();
+            let companiesA = await this.Company.find(
+                    {
+                        $and: [
+                            { delete: false },
+                            {
+                                $or: [
+                                    { admin: user._id },
+                                ],
+                            },
+                        ],
+                    },
+                'name cityId active logo').lean();
+            return this.response({
+                res,
+                message: "welcome",
+                data: {
+                    token,
+                    userId: user._id,
+                    companiesA,
+                    companiesO,
+                },
+            });
+        } catch (error) {
+            console.error("Error in loginOfferCo:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async firstCheck(req, res) {
         try {

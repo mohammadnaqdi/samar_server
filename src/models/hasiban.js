@@ -78,6 +78,7 @@ const docListSanadSchema = new mongoose.Schema(
                 "cashReg",
                 "absence",
                 "banki",
+                "banki2",
                 "charge",
                 "unCharge",
             ],

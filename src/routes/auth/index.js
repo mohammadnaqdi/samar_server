@@ -38,6 +38,12 @@ router.post(
     controller.login.bind(controller)
 );
 router.post(
+    "/LoginOfferCo",
+    validator.loginValidator(),
+    controller.validate.bind(controller),
+    controller.loginOfferCo.bind(controller)
+);
+router.post(
     "/CheckCodeChangePass",
     validator.checkCodeChangePassValidator(),
     controller.validate.bind(controller),

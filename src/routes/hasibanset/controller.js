@@ -1485,7 +1485,7 @@ module.exports = new (class extends controller {
                     );
                     if (invoice && invoice.confirmPrePaid) {
                         let student = await this.Student.findById(studentId);
-                        if (student) {
+                        if (student && student.state!=4) {
                             student.state = 3;
                             student.stateTitle = "در انتظار تعیین سرویس";
                             await student.save();

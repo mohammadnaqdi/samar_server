@@ -133,301 +133,349 @@ module.exports = new (class extends controller {
         }
     }
 
-    async updateService(req, res) {
-        try {
-            const id = req.body.id;
-            const distance = req.body.distance;
-            const cost = req.body.cost;
-            const student = req.body.student;
-            const studentPast = req.body.studentPast;
-            const studentCost = req.body.studentCost;
-            const driverCost = req.body.driverCost;
-            const agencyId = req.body.agencyId;
-            const driverId = req.body.driverId;
-            const driverSharing = req.body.driverSharing;
-            const routeSave = req.body.routeSave;
-            const percentInfo = req.body.percentInfo;
-            const schoolId = req.body.schoolId;
-            const time = req.body.time;
-            const driverPic = req.body.driverPic;
-            const driverName = req.body.driverName;
-            const driverCar = req.body.driverCar;
-            const driverPhone = req.body.driverPhone;
-            const driverCarPelak = req.body.driverCarPelak;
+    // async updateService(req, res) {
+    //     try {
+    //         const id = req.body.id;
+    //         const distance = req.body.distance;
+    //         const cost = req.body.cost;
+    //         const student = req.body.student;
+    //         const studentPast = req.body.studentPast;
+    //         const studentCost = req.body.studentCost;
+    //         const driverCost = req.body.driverCost;
+    //         const agencyId = req.body.agencyId;
+    //         const driverId = req.body.driverId;
+    //         const driverSharing = req.body.driverSharing;
+    //         const routeSave = req.body.routeSave;
+    //         const percentInfo = req.body.percentInfo;
+    //         const schoolId = req.body.schoolId;
+    //         const time = req.body.time;
+    //         const driverPic = req.body.driverPic;
+    //         const driverName = req.body.driverName;
+    //         const driverCar = req.body.driverCar;
+    //         const driverPhone = req.body.driverPhone;
+    //         const driverCarPelak = req.body.driverCarPelak;
 
-            let service = await this.Service.findById(id);
-            if (!service) {
-                return this.response({
-                    res,
-                    code: 501,
-                    message: "service not find",
-                });
-            }
-            const driver = await this.Driver.findOne(
-                { _id: driverId, delete: false },
-                "driverCode"
-            ).lean();
-            if (!driver) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "Driver not found or deleted",
-                    data: {
-                        fa_m: "راننده پیدا نشد یا حذف شده است!",
-                    },
-                });
-            }
-            let invoice = await this.Invoice.findOne({
-                agencyId,
-                type: "serviceCost",
-            });
-            if (!invoice) {
-                invoice = await new this.Invoice({
-                    title: "هزینه سرویس",
-                    confirmInfo: true,
-                    agencyId: agencyId,
-                    setter: req.user._id,
-                    type: "serviceCost",
-                    amount: 0,
-                }).save();
-            }
-            for (let i = 0; i < studentPast.length; i++) {
-                let exist = false;
-                for (var stt of student) {
-                    if (stt.toString() === studentPast[i].toString()) {
-                        exist = true;
-                        break;
-                    }
-                }
-                if (exist) continue;
-                let st = await this.Student.findByIdAndUpdate(studentPast[i], {
-                    service: null,
-                    serviceNum: -1,
-                    serviceCost: 0,
-                    driverCost: 0,
-                    driverCode: "",
-                    state: 5,
-                    stateTitle: `حذف از سرویس ${service.serviceNum}`,
-                });
-                await new this.OperationLog({
-                    userId: req.user._id,
-                    name: req.user.name + " " + req.user.lastName,
-                    agencyId: agencyId,
-                    targetIds: [st._id],
-                    targetTable: "student",
-                    sanadId: 0,
-                    actionName: "deleteStudentFromService",
-                    actionNameFa: `حذف از سرویس ${service.serviceNum}`,
-                    desc: `حذف از سرویس ${service.serviceNum} راننده ${driverName} مبلغ ${st.serviceCost}`,
-                }).save();
-            }
-            const lastCost = service.cost;
-            // const lastStudentCost = service.studentCost;
-            // const lastStudent = service.student;
-            const lastDriverName = service.driverName;
-            service.distance = distance;
-            service.cost = cost;
-            service.driverSharing = driverSharing;
-            // service.student = student;
-            // service.studentCost = studentCost;
-            service.agencyId = agencyId;
-            service.driverId = driverId;
-            service.schoolIds = schoolId;
-            service.time = time;
-            service.routeSave = routeSave;
-            service.percentInfo = percentInfo;
-            service.driverPhone = driverPhone;
-            service.driverCar = driverCar;
-            service.driverName = driverName;
-            service.driverPic = driverPic;
-            service.driverCarPelak = driverCarPelak;
+    //         let service = await this.Service.findById(id);
+    //         if (!service) {
+    //             return this.response({
+    //                 res,
+    //                 code: 501,
+    //                 message: "service not find",
+    //             });
+    //         }
+    //         const driver = await this.Driver.findOne(
+    //             { _id: driverId, delete: false },
+    //             "driverCode"
+    //         ).lean();
+    //         if (!driver) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "Driver not found or deleted",
+    //                 data: {
+    //                     fa_m: "راننده پیدا نشد یا حذف شده است!",
+    //                 },
+    //             });
+    //         }
+    //         let invoice = await this.Invoice.findOne({
+    //             agencyId,
+    //             type: "serviceCost",
+    //         });
+    //         if (!invoice) {
+    //             invoice = await new this.Invoice({
+    //                 title: "هزینه سرویس",
+    //                 confirmInfo: true,
+    //                 agencyId: agencyId,
+    //                 setter: req.user._id,
+    //                 type: "serviceCost",
+    //                 amount: 0,
+    //             }).save();
+    //         }
+    //         for (let i = 0; i < studentPast.length; i++) {
+    //             let exist = false;
+    //             for (var stt of student) {
+    //                 if (stt.toString() === studentPast[i].toString()) {
+    //                     exist = true;
+    //                     break;
+    //                 }
+    //             }
+    //             if (exist) continue;
+    //             let st = await this.Student.findByIdAndUpdate(studentPast[i], {
+    //                 service: null,
+    //                 serviceNum: -1,
+    //                 serviceCost: 0,
+    //                 driverCost: 0,
+    //                 driverCode: "",
+    //                 state: 5,
+    //                 stateTitle: `حذف از سرویس ${service.serviceNum}`,
+    //             });
+    //             await new this.OperationLog({
+    //                 userId: req.user._id,
+    //                 name: req.user.name + " " + req.user.lastName,
+    //                 agencyId: agencyId,
+    //                 targetIds: [st._id],
+    //                 targetTable: "student",
+    //                 sanadId: 0,
+    //                 actionName: "deleteStudentFromService",
+    //                 actionNameFa: `حذف از سرویس ${service.serviceNum}`,
+    //                 desc: `حذف از سرویس ${service.serviceNum} راننده ${driverName} مبلغ ${st.serviceCost}`,
+    //             }).save();
+    //         }
+    //         const lastCost = service.cost;
+    //         // const lastStudentCost = service.studentCost;
+    //         // const lastStudent = service.student;
+    //         const lastDriverName = service.driverName;
+    //         service.distance = distance;
+    //         service.cost = cost;
+    //         service.driverSharing = driverSharing;
+    //         // service.student = student;
+    //         // service.studentCost = studentCost;
+    //         service.agencyId = agencyId;
+    //         service.driverId = driverId;
+    //         service.schoolIds = schoolId;
+    //         service.time = time;
+    //         service.routeSave = routeSave;
+    //         service.percentInfo = percentInfo;
+    //         service.driverPhone = driverPhone;
+    //         service.driverCar = driverCar;
+    //         service.driverName = driverName;
+    //         service.driverPic = driverPic;
+    //         service.driverCarPelak = driverCarPelak;
 
-            const studentSer = await this.Student.find({
-                service: service._id,
-            }).lean();
-            if (studentSer.length === 0) {
-                service.delete = true;
-            }
+    //         const studentSer = await this.Student.find({
+    //             service: service._id,
+    //         }).lean();
+    //         if (studentSer.length === 0) {
+    //             service.delete = true;
+    //         }
 
-            await service.save();
+    //         await service.save();
 
-            let before = [];
-            for (let i = 0; i < student.length && i < studentCost.length; i++) {
-                var st = await this.Student.findByIdAndUpdate(student[i], {
-                    service: service._id,
-                    agencyId,
-                    serviceNum: service.serviceNum,
-                    driverCode: driver.driverCode,
-                    serviceCost: studentCost[i],
-                    driverCost: driverCost[i],
-                    state: 4,
-                    stateTitle: "دارای سرویس",
-                });
-                const payQueue = await this.PayQueue.findOne({
-                    inVoiceId: invoice._id,
-                    studentId: student[i],
-                });
-                if (!payQueue) {
-                    await new this.PayQueue({
-                        inVoiceId: invoice._id,
-                        agencyId,
-                        studentId: student[i],
-                        code: invoice.code,
-                        setter: req.user._id,
-                        type: invoice.type,
-                        amount: invoice.amount,
-                        title: invoice.title,
-                        maxDate: invoice.maxDate,
-                        isPaid: false,
-                    }).save();
-                }
-                before.push({
-                    name: st.name,
-                    lastName: st.lastName,
-                    studentCode: st.studentCode,
-                    cost: st.serviceCost,
-                    serviceNum: st.serviceNum,
-                });
-            }
-            await new this.OperationLog({
-                userId: req.user._id,
-                name: req.user.name + " " + req.user.lastName,
-                agencyId: agencyId,
-                targetIds: student,
-                targetTable: "student",
-                sanadId: 0,
-                actionName: "updateService",
-                actionNameFa: `ویرایش سرویس`,
-                desc: ` ویرایش سرویس ${service.serviceNum} راننده ${driverName} از قیمت ${lastCost} به ${cost}`,
-                other: [before, lastDriverName],
-            }).save();
+    //         let before = [];
+    //         for (let i = 0; i < student.length && i < studentCost.length; i++) {
+    //             var st = await this.Student.findByIdAndUpdate(student[i], {
+    //                 service: service._id,
+    //                 agencyId,
+    //                 serviceNum: service.serviceNum,
+    //                 driverCode: driver.driverCode,
+    //                 serviceCost: studentCost[i],
+    //                 driverCost: driverCost[i],
+    //                 state: 4,
+    //                 stateTitle: "دارای سرویس",
+    //             });
+    //             const payQueue = await this.PayQueue.findOne({
+    //                 inVoiceId: invoice._id,
+    //                 studentId: student[i],
+    //             });
+    //             if (!payQueue) {
+    //                 await new this.PayQueue({
+    //                     inVoiceId: invoice._id,
+    //                     agencyId,
+    //                     studentId: student[i],
+    //                     code: invoice.code,
+    //                     setter: req.user._id,
+    //                     type: invoice.type,
+    //                     amount: invoice.amount,
+    //                     title: invoice.title,
+    //                     maxDate: invoice.maxDate,
+    //                     isPaid: false,
+    //                 }).save();
+    //             }
+    //             before.push({
+    //                 name: st.name,
+    //                 lastName: st.lastName,
+    //                 studentCode: st.studentCode,
+    //                 cost: st.serviceCost,
+    //                 serviceNum: st.serviceNum,
+    //             });
+    //         }
+    //         await new this.OperationLog({
+    //             userId: req.user._id,
+    //             name: req.user.name + " " + req.user.lastName,
+    //             agencyId: agencyId,
+    //             targetIds: student,
+    //             targetTable: "student",
+    //             sanadId: 0,
+    //             actionName: "updateService",
+    //             actionNameFa: `ویرایش سرویس`,
+    //             desc: ` ویرایش سرویس ${service.serviceNum} راننده ${driverName} از قیمت ${lastCost} به ${cost}`,
+    //             other: [before, lastDriverName],
+    //         }).save();
 
-            return this.response({
-                res,
-                data: { id: service.id, serviceNum: service.serviceNum },
-            });
-        } catch (error) {
-            console.error("Error in updateService:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             data: { id: service.id, serviceNum: service.serviceNum },
+    //         });
+    //     } catch (error) {
+    //         console.error("Error in updateService:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
     async updateService2(req, res) {
+        const session = await this.Service.startSession();
+        session.startTransaction();
+
         try {
-            const id = req.body.id;
-            const distance = req.body.distance;
-            const cost = req.body.cost;
-            const student = req.body.student;
-            const studentCost = req.body.studentCost;
-            const driverCost = req.body.driverCost;
-            const agencyId = req.body.agencyId;
-            const driverId = req.body.driverId;
-            const driverSharing = req.body.driverSharing;
-            const routeSave = req.body.routeSave;
-            const percentInfo = req.body.percentInfo;
-            const schoolId = req.body.schoolId;
-            const time = req.body.time;
-            const driverPic = req.body.driverPic;
-            const driverName = req.body.driverName;
-            const driverCar = req.body.driverCar;
-            const driverPhone = req.body.driverPhone;
-            const driverCarPelak = req.body.driverCarPelak;
-            const stChange = req.body.stChange || [];
+            const {
+                id,
+                distance,
+                cost,
+                agencyId,
+                driverId,
+                driverSharing,
+                routeSave,
+                percentInfo,
+                schoolId,
+                time,
+                driverPic,
+                driverName,
+                driverCar,
+                driverPhone,
+                driverCarPelak,
+                stChange = [],
+            } = req.body;
+
+            // ✅ 1. Validate driver exists
             const driver = await this.Driver.findOne(
                 { _id: driverId, delete: false },
                 "driverCode"
-            ).lean();
+            )
+                .session(session)
+                .lean();
+
             if (!driver) {
+                await session.abortTransaction();
+                session.endSession();
                 return this.response({
                     res,
                     code: 404,
                     message: "Driver not found or deleted",
-                    data: {
-                        fa_m: "راننده پیدا نشد یا حذف شده است!",
-                    },
+                    data: { fa_m: "راننده پیدا نشد یا حذف شده است!" },
                 });
             }
 
+            // ✅ 2. Find or create Invoice
             let invoice = await this.Invoice.findOne({
                 agencyId,
                 type: "serviceCost",
-            });
-            console.log("invoice", invoice);
+            }).session(session);
+
             if (!invoice) {
-                invoice = await new this.Invoice({
-                    title: "هزینه سرویس",
-                    confirmInfo: true,
-                    agencyId: agency._id,
-                    setter: req.user._id,
-                    type: "serviceCost",
-                    amount: 0,
-                }).save();
+                invoice = await this.Invoice.create(
+                    [
+                        {
+                            title: "هزینه سرویس",
+                            confirmInfo: true,
+                            agencyId,
+                            setter: req.user._id,
+                            type: "serviceCost",
+                            amount: 0,
+                        },
+                    ],
+                    { session }
+                );
+                invoice = invoice[0];
             }
-            let service = await this.Service.findById(id);
+
+            // ✅ 3. Find Service
+            let service = await this.Service.findById(id).session(session);
             if (!service) {
+                await session.abortTransaction();
+                session.endSession();
                 return this.response({
                     res,
                     code: 501,
                     message: "service not find",
                 });
             }
-            for (var stu of stChange) {
-                let st = await this.Student.findByIdAndUpdate(stu.id, {
-                    service: stu.service,
-                    serviceNum: stu.serviceNum,
-                    agencyId: stu.serviceNum < 1 ? null : agencyId,
-                    serviceCost: stu.serviceFee,
-                    driverCost: stu.driverFee,
-                    driverCode: driver.driverCode,
-                    state: stu.newState,
-                    stateTitle: stu.stateDesc,
-                });
-                if (stu.newState != 4) {
-                    await this.Student.findByIdAndUpdate(stu.id, {
-                        pack: -1,
-                        packed: false,
+
+            // ✅ 4. Update Students + PayQueue + OperationLogs
+            for (const stu of stChange) {
+                // 🟡 Update student service info
+                if (!stu.serviceFee || stu.driverFee < 0) {
+                    await session.abortTransaction();
+                    session.endSession();
+                    return this.response({
+                        res,
+                        code: 501,
+                        message: "serviceFee cant be null && driverFee cant be -1",
                     });
                 }
+                await this.Student.findByIdAndUpdate(
+                    stu.id,
+                    {
+                        service: stu.service,
+                        serviceNum: stu.serviceNum,
+                        agencyId: stu.serviceNum < 1 ? null : agencyId,
+                        serviceCost: stu.serviceFee,
+                        driverCost: stu.driverFee,
+                        driverCode: driver.driverCode,
+                        state: stu.newState,
+                        stateTitle: stu.stateDesc,
+                    },
+                    { session }
+                );
+
+                if (stu.newState != 4) {
+                    await this.Student.findByIdAndUpdate(
+                        stu.id,
+                        { pack: -1, packed: false },
+                        { session }
+                    );
+                }
+
+                // 🟡 Ensure payQueue exists
                 const payQueue = await this.PayQueue.findOne({
                     inVoiceId: invoice._id,
                     studentId: stu.id,
-                });
-                // console.log("payQueue", payQueue);
+                }).session(session);
+
                 if (!payQueue) {
-                    await new this.PayQueue({
-                        inVoiceId: invoice._id,
-                        agencyId,
-                        studentId: stu.id,
-                        code: invoice.code,
-                        setter: req.user._id,
-                        type: invoice.type,
-                        amount: invoice.amount,
-                        title: invoice.title,
-                        maxDate: invoice.maxDate,
-                        isPaid: false,
-                    }).save();
+                    await this.PayQueue.create(
+                        [
+                            {
+                                inVoiceId: invoice._id,
+                                agencyId,
+                                studentId: stu.id,
+                                code: invoice.code,
+                                setter: req.user._id,
+                                type: invoice.type,
+                                amount: invoice.amount,
+                                title: invoice.title,
+                                maxDate: invoice.maxDate,
+                                isPaid: false,
+                            },
+                        ],
+                        { session }
+                    );
                 }
-                await new this.OperationLog({
-                    userId: req.user._id,
-                    name: req.user.name + " " + req.user.lastName,
-                    agencyId: agencyId,
-                    targetIds: [stu.id],
-                    targetTable: "student",
-                    sanadId: 0,
-                    actionName: "changeStudentService",
-                    actionNameFa: stu.stateDesc,
-                    desc: `${stu.stateDesc} از سرویس ${service.serviceNum} راننده ${driverName} مبلغ ${stu.serviceFee}`,
-                }).save();
+
+                // 🟡 Log operation for each student change
+                await this.OperationLog.create(
+                    [
+                        {
+                            userId: req.user._id,
+                            name: `${req.user.name} ${req.user.lastName}`,
+                            agencyId,
+                            targetIds: [stu.id],
+                            targetTable: "student",
+                            sanadId: 0,
+                            actionName: "changeStudentService",
+                            actionNameFa: stu.stateDesc,
+                            desc: `${stu.stateDesc} از سرویس ${service.serviceNum} راننده ${driverName} مبلغ ${stu.serviceFee}`,
+                        },
+                    ],
+                    { session }
+                );
             }
 
+            // ✅ 5. Update Service
             const lastCost = service.cost;
-            // const lastStudentCost = service.studentCost;
-            // const lastStudent = service.student;
             const lastDriverName = service.driverName;
+
             service.distance = distance;
             service.cost = cost;
             service.driverSharing = driverSharing;
-            // service.student = student;
-            // service.studentCost = studentCost;
             service.agencyId = agencyId;
             service.driverId = driverId;
             service.schoolIds = schoolId;
@@ -440,27 +488,39 @@ module.exports = new (class extends controller {
             service.driverPic = driverPic;
             service.driverCarPelak = driverCarPelak;
 
-            await service.save();
+            await service.save({ session });
 
-            await new this.OperationLog({
-                userId: req.user._id,
-                name: req.user.name + " " + req.user.lastName,
-                agencyId: agencyId,
-                targetIds: [id],
-                targetTable: "service",
-                sanadId: 0,
-                actionName: "updateService",
-                actionNameFa: `ویرایش سرویس`,
-                desc: ` ویرایش سرویس ${service.serviceNum} راننده ${driverName} از قیمت ${lastCost} به ${cost}`,
-                other: [lastCost, lastDriverName],
-            }).save();
+            // ✅ 6. Log service update
+            await this.OperationLog.create(
+                [
+                    {
+                        userId: req.user._id,
+                        name: `${req.user.name} ${req.user.lastName}`,
+                        agencyId,
+                        targetIds: [id],
+                        targetTable: "service",
+                        sanadId: 0,
+                        actionName: "updateService",
+                        actionNameFa: `ویرایش سرویس`,
+                        desc: `ویرایش سرویس ${service.serviceNum} راننده ${driverName} از قیمت ${lastCost} به ${cost}`,
+                        other: [lastCost, lastDriverName],
+                    },
+                ],
+                { session }
+            );
+
+            // ✅ 7. Commit transaction
+            await session.commitTransaction();
+            session.endSession();
 
             return this.response({
                 res,
                 data: { id: service.id, serviceNum: service.serviceNum },
             });
         } catch (error) {
-            console.error("Error in updateService:", error);
+            console.error("Error in updateService2:", error);
+            await session.abortTransaction();
+            session.endSession();
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -657,6 +717,18 @@ module.exports = new (class extends controller {
                         await this.Student.findByIdAndUpdate(st._id, {
                             state: 4,
                             stateTitle: "دارای سرویس",
+                        });
+                    }
+                    if (st.serviceCost == null || st.serviceCost < 0) {
+                        st.serviceCost = 0;
+                        await this.Student.findByIdAndUpdate(st._id, {
+                            serviceCost: 0,
+                        });
+                    }
+                    if (st.driverCost == null || st.driverCost < 0) {
+                        st.driverCost = 0;
+                        await this.Student.findByIdAndUpdate(st._id, {
+                            driverCost: 0,
                         });
                     }
                     let sch = await this.School.findById(
@@ -1797,6 +1869,18 @@ module.exports = new (class extends controller {
                         st.school,
                         "name code districtTitle"
                     );
+                    if (st.serviceCost == null || st.serviceCost < 0) {
+                        st.serviceCost = 0;
+                        await this.Student.findByIdAndUpdate(st._id, {
+                            serviceCost: 0,
+                        });
+                    }
+                    if (st.driverCost == null || st.driverCost < 0) {
+                        st.driverCost = 0;
+                        await this.Student.findByIdAndUpdate(st._id, {
+                            driverCost: 0,
+                        });
+                    }
                     //  console.log("st.sch",sch)
                     if (!sch) continue;
                     students.push({

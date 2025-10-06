@@ -116,15 +116,15 @@ module.exports = new (class extends controller {
 
             const id = req.query.id;
 
-            const company= await this.Company.findById(id
-               , "name phones desc logo"
+            const company = await this.Company.findById(
+                id,
+                "name phones desc logo"
             ).lean();
-                let address = await this.Address.find({
-                    companyId: company._id,
-                });
-                company.address = address;
-               
-            
+            let address = await this.Address.find({
+                companyId: company._id,
+            });
+            company.address = address;
+
             return this.response({
                 res,
                 data: company,
@@ -193,9 +193,14 @@ module.exports = new (class extends controller {
                 cityId,
                 details,
                 companyId,
-                location,
+
                 agencyIds,
             } = req.body;
+            let location = req.body.location || [0.0, 0.0];
+            if (location.length < 2) {
+                location = [0.0, 0.0];
+            }
+            console.log("location", location);
             if (id && ObjectId.isValid(id)) {
                 await this.OffPack.findByIdAndUpdate(id, {
                     title,
@@ -210,7 +215,7 @@ module.exports = new (class extends controller {
                     cityId,
                     details,
                     companyId,
-                   location: { type: "Point", coordinates: location },
+                    location: { type: "Point", coordinates: location },
                     agencyIds,
                 });
                 return this.response({
@@ -232,7 +237,7 @@ module.exports = new (class extends controller {
                     cityId,
                     details,
                     companyId,
-                   location: { type: "Point", coordinates: location },
+                    location: { type: "Point", coordinates: location },
                     agencyIds,
                 });
                 await co.save();
@@ -252,7 +257,18 @@ module.exports = new (class extends controller {
             const { companyId } = req.query;
             const offpacks = await this.OffPack.find({
                 companyId,
-            });
+            }).lean();
+            for (var p of offpacks) {
+                const useCount = await this.OffCode.countDocuments({
+                    offPackId: p._id,
+                    isUsed: true,
+                });
+                const allCount = await this.OffCode.countDocuments({
+                    offPackId: p._id,
+                });
+                p.useCount = useCount;
+                p.allCount = allCount;
+            }
             return this.response({
                 res,
                 data: offpacks,
@@ -268,35 +284,43 @@ module.exports = new (class extends controller {
                 {
                     parent: req.user._id,
                     delete: false,
-                    active: true,state:{$gte:1}
+                    active: true,
+                    state: { $gte: 1 },
                 },
                 "agencyId studentCode name"
             ).lean();
-            const maxDate = new Date();
+            const today = new Date();
             for (var st of myStudents) {
                 if (!st.agencyId) continue;
                 const agency = await this.Agency.findById(
                     st.agencyId,
                     "cityId"
                 );
-                console.log("agency",agency);
+                console.log("agency", agency);
                 if (agency) {
-                    let offpacks = await this.OffPack.find({
-                        $and: [
-                            { cityId: agency.cityId },
-                            { delete: false },
-                            { active: true },
-                            { "agencyIds.id": { $ne: agency._id.toString() } },
-                            {
-                                $or: [
-                                    { maxDate: null },
-                                    { maxDate: "" },
-                                    { maxDate: { $lte: maxDate } },
-                                ],
-                            },
-                        ],
-                    },'-agencyIds -updatedAt -__v -createdAt -active').lean();
-                    //   console.log("offpacks",offpacks.length);
+                    let offpacks = await this.OffPack.find(
+                        {
+                            $and: [
+                                { cityId: agency.cityId },
+                                { delete: false },
+                                { active: true },
+                                {
+                                    "agencyIds.id": {
+                                        $ne: agency._id.toString(),
+                                    },
+                                },
+                                {
+                                    $or: [
+                                        { maxDate: null },
+                                        { maxDate: "" },
+                                        { maxDate: { $gte: today } },
+                                    ],
+                                },
+                            ],
+                        },
+                        "-agencyIds -updatedAt -__v -createdAt -active"
+                    ).lean();
+                    console.log("offpacks", offpacks.length);
                     for (var off of offpacks) {
                         const myOffer = await this.OffCode.findOne({
                             userId: req.user._id,
@@ -313,7 +337,7 @@ module.exports = new (class extends controller {
                         }
                         off.myOffer = myOffer;
                     }
-                   
+
                     st.offpacks = offpacks;
                 }
             }
@@ -378,6 +402,156 @@ module.exports = new (class extends controller {
             });
         } catch (error) {
             console.error("Error while setNewUserForOffCo:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setAndGetMyOffer(req, res) {
+        try {
+            const { studentId, offPackId } = req.query;
+            if (
+                studentId &&
+                ObjectId.isValid(studentId) &&
+                offPackId &&
+                ObjectId.isValid(offPackId)
+            ) {
+                const st = await this.Student.findById(
+                    studentId,
+                    "studentCode state active delete"
+                ).lean();
+                if (!st) {
+                    return res
+                        .status(404)
+                        .json({ msg: "student is deleted or not active" });
+                }
+                if (st.delete || !st.active || st.state === 0) {
+                    return res
+                        .status(404)
+                        .json({ msg: "student is deleted or not active" });
+                }
+                const offCode = await this.OffCode.findOne({
+                    offPackId,
+                    forCode: st.studentCode,
+                });
+                if (offCode) {
+                    return this.response({
+                        res,
+                        data: offCode,
+                    });
+                }
+                const offPack = await this.OffPack.findById(offPackId).lean();
+                if (!offPack) {
+                    return res.status(404).json({ msg: "offPack not find" });
+                }
+                if (!offPack.active || offPack.delete) {
+                    return res.status(404).json({ msg: "offPack not find" });
+                }
+                if (offPack.max > 0) {
+                    const count = await this.OffCode.countDocuments({
+                        offPackId: offPack._id,
+                        isUsed: true,
+                    });
+                    if (count >= offPack.max) {
+                        return res
+                            .status(303)
+                            .json({ msg: "offPack is max used" });
+                    }
+                }
+                let newOff = new this.OffCode({
+                    companyId: offPack.companyId,
+                    offPackId: offPack._id,
+                    userId: req.user._id,
+                    forStudent: true,
+                    forCode: st.studentCode,
+                });
+                await newOff.save();
+
+                return this.response({
+                    res,
+                    data: newOff,
+                });
+            }
+            return res.status(404).json({ msg: "studentId,offPackId need" });
+        } catch (error) {
+            console.error("Error while setAndGetMyOffer:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setOfferP(req, res) {
+        try {
+            const { code, coId } = req.query;
+            if (!coId && !ObjectId.isValid(coId)) {
+                return res.status(204).json({ error: "code coId need" });
+            }
+            if (!code) {
+                return res.status(204).json({ error: "code coId need" });
+            }
+            console.log("code", code);
+            console.log("coId", coId);
+            const co = await this.Company.findById(coId, "admin operator");
+            if (!co) {
+                return res.status(401).json({ msg: "co not find" });
+            }
+            if (
+                co.admin.toString() !== req.user._id.toString() &&
+                co.operator.toString() !== req.user._id.toString()
+            ) {
+                return res.status(401).json({ msg: "you cant access" });
+            }
+            console.log("co", co._id);
+            let offCode = await this.OffCode.findOne({
+                $and: [
+                    {
+                        $or: [{ code: code }, { code: code.toUpperCase() }],
+                    },
+                    { companyId: co._id },
+                    // { isUsed: false },
+                ],
+            });
+            if (!offCode) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "offCode not find",
+                });
+            }
+            const offPack = await this.OffPack.findById(offCode.offPackId);
+            if (!offPack) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "offPack not find",
+                });
+            }
+            const useCount = await this.OffCode.countDocuments({
+                offPackId: offPack._id,
+                isUsed: true,
+            });
+            if (offCode.isUsed) {
+                const user=await this.User.findById(offCode.operator);
+                return this.response({
+                    res,
+                    data: [offCode, offPack, useCount,user],
+                });
+            }
+            if (offPack.max > 0 && useCount > offPack.max) {
+                return res.status(303).json({ msg: "offPack is max used" });
+            }
+            const now = new Date();
+            if (offPack.maxDate && offPack.maxDate < now) {
+                return res.status(305).json({ msg: "offPack expired" });
+            }
+
+            offCode.isUsed = true;
+            offCode.useDate = new Date();
+            offCode.operator = req.user._id;
+            await offCode.save();
+
+            return this.response({
+                res,
+                data: [offCode, offPack, useCount],
+            });
+        } catch (error) {
+            console.error("Error while setOfferP:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }

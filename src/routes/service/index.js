@@ -14,13 +14,13 @@ router.post(
     controller.validate.bind(controller),
     controller.setService.bind(controller),
 );
-router.post(
-    "/UpdateService",
-    isAgencyAdmin,
-    validator.updateServiceValidator(),
-    controller.validate.bind(controller),
-    controller.updateService.bind(controller),
-);
+// router.post(
+//     "/UpdateService",
+//     isAgencyAdmin,
+//     validator.updateServiceValidator(),
+//     controller.validate.bind(controller),
+//     controller.updateService.bind(controller),
+// );
 router.post(
     "/UpdateService2",
     isAgencyAdmin,

@@ -56,7 +56,6 @@ const offCodeSchema = new mongoose.Schema(
     {
         code: {
             type: String,
-            required: true,
             unique: true, // Ensure the code is unique
             trim: true,
         },
@@ -75,6 +74,11 @@ const offCodeSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             required: true,
         },
+        operator: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
         isUsed: {
             type: Boolean,
             default: false,
@@ -91,20 +95,19 @@ const offCodeSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
-// Function to generate a random code
-offCodeSchema.statics.generateUniqueCode = async function () {
-    let code;
-    let isUnique = false;
-    // Keep generating until a unique code is found
-    while (!isUnique) {
-        code = crypto.randomBytes(4).toString("hex").toUpperCase(); // Generate 8-character code
-        const existingCode = await this.findOne({ code });
-        if (!existingCode) {
-            isUnique = true;
+offCodeSchema.index({ offPackId: 1, forCode: 1 }, { unique: true });
+offCodeSchema.pre("save", async function (next) {
+    if (this.isNew) {
+        let nc = await getNextSequence("offCode");
+        let fo = "S";
+        if (!this.forStudent) {
+            fo = "D";
         }
+        const stcode = parseInt(this.forCode.substring(1));
+        this.code = `${fo}${stcode}${nc}`;
     }
-    return code;
-};
+    next();
+});
 const OffCode = mongoose.model("OffCode", offCodeSchema);
 
 const addressSchema = new mongoose.Schema({

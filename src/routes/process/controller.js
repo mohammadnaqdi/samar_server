@@ -2046,17 +2046,17 @@ module.exports = new (class extends controller {
                                         cost: st.serviceCost,
                                         driverCost: st.driverCost,
                                     });
-                                    serviceCost += st.serviceCost;
-                                    driverShare += st.driverCost;
+                                    serviceCost =serviceCost+ st.serviceCost;
+                                    driverShare = driverShare+ st.driverCost;
                                 }
-                                sc += serviceCost;
-                                dds += driverShare;
+                                sc =sc+ serviceCost;
+                                dds =dds+ driverShare;
                                 serv.cost = serviceCost;
                                 serv.driverSharing = driverShare;
                             }
                         } else {
-                            sc += serv.cost;
-                            dds += serv.driverSharing;
+                            sc =sc+ serv.cost;
+                            dds =dds+ serv.driverSharing;
                         }
                         snum.push(serv.serviceNum);
                         service.push({

@@ -9,6 +9,7 @@ module.exports = function (app, express) {
                 'http://localhost:63594',
                 'http://localhost:55312',
                 'http://localhost:58700',
+                'http://localhost:52974',
                 `https://app.${process.env.URL}`,
                 `http://app.${process.env.URL}`,
                 `https://panel.${process.env.URL}`,

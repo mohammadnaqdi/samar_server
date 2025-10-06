@@ -1330,7 +1330,7 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         });
                         await payQueue.save();
-                    } else {
+                    } else if(student.state!=4){
                         student.state = 3;
                         student.stateTitle = "در انتظار سرویس بدون پیش پرداخت";
                         await student.save();
@@ -1522,7 +1522,7 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         });
                         await payQueue.save();
-                    } else {
+                    } else if(student.state!=4) {
                         student.state = 3;
                         student.stateTitle = "در انتظار سرویس بدون پیش پرداخت";
                         await student.save();
