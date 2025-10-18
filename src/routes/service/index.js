@@ -134,9 +134,17 @@ router.post(
     controller.validate.bind(controller),
     controller.serviceByOneStudent.bind(controller)
 );
-// router.get(
-//     "/FindNotEqualService",
-//     controller.findNotEqualService.bind(controller)
-// );
+router.get(
+    "/FindNotEqualService",
+    controller.findNotEqualService.bind(controller)
+);
+router.get(
+    "/SetDDSAgain",
+    controller.setDDSAgain.bind(controller)
+);
+router.get(
+    "/getCorruptedServices",
+    controller.getCorruptedServices.bind(controller)
+);
 
 module.exports = router;

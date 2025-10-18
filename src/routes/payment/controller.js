@@ -1330,7 +1330,7 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         });
                         await payQueue.save();
-                    } else if(student.state!=4){
+                    } else if (student.state != 4) {
                         student.state = 3;
                         student.stateTitle = "در انتظار سرویس بدون پیش پرداخت";
                         await student.save();
@@ -1522,7 +1522,7 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         });
                         await payQueue.save();
-                    } else if(student.state!=4) {
+                    } else if (student.state != 4) {
                         student.state = 3;
                         student.stateTitle = "در انتظار سرویس بدون پیش پرداخت";
                         await student.save();
@@ -1945,6 +1945,13 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         }).save();
                     }
+                }else{
+                     await this.PayQueue.deleteMany({
+                        studentId: student._id,
+                        type: "installment",
+                        cardNumber: { $in: ["", null, " "] },
+                        isPaid:false,
+                    });  
                 }
             }
 
@@ -2546,8 +2553,7 @@ module.exports = new (class extends controller {
                 type: "prePayment",
                 active: true,
                 delete: false,
-            })
-                .session(session)
+            }).session(session)
                 .lean();
 
             let amount2 = 0;
@@ -2582,7 +2588,6 @@ module.exports = new (class extends controller {
             }
 
             // ---- Handle Registration Payment ----
-
             // ---- Handle PrePayment ----
             if (amount - amountReg > 0 && amount2 > 0) {
                 let prePayment = await this.PayQueue.findOne({
@@ -2621,9 +2626,12 @@ module.exports = new (class extends controller {
                 }
                 await prePayment.save({ session });
             }
-            student.state = 1;
-            student.stateTitle = "در انتظار تایید اطلاعات";
-            await student.save({ session });
+            if (student.state < 1) {
+                student.state = 1;
+                student.stateTitle = "در انتظار تایید اطلاعات";
+                await student.save({ session });
+            }
+
             await session.commitTransaction();
             session.endSession();
 

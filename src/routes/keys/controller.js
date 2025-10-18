@@ -588,81 +588,155 @@ module.exports = new (class extends controller {
         }
     }
 
-    async getTrip(req, res) {
-        try {
-            let { locations } = req.query;
+    // async getTrip(req, res) {
+    //     try {
+    //         let { locations } = req.query;
 
-            if (!locations) {
+    //         if (!locations) {
+    //             return this.response({
+    //                 res,
+    //                 code: 604,
+    //                 message: "locations need!",
+    //             });
+    //         }
+    //         console.log("locations", locations);
+
+    //         locations = locations.replaceAll("|", "%7C");
+
+    //         const url = `https://api.neshan.org/v3/trip?waypoints=${locations}&sourceIsAnyPoint=false`;
+    //         const options = {
+    //             headers: { "Api-Key": neshan },
+    //             timeout: 9500,
+    //         };
+
+    //         const response = await axios.get(url, options);
+
+    //         if (!response.data) {
+    //             return this.response({
+    //                 res,
+    //                 code: 214,
+    //                 message: "Neshan not answer",
+    //             });
+    //         }
+    //         console.log("response from trip neshan:", response.data);
+
+    //         const locs = response.data.points.map(
+    //             (point) => `${point.location[0]},${point.location[1]}`
+    //         );
+    //         locs.push(locs[0]);
+
+    //         let len = 0;
+    //         const routes = [];
+
+    //         for (let i = 0; i < locs.length - 1; i++) {
+    //             const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${
+    //                 locs[i]
+    //             }&destination=${locs[i + 1]}`;
+
+    //             const directionResponse = await axios.get(
+    //                 directionUrl,
+    //                 options
+    //             );
+    //             const distance =
+    //                 directionResponse.data.routes[0].legs[0].distance.value;
+    //             routes.push(
+    //                 directionResponse.data.routes[0].overview_polyline.points
+    //             );
+    //             len += distance;
+    //         }
+    //         const data = {
+    //             routes,
+    //             points: response.data.points,
+    //             distance: len,
+    //             IsValid: true,
+    //         };
+    //         console.log("data", data);
+
+    //         return this.response({
+    //             res,
+    //             message: "ok",
+    //             data,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error in getTrip:", error);
+    //         return this.response({
+    //             res,
+    //             code: 214,
+    //             message: "Neshan not answer",
+    //         });
+    //     }
+    // }
+
+     async getTrip(req, res) {
+            try {
+                let { locations } = req.query;
+    
+                if (!locations) {
+                    return this.response({
+                        res,
+                        code: 604,
+                        message: "locations need!",
+                    });
+                }
+    
+                const coords = locations.split("|").map((pair) => {
+                    const [lat, lng] = pair.split(",").map(Number);
+                    return [lng, lat]; // Vroom expects [lng, lat]
+                });
+    
+                const vehicles = [
+                    {
+                        id: 0,
+                        start: coords[0],
+                        end: coords[0],
+                    },
+                ];
+    
+                const jobs = coords.slice(1).map((loc, index) => ({
+                    id: index + 1,
+                    location: loc,
+                }));
+    
+                const body = {
+                    vehicles,
+                    jobs,
+                    options: { g: true },
+                };
+    
+                // const response = await axios.post("http://localhost:3000", body, {
+                const response = await axios.post("https://vroom.mysamar.ir", body, {
+                    headers: { "Content-Type": "application/json" },
+                });
+                let points = [{ index: 0 }];
+    
+                points.push(
+                    ...response.data.routes[0].steps
+                        .filter((step) => step.type === "job")
+                        .map((step, i) => ({ index: i + 1 }))
+                );
+    
+                const data = {
+                    routes: [response.data.routes[0].geometry],
+                    points,
+                    distance: response.data.summary.distance,
+                    IsValid: true,
+                };
+    
                 return this.response({
                     res,
-                    code: 604,
-                    message: "locations need!",
+                    message: "ok",
+                    data,
                 });
-            }
-
-            locations = locations.replaceAll("|", "%7C");
-
-            const url = `https://api.neshan.org/v3/trip?waypoints=${locations}&sourceIsAnyPoint=false`;
-            const options = {
-                headers: { "Api-Key": neshan },
-                timeout: 9500,
-            };
-
-            const response = await axios.get(url, options);
-
-            if (!response.data) {
+            } catch (error) {
+                console.error("Error in getTrip:", error);
                 return this.response({
                     res,
                     code: 214,
                     message: "Neshan not answer",
                 });
             }
-
-            const locs = response.data.points.map(
-                (point) => `${point.location[0]},${point.location[1]}`
-            );
-            locs.push(locs[0]);
-
-            let len = 0;
-            const routes = [];
-
-            for (let i = 0; i < locs.length - 1; i++) {
-                const directionUrl = `https://api.neshan.org/v4/direction/no-traffic?origin=${
-                    locs[i]
-                }&destination=${locs[i + 1]}`;
-
-                const directionResponse = await axios.get(
-                    directionUrl,
-                    options
-                );
-                const distance =
-                    directionResponse.data.routes[0].legs[0].distance.value;
-                routes.push(
-                    directionResponse.data.routes[0].overview_polyline.points
-                );
-                len += distance;
-            }
-            const data = {
-                routes,
-                points: response.data.points,
-                distance: len,
-                IsValid: true,
-            };
-
-            return this.response({
-                res,
-                message: "ok",
-                data,
-            });
-        } catch (error) {
-            console.error("Error in getTrip:", error);
-            return this.response({
-                res,
-                code: 214,
-                message: "Neshan not answer",
-            });
         }
-    }
+
     async getTripLocal(req, res) {
         try {
             let { locations } = req.query;

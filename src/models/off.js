@@ -20,6 +20,7 @@ const offPackSchema = new mongoose.Schema(
         address: { type: String, default: "" },
         link: { type: String, default: "" },
         max: { type: Number, default: -1 },
+        price: { type: Number, default: 100000 },
         maxDate: { type: Date, default: null },
         cityId: { type: Number, required: true },
         details: { type: String, default: "" },
@@ -74,6 +75,7 @@ const offCodeSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             required: true,
         },
+        price: { type: Number, default: 100000 },
         operator: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

@@ -3890,10 +3890,11 @@ module.exports = new (class extends controller {
                 for (const service of services) {
                     const add_serv = { serviceNum: service.serviceNum };
 
-                    const school = await this.School.findById(service.schoolId);
+                    const school = await this.School.findById(service.schoolIds[0]);
 
                     add_serv.school = school.name;
-                    add_serv.studentCount = service.student.length;
+                 
+                    add_serv.studentCount = await this.Student.countDocuments({service:service._id,state:4})
                     serv.push(add_serv);
                 }
                 add.service = serv;
@@ -4058,12 +4059,15 @@ module.exports = new (class extends controller {
     async findDriversByNameOrPhone(req, res) {
         try {
             const { agencyId, s } = req.query;
-            if (!agencyId || !s) {
+            
+            if (!agencyId) {
                 return res
                     .status(204)
                     .json({ message: "Invalid agencyId or s" });
             }
+            console.log("agencyId",agencyId);
             const agency = await this.Agency.findById(agencyId).lean();
+            console.log("agency",agency);
             if (!agency) {
                 return res.status(204).json({ message: "Agency not found" });
             }
@@ -4101,7 +4105,7 @@ module.exports = new (class extends controller {
                     phone: doc.phone,
                 };
             });
-            console.log("users", users);
+            // console.log("users", users);
 
             return res.json(users);
         } catch (error) {

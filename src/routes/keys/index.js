@@ -29,6 +29,7 @@ router.get(
 );
 router.get("/GetAllCity", controller.getAllCity.bind(controller));
 router.get("/GetTrip", controller.getTrip.bind(controller));
+router.get("/GetTripLocal", controller.getTripLocal.bind(controller));
 router.post(
   "/GetMySearch",
   validator.getMySearchValidator(),

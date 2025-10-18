@@ -2269,6 +2269,13 @@ module.exports = new (class extends controller {
                     message: "agencyId need",
                 });
             }
+            console.log("req.query.removeInstallment", req.query.removeInstallment);
+            let removeInstallment = req.query.removeInstallment || "";
+            if (removeInstallment === "true") {
+                removeInstallment = true;
+            } else {
+                removeInstallment = false;
+            }
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             if (req.query.sanadId === undefined) {
                 return this.response({
@@ -2296,6 +2303,33 @@ module.exports = new (class extends controller {
             const docSanad = await this.DocSanad.findOne({ agencyId, sanadId });
 
             if (docSanad) {
+                if (removeInstallment) {
+                    //for remove installment any student depned to this doc
+                    const doc = await this.DocListSanad.find({
+                        titleId: docSanad._id,
+                    });
+                    for (var dc of doc) {
+                        if (dc.accCode.startsWith("003005")) {
+                            const student = await this.Student.findOne(
+                                {
+                                    studentCode: dc.accCode.substring(6),
+                                },
+                                ""
+                            ).lean();
+                            console.log("student", dc.accCode.substring(6));
+                            if (student) {
+                               const som= await this.PayQueue.deleteMany({
+                                    studentId: student._id,
+                                    type: "installment",
+                                    cardNumber: { $in: ["", null, " "] },
+                                    isPaid: false,
+                                });
+                                console.log("removeInstallment", som);
+                            }
+                        }
+                    }
+                }
+
                 await this.DocListSanad.deleteMany({ titleId: docSanad._id });
                 await this.DocSanad.findByIdAndDelete(docSanad._id);
                 const checkHis = await this.CheckHistory.find({

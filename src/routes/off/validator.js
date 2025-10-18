@@ -33,6 +33,7 @@ module.exports = new (class {
                 .isEmpty()
                 .withMessage("cityId cant be empty"),
             check("companyId").not().isEmpty().withMessage("companyId cant be empty"),
+            check("price").not().isEmpty().withMessage("price cant be empty"),
         ];
     }
     setNewUserForOffCoValidator() {

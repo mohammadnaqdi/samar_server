@@ -1332,8 +1332,8 @@ module.exports = new (class extends controller {
                         totalCost: 1,
                         totalDDS: 1,
                         dayCount: 1,
-                        studentCount:1,
-                        totalServiceCount:1,
+                        studentCount: 1,
+                        totalServiceCount: 1,
                     },
                 },
             ]);
@@ -1646,8 +1646,9 @@ module.exports = new (class extends controller {
     //     .sort({ kilometer: 1 })
     //     .lean();
     // }
-    async getPricingTableNew(carId, districtId, grade) {
+    async getPricingTableNew(carId, districtId, grade,agencyId) {
         const query = [
+            { agencyId: agencyId },
             { delete: false },
             {
                 $or: [{ districtId }, { districtId: 0 }],
@@ -1659,6 +1660,7 @@ module.exports = new (class extends controller {
         if (carId && carId != 0) {
             query.push({ carId });
         }
+        
 
         return this.PriceTable.find(
             { $and: query },
@@ -1949,16 +1951,16 @@ module.exports = new (class extends controller {
         }).save();
 
         const phone = user.phone;
-        const setting = await this.AgencySet.findOne({
-            agencyId: driver.agencyId,
-        });
-        let formula = "a-(a*(b/100))";
-        let formulaForStudent = false;
-        if (setting) {
-            formula = setting.formula;
-            formulaForStudent = setting.formulaForStudent;
-        }
-        const percent = await this.percent(driver.agencyId);
+        // const setting = await this.AgencySet.findOne({
+        //     agencyId: driver.agencyId,
+        // });
+        // let formula = "a-(a*(b/100))";
+        // let formulaForStudent = false;
+        // if (setting) {
+        //     formula = setting.formula;
+        //     formulaForStudent = setting.formulaForStudent;
+        // }
+        // const percent = await this.percent(driver.agencyId);
         console.log("daysDifference", daysDifference);
         for (let d = 0; d <= daysDifference; d++) {
             const day = getDateByOffset(startDate, d);
@@ -2046,17 +2048,17 @@ module.exports = new (class extends controller {
                                         cost: st.serviceCost,
                                         driverCost: st.driverCost,
                                     });
-                                    serviceCost =serviceCost+ st.serviceCost;
-                                    driverShare = driverShare+ st.driverCost;
+                                    serviceCost = serviceCost + st.serviceCost;
+                                    driverShare = driverShare + st.driverCost;
                                 }
-                                sc =sc+ serviceCost;
-                                dds =dds+ driverShare;
+                                sc = sc + serviceCost;
+                                dds = dds + driverShare;
                                 serv.cost = serviceCost;
                                 serv.driverSharing = driverShare;
                             }
                         } else {
-                            sc =sc+ serv.cost;
-                            dds =dds+ serv.driverSharing;
+                            sc = sc + serv.cost;
+                            dds = dds + serv.driverSharing;
                         }
                         snum.push(serv.serviceNum);
                         service.push({
@@ -2252,11 +2254,9 @@ module.exports = new (class extends controller {
                                     cost: std.serviceCost,
                                     driverCost: std.driverCost,
                                 }));
-
                                 totalServiceCost += service.cost;
                                 totalDds += service.driverSharing;
                                 serviceNums.push(service.serviceNum);
-
                                 return {
                                     num: service.serviceNum,
                                     serviceCost: service.cost,
@@ -2353,7 +2353,7 @@ module.exports = new (class extends controller {
             }
 
             const studentIDs = await this.Student.find({ school }).then(
-                (item) => item.map((doc) => doc.id)
+                (item) => item.map((doc) => doc._id)
             );
 
             const report = await this.DDS.aggregate([
@@ -2615,6 +2615,12 @@ module.exports = new (class extends controller {
                     { service: service._id },
                     "serviceDistance _id"
                 ).lean();
+                if (!studentDocs.length) {
+                    await this.Service.findByIdAndUpdate(service._id, {
+                        delete: true,
+                    });
+                    continue;
+                }
                 // const studentIds = service.student;
                 // const studentDocs = await this.Student.find(
                 //     { _id: { $in: studentIds } },
@@ -2625,7 +2631,7 @@ module.exports = new (class extends controller {
                     studentId: studentDoc._id,
                     studentDistance: studentDoc.serviceDistance,
                 }));
-
+                console.log("students", students);   
                 const [school, driver] = await Promise.all([
                     this.School.findById(
                         service.schoolIds[0],
@@ -2648,19 +2654,21 @@ module.exports = new (class extends controller {
                 let pricingTable = await this.getPricingTableNew(
                     carId,
                     districtId,
-                    grade
+                    grade,agencyId
                 );
+                console.log("carId", carId);   
+                
 
                 if (!pricingTable.length) {
                     pricingTable = await this.getPricingTableNew(
                         0,
                         districtId,
-                        grade
+                        grade,agencyId
                     );
                 }
                 if (!pricingTable.length) continue;
                 const studentPrices = calculateNew(pricingTable, students);
-
+                console.log("studentPrices", studentPrices);    
                 let driverShare = 0;
                 let overall = 0;
                 for (var pr of studentPrices) {
@@ -2709,6 +2717,7 @@ module.exports = new (class extends controller {
                 servs.push(service.id);
 
                 count++;
+                if(count>2)break;
             }
             await new this.OperationLog({
                 userId: req.user._id,

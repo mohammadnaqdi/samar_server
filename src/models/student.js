@@ -93,7 +93,7 @@ const studentSchema = new mongoose.Schema(
             default: function () {
                 const now = new Date();
                 const year = now.getFullYear();
-                return new Date(year, 8, 22);
+                return new Date(year, 8, 23);
             },
         },
         endOfContract: {

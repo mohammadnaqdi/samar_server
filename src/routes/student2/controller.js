@@ -94,7 +94,7 @@ module.exports = new (class extends controller {
             const result = await this.DDS.aggregate([
                 {
                     $match: {
-                        "service.students.id": studentId,
+                        "service.students.id": ObjectId.createFromHexString(studentId),
                         createdAt: { $gte: startDate, $lte: endDate },
                     },
                 },
@@ -105,7 +105,7 @@ module.exports = new (class extends controller {
                     $unwind: "$service.students",
                 },
                 {
-                    $match: { "service.students.id": studentId },
+                    $match: { "service.students.id": ObjectId.createFromHexString(studentId) },
                 },
                 {
                     $group: {
@@ -139,7 +139,7 @@ module.exports = new (class extends controller {
             const { studentId } = req.query;
 
             const reports = await this.DDS.find({
-                "service.students.id": studentId,
+                "service.students.id":ObjectId.createFromHexString(studentId) ,
             }).sort({ createdAt: 1 });
 
             const reportGroups = [];
@@ -175,9 +175,10 @@ module.exports = new (class extends controller {
                             );
 
                             currentGroup = {
-                                driver_name: `${user.name} ${user.lastName}`,
-                                driver_phone: `${user.phone}`,
-                                driver_pic: `${driver.pic}`,
+                                driver_name: user.name,
+                                driver_last_name: user.lastName,
+                                driver_phone: user.phone,
+                                driver_pic: driver.pic,
                                 serviceNum: service.num,
                                 driverId: report.driverId,
                                 cost,
@@ -279,7 +280,7 @@ module.exports = new (class extends controller {
                 let driverShare = 0;
                 const reports = await this.DDS.find({
                     createdAt: { $lte: endDate, $gte: startDate },
-                    "service.students.id": st.toString(),
+                    "service.students.id": st,
                 }).sort({ createdAt: 1 });
                 // console.log("reports", reports.length);
                 const studentInfo = await this.Student.findById(
@@ -504,7 +505,7 @@ module.exports = new (class extends controller {
             const { studentId } = req.query;
 
             const reports = await this.DDS.find({
-                "service.students.id": studentId,
+                "service.students.id": ObjectId.createFromHexString(studentId),
             }).sort({ createdAt: 1 });
 
             return this.response({
@@ -785,9 +786,9 @@ module.exports = new (class extends controller {
                 .populate("parent", "name lastName phone")
                 .lean();
             if (students.length === 0) {
-                return res.status(204).json({ message: "No student found" });
+                return res.json([]);
             }
-            console.log("students", students);
+            // console.log("students", students);
 
             return res.json(students);
         } catch (error) {

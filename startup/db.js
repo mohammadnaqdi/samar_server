@@ -1,13 +1,15 @@
 const { Keys, CounterKey } = require("../src/models/keys");
 // const Day = require("../src/models/days");
-// const School = require("../src/models/school");
-// const Student = require("../src/models/student");
+const School = require("../src/models/school");
+const Student = require("../src/models/student");
 const { Agency } = require("../src/models/agency");
-// const { DriverInfo, Driver } = require("../src/models/driver");
-// const { Holiday } = require("../src/models/calendar");
+const { Driver } = require("../src/models/driver");
+const Car = require("../src/models/car");
+const { Service, PriceTable } = require("../src/models/service");
 const Rule = require("../src/models/rules");
 const { LevelAcc, Bank } = require("../src/models/levels");
-const { BankGate,PayGate } = require("../src/models/banks");
+const { BankGate, PayGate } = require("../src/models/banks");
+const { DDS } = require("../src/models/dds");
 // const { Service } = require("../src/models/service");
 
 const textValues = [
@@ -37,56 +39,226 @@ module.exports = async function (mongoose) {
             return console.log("mongodb Connected!");
         })
         .catch(() => console.log("mongodb dont Connected!!"));
+    // if (true) {
+    //     const some = await DDS.find({
+    //         "service.driverCost": { $exists: true },
+    //     });
+    //     console.log("some", some.length);
+    //     for (var dd of some) {
+    //         let changed = false;
+    //         for (var service of dd.service) {
+    //             if (service.driverCost && service.driverCost > 0) {
+    //                 service.driverShare = service.driverCost;
+    //                 changed = true;
+    //             }
+    //         }
+    //         if (changed) {
+    //             dd.markModified("service"); // Ensure Mongoose sees array changes
+    //             await dd.save();
+    //         }
+    //     }
+    // }
+    // if (true) {
+    //     const some = await DDS.find();
+    //     let zero = [];
+    //     let count = 0;
+    //     let serviceProblem = [];
+    //     let stdentProblem = [];
+    //     for (var dd of some) {
+    //         let changed = false;
+    //         let sc=0;
+    //         let dds=0;
+    //         for (var service of dd.service) {
+    //             if (service.driverShare >= service.serviceCost) {
+    //                 let cost = 0;
+    //                 let driverCost = 0;
+    //                 for (var st of service.students) {
+    //                     if (st.cost < 1) {
+    //                         const student = await Student.findById(
+    //                             st.id,
+    //                             "serviceCost driverCost serviceDistance service school"
+    //                         ).lean();
+    //                         if (student) {
+    //                             st.cost = student.serviceCost;
+    //                             st.driverCost = student.driverCost;
+    //                             if (!st.cost || st.cost < 1) {
+    //                                 stdentProblem.push(st.id);
+    //                                 if (student.service) {
+    //                                     const service = await Service.findById(
+    //                                         student.service
+    //                                     );
+    //                                     if (service) {
+    //                                         const [school, driver] =
+    //                                             await Promise.all([
+    //                                                 School.findById(
+    //                                                     student.school,
+    //                                                     "districtId grade"
+    //                                                 ).lean(),
+    //                                                 Driver.findById(
+    //                                                     service.driverId,
+    //                                                     "carId"
+    //                                                 ).lean(),
+    //                                             ]);
+    //                                         if (school && driver) {
+    //                                             const car = await Car.findById(
+    //                                                 driver.carId,
+    //                                                 "capacity"
+    //                                             ).lean();
+    //                                             if (car) {
+    //                                                 const carId = car.capacity;
+    //                                                 const {
+    //                                                     districtId,
+    //                                                     grade,
+    //                                                 } = school;
+    //                                                 const query = [
+    //                                                     {
+    //                                                         agencyId:
+    //                                                             dd.agencyId,
+    //                                                     },
+    //                                                     { delete: false },
+    //                                                     {
+    //                                                         $or: [
+    //                                                             { districtId },
+    //                                                             {
+    //                                                                 districtId: 0,
+    //                                                             },
+    //                                                         ],
+    //                                                     },
+    //                                                     {
+    //                                                         $or: [
+    //                                                             {
+    //                                                                 gradeId: {
+    //                                                                     $in: grade,
+    //                                                                 },
+    //                                                             },
+    //                                                             { gradeId: 0 },
+    //                                                         ],
+    //                                                     },
+    //                                                 ];
+    //                                                 if (carId && carId != 0) {
+    //                                                     query.push({ carId });
+    //                                                 }
 
-    if(false){
-        const count=await PayGate.countDocuments();
-        if(count<1){
-            const bankGate=await BankGate.find();
-            let count=0;
-            for(var g of bankGate){
-                let xType='CARD';
+    //                                                 const pricingTable =
+    //                                                     await PriceTable.find(
+    //                                                         { $and: query },
+    //                                                         "kilometer studentAmount driverAmount -_id"
+    //                                                     )
+    //                                                         .sort({
+    //                                                             kilometer: 1,
+    //                                                         })
+    //                                                         .lean();
+    //                                                 if (
+    //                                                     pricingTable.length > 0
+    //                                                 ) {
+    //                                                     const matchedPricing =
+    //                                                         pricingTable.find(
+    //                                                             (priceItem) =>
+    //                                                                 priceItem.kilometer *
+    //                                                                     1000 >=
+    //                                                                 student.serviceDistance
+    //                                                         );
+
+    //                                                     if (matchedPricing) {
+    //                                                         st.cost =
+    //                                                             matchedPricing.studentAmount;
+    //                                                         st.driverCost =
+    //                                                             matchedPricing.driverAmount;
+    //                                                         await Student.findByIdAndUpdate(
+    //                                                             student._id,
+    //                                                             {
+    //                                                                 serviceCost:
+    //                                                                     matchedPricing.studentAmount,
+    //                                                                 driverCost:
+    //                                                                     matchedPricing.driverAmount,
+    //                                                             }
+    //                                                         );
+    //                                                     }
+    //                                                 }
+    //                                             }
+    //                                         }
+    //                                     }
+    //                                 }
+    //                             }
+    //                         }
+    //                     }
+    //                     cost = cost + st.cost;
+    //                     driverCost = driverCost + st.driverCost;
+    //                 }
+    //                 service.driverShare = driverCost;
+    //                 service.serviceCost = cost;
+    //                 count++;
+    //                 changed = true;
+    //             }
+    //             if (!service.driverShare || service.driverShare < 100) {
+    //                 zero.push(service.num);
+    //             } else if (service.driverShare >= service.serviceCost) {
+    //                 serviceProblem.push(service.num);
+    //             }
+    //             sc=sc+service.serviceCost;
+    //             dds=dds+service.driverShare;
+    //         }
+    //         if (changed) {
+    //             dd.sc=sc/30;
+    //             dd.dds=dds/30;
+    //             dd.markModified("service"); // Ensure Mongoose sees array changes
+    //             await dd.save();
+    //         }
+    //     }
+    //     console.log("count", count);
+    //     console.log("serviceProblem", serviceProblem);
+    //     const unique = [...new Set(zero)];
+    //     console.log("zero", unique);
+    //     console.log("stdentProblem", stdentProblem);
+    // }
+    if (false) {
+        const count = await PayGate.countDocuments();
+        if (count < 1) {
+            const bankGate = await BankGate.find();
+            let count = 0;
+            for (var g of bankGate) {
+                let xType = "CARD";
                 switch (g.type) {
-                    case 'MELLAT':
-                        xType='BPM';
+                    case "MELLAT":
+                        xType = "BPM";
                         break;
-                    case 'SADERAT':
-                        xType='SEPEHR';
+                    case "SADERAT":
+                        xType = "SEPEHR";
                         break;
-                    case 'ZARIN':
-                        xType='ZARIN';
+                    case "ZARIN":
+                        xType = "ZARIN";
                         break;
-                    case 'MEHR':
-                        xType='FCP';
+                    case "MEHR":
+                        xType = "FCP";
                         break;
-                    case 'SAMAN':
-                        xType='SEP';
+                    case "SAMAN":
+                        xType = "SEP";
                         break;
-                    case 'TEJARAT':
-                        xType='PEC';
+                    case "TEJARAT":
+                        xType = "PEC";
                         break;
-                
                 }
-                 await PayGate.create({
-                    agencyId:g.agencyId,
+                await PayGate.create({
+                    agencyId: g.agencyId,
                     editor: g.editor,
-                    bankName:g.bankName,
-                    bankCode:g.bankCode,
-                    type:xType,
-                    card:g.card,
-                    terminal:g.terminal,
-                    userName:g.userName,
-                    userPass:g.userPass,
-                    hesab:g.hesab,
-                    active:g.active,
-                    personal:g.personal,
-                    callback:g.callback,
-                    schools:[],
+                    bankName: g.bankName,
+                    bankCode: g.bankCode,
+                    type: xType,
+                    card: g.card,
+                    terminal: g.terminal,
+                    userName: g.userName,
+                    userPass: g.userPass,
+                    hesab: g.hesab,
+                    active: g.active,
+                    personal: g.personal,
+                    callback: g.callback,
+                    schools: [],
                 });
                 count++;
             }
             console.log(`create ${count} payGates`);
         }
-    }    
+    }
 
     // if (false) {
     //     const drivers = await Driver.find();

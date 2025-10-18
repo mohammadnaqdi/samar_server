@@ -79,14 +79,8 @@ module.exports = new (class {
     }
     getAddress2Validator() {
         return [
-            check("lat")
-                .not()
-                .isEmpty()
-                .withMessage("lat cant be empty"),
-            check("lng")
-                .not()
-                .isEmpty()
-                .withMessage("lng cant be empty"),
+            check("lat").not().isEmpty().withMessage("lat cant be empty"),
+            check("lng").not().isEmpty().withMessage("lng cant be empty"),
         ];
     }
 })();

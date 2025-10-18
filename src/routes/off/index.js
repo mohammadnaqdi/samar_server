@@ -21,6 +21,8 @@ router.get("/GetOffPackByCompanyId",
     controller.getOffPackByCompanyId.bind(controller));
 router.get("/GetMyOffer",
     controller.getMyOffer.bind(controller));
+router.get("/GetMyOfferSummary",
+    controller.getMyOfferSummary.bind(controller));
 router.get("/SetAndGetMyOffer",
     controller.setAndGetMyOffer.bind(controller));
 router.post("/SetOffPack", isSuperAdmin,

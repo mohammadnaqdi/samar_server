@@ -45,10 +45,6 @@ module.exports = new (class {
                 .not()
                 .isEmpty()
                 .withMessage("agencyId cant be empty"),
-            check("start")
-                .not()
-                .isEmpty()
-                .withMessage("start cant be empty"),
             check("onlyActive")
                 .not()
                 .isEmpty()

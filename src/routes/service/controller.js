@@ -390,15 +390,16 @@ module.exports = new (class extends controller {
             }
 
             // ✅ 4. Update Students + PayQueue + OperationLogs
-            for (const stu of stChange) {
+            for (let stu of stChange) {
                 // 🟡 Update student service info
-                if (!stu.serviceFee || stu.driverFee < 0) {
+                if (stu.serviceFee == null || stu.driverFee < 0) {
                     await session.abortTransaction();
                     session.endSession();
                     return this.response({
                         res,
                         code: 501,
-                        message: "serviceFee cant be null && driverFee cant be -1",
+                        message:
+                            "serviceFee cant be null && driverFee cant be -1",
                     });
                 }
                 await this.Student.findByIdAndUpdate(
@@ -406,7 +407,6 @@ module.exports = new (class extends controller {
                     {
                         service: stu.service,
                         serviceNum: stu.serviceNum,
-                        agencyId: stu.serviceNum < 1 ? null : agencyId,
                         serviceCost: stu.serviceFee,
                         driverCost: stu.driverFee,
                         driverCode: driver.driverCode,
@@ -984,7 +984,7 @@ module.exports = new (class extends controller {
             let qr = [];
             let searchQ = {
                 $or: [
-                    { serviceNum: escapeRegExp(search) },
+                    // { serviceNum: escapeRegExp(search) },
                     {
                         driverName: {
                             $regex: ".*" + escapeRegExp(search) + ".*",
@@ -1960,67 +1960,319 @@ module.exports = new (class extends controller {
         }
     }
 
-    // async findNotEqualService(req, res) {
-    //     try {
-    //         const { agencyId } = req.query;
+    async findNotEqualService(req, res) {
+        try {
+            const { agencyId } = req.query;
+            const students = await this.Student.find(
+                {
+                    agencyId,
+                    state: 4,
+                    service: { $ne: null },
+                    delete: false,
+                },
+                "serviceDistance service school name lastName studentCode serviceNum serviceCost driverCode driverCost"
+            ).lean();
+            let notFindCar = [];
+            let notFindSchool = [];
+            let notFindDriver = [];
+            let notFindPriceTable = [];
+            let notMatchPrice = [];
+            let studentsNotMatch = [];
+            for (var student of students) {
+                const service = await this.Service.findById(
+                    student.service
+                ).lean();
+                if (service) {
+                    const [school, driver] = await Promise.all([
+                        this.School.findById(
+                            student.school,
+                            "districtId grade name"
+                        ).lean(),
+                        this.Driver.findById(
+                            service.driverId,
+                            "carId driverCode userId"
+                        ).lean(),
+                    ]);
+                    if (!school) {
+                        notFindSchool.push({
+                            name: student.name,
+                            lastName: student.lastName,
+                            studentCode: student.studentCode,
+                            driverCode: student.driverCode,
+                            serviceNum: student.serviceNum,
+                            serviceCost: student.serviceCost,
+                            driverCost: student.driverCost,
+                            school: "",
+                            serviceCostPrice: 0,
+                            driverCostPrice: 0,
+                            serviceDistance: student.serviceDistance,
+                        });
+                        continue;
+                    }
+                    if (!driver) {
+                        notFindDriver.push({
+                            name: student.name,
+                            lastName: student.lastName,
+                            studentCode: student.studentCode,
+                            driverCode: student.driverCode,
+                            serviceNum: student.serviceNum,
+                            serviceCost: student.serviceCost,
+                            driverCost: student.driverCost,
+                            school: school.name,
+                            serviceCostPrice: 0,
+                            driverCostPrice: 0,
+                            serviceDistance: student.serviceDistance,
+                        });
+                        continue;
+                    }
+                    const car = await this.Car.findById(
+                        driver.carId,
+                        "capacity"
+                    ).lean();
+                    if (!car) {
+                        const user = await this.User.findById(
+                            driver.userId,
+                            "name lastName phone"
+                        );
+                        if (user) {
+                            notFindCar.push({
+                                name: user.name,
+                                lastName: user.lastName,
+                                studentCode: user.phone,
+                                driverCode: student.driverCode,
+                                serviceNum: student.serviceNum,
+                                serviceCost: student.serviceCost,
+                                driverCost: student.driverCost,
+                                school: school.name,
+                                serviceCostPrice: 0,
+                                driverCostPrice: 0,
+                                serviceDistance: student.serviceDistance,
+                            });
+                        } else {
+                            console.error("not find user for ", driver.userId);
+                        }
+                        continue;
+                    }
+                    const carId = car.capacity;
+                    const { districtId, grade } = school;
+                    const query = [
+                        {
+                            agencyId: service.agencyId,
+                        },
+                        { delete: false },
+                        {
+                            $or: [
+                                { districtId },
+                                {
+                                    districtId: 0,
+                                },
+                            ],
+                        },
+                        {
+                            $or: [
+                                {
+                                    gradeId: {
+                                        $in: grade,
+                                    },
+                                },
+                                { gradeId: 0 },
+                            ],
+                        },
+                    ];
+                    if (carId && carId != 0) {
+                        query.push({ carId });
+                    }
 
-    //         const services = await this.Service.find({
-    //             agencyId,
-    //             delete: false,
-    //         });
-    //         let notEqualServices = [];
-    //         let notEqualNum = [];
-    //         let notActiveStudent = [];
-    //         for (var i = 0; i < services.length; i++) {
-    //             const students = services[i].student;
-    //             const studentCost = services[i].studentCost;
-    //             if (students.length != studentCost.length) {
-    //                 notEqualServices.push(
-    //                     services[i].serviceNum + "-" + services[i].driverPhone
-    //                 );
-    //                 continue;
-    //             }
-    //             for (var j = 0; j < students.length; j++) {
-    //                 const student = await this.Student.findById(students[j]);
-    //                 if (!student) {
-    //                     notActiveStudent.push(students[j]);
-    //                     continue;
-    //                 }
-    //                 if (student.serviceId != services[i].serviceNum) {
-    //                     notEqualNum.push(
-    //                         services[i].serviceNum +
-    //                             "-" +
-    //                             services[i].driverPhone
-    //                     );
-    //                 }
-    //                 if (
-    //                     Math.abs(
-    //                         student.serviceCost - services[i].studentCost[j]
-    //                     ) > 10000
-    //                 ) {
-    //                     notEqualServices.push(
-    //                         services[i].serviceNum +
-    //                             "-" +
-    //                             services[i].driverPhone
-    //                     );
-    //                 }
-    //                 if (student.state != 4 || student.delete) {
-    //                     notActiveStudent.push(student.studentCode);
-    //                 }
-    //             }
-    //         }
-    //         let arrayWithoutDuplicates = [...new Set(notEqualServices)];
-    //         return this.response({
-    //             res,
-    //             data: {
-    //                 notEqualServices: arrayWithoutDuplicates,
-    //                 notEqualNum,
-    //                 notActiveStudent,
-    //             },
-    //         });
-    //     } catch (error) {
-    //         console.error("Error while findNotEqualService:", error);
-    //         return res.status(500).json({ error: "Internal Server Error." });
-    //     }
-    // }
+                    const pricingTable = await this.PriceTable.find(
+                        { $and: query },
+                        "kilometer studentAmount driverAmount -_id"
+                    )
+                        .sort({
+                            kilometer: 1,
+                            districtId: 1,
+                        })
+                        .lean();
+                    if (!pricingTable.length) {
+                        if (notFindPriceTable.length < 1) {
+                            console.log("query", JSON.stringify(query));
+                            console.log("driverCode", driver);
+                        }
+                        notFindPriceTable.push({
+                            name: student.name,
+                            lastName: student.lastName,
+                            studentCode: student.studentCode,
+                            driverCode: student.driverCode,
+                            serviceNum: student.serviceNum,
+                            serviceCost: student.serviceCost,
+                            driverCost: student.driverCost,
+                            school: school.name,
+                            serviceCostPrice: 0,
+                            driverCostPrice: 0,
+                            serviceDistance: student.serviceDistance,
+                        });
+                        continue;
+                    }
+                    const matchedPricing = pricingTable.find(
+                        (priceItem) =>
+                            priceItem.kilometer * 1000 >=
+                            student.serviceDistance
+                    );
+                    if (!matchedPricing) {
+                        if (notMatchPrice.length < 1) {
+                            console.log("query", JSON.stringify(query));
+                        }
+                        notMatchPrice.push({
+                            name: student.name,
+                            lastName: student.lastName,
+                            studentCode: student.studentCode,
+                            driverCode: student.driverCode,
+                            serviceNum: student.serviceNum,
+                            serviceCost: student.serviceCost,
+                            driverCost: student.driverCost,
+                            school: school.name,
+                            serviceCostPrice: 0,
+                            driverCostPrice: 0,
+                            serviceDistance: student.serviceDistance,
+                        });
+                        continue;
+                    }
+                    if (
+                        Math.abs(
+                            student.serviceCost - matchedPricing.studentAmount
+                        ) > 9999 ||
+                        Math.abs(
+                            student.driverCost - matchedPricing.driverAmount
+                        ) > 9999
+                    ) {
+                        studentsNotMatch.push({
+                            name: student.name,
+                            lastName: student.lastName,
+                            studentCode: student.studentCode,
+                            driverCode: student.driverCode,
+                            serviceNum: student.serviceNum,
+                            serviceCost: student.serviceCost,
+                            driverCost: student.driverCost,
+                            school: school.name,
+                            serviceCostPrice: matchedPricing.studentAmount,
+                            driverCostPrice: matchedPricing.driverAmount,
+                            serviceDistance: student.serviceDistance,
+                        });
+                    }
+                } else {
+                    console.log(
+                        "student not find service",
+                        student.studentCode
+                    );
+                    await this.Student.findOneAndUpdate(student._id, {
+                        service: null,
+                    });
+                }
+            }
+
+            return this.response({
+                res,
+                data: {
+                    count: students.length,
+                    notFindCar,
+                    notFindSchool,
+                    notFindDriver,
+                    notMatchPrice,
+                    notFindPriceTable,
+                    studentsNotMatch,
+                },
+            });
+        } catch (error) {
+            console.error("Error while findNotEqualService:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setDDSAgain(req, res) {
+        try {
+            const { agencyId } = req.query;
+            const some = await this.DDS.find({ agencyId });
+            for (var dd of some) {
+                let sc = 0;
+                let dds = 0;
+                for (var service of dd.service) {
+                    let sumCost = 0;
+                    let driverSumCost = 0;
+                    for (var i = 0; i < service.students.length; i++) {
+                        const student = await this.Student.findById(
+                            service.students[i].id,
+                            "serviceCost driverCost"
+                        ).lean();
+                        if (student) {
+                            service.students[i].cost = student.serviceCost;
+                            service.students[i].driverCost = student.driverCost;
+                            sumCost = sumCost + student.serviceCost;
+                            driverSumCost = driverSumCost + student.driverCost;
+                        } else {
+                            service.students.splice(i, 1);
+                            i--;
+                        }
+                    }
+                    service.driverShare = driverSumCost;
+                    service.serviceCost = sumCost;
+                    sc = sc + service.serviceCost;
+                    dds = dds + service.driverShare;
+                }
+                dd.sc = sc / 30;
+                dd.dds = dds / 30;
+                dd.markModified("service"); // Ensure Mongoose sees array changes
+                await dd.save();
+            }
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error while setDDSAgain:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+     async getCorruptedServices(req, res) {
+        try {
+            const { agencyId } = req.query;
+
+            const services = await this.Service.find({
+                agencyId,
+                delete: false,
+            });
+            const servicesiD = services.map((doc) => doc._id);
+
+            const students = await this.Student.find({
+                agencyId,
+                service: { $in: servicesiD },
+                delete: false,
+                active: true,
+                serviceCost: { $lte: 1000000 },
+                state: 4,
+            });
+            const drServices = await this.Service.find({
+                agencyId,
+                delete: false,
+                $expr: { $gte: ["$driverSharing", "$cost"] },
+            }).lean();
+            const students_with_distance = await this.Student.find({
+                agencyId,
+                serviceDistance: { $lte: 100 },
+                delete: false,
+            }).lean();
+            const students_null_service = await this.Student.find({
+                state: 4,
+                service: null,
+                delete: false,
+            }).lean();
+            return res.json({
+                c_students: students,
+                drServices,
+                students_with_distance,
+                students_null_service,
+            });
+        } catch (error) {
+            console.error("Error in getCorruptedServices:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 })();

@@ -248,11 +248,18 @@ module.exports = new (class extends controller {
             }
             const id = ObjectId.createFromHexString(req.query.id);
 
-            const services = await this.Service.find(
+            let services = await this.Service.find(
                 { driverId: id },
-                "serviceNum student"
-            );
-
+                "serviceNum "
+            ).lean();
+            for (var sr of services) {
+                const student = await this.Student.find({
+                    serviceNum: sr.serviceNum,
+                    delete: false,
+                    state: 4,
+                }).distinct("_id");
+                sr.student = student;
+            }
             return this.response({
                 res,
                 data: services,
@@ -279,18 +286,13 @@ module.exports = new (class extends controller {
             return null;
         }
     }
-    async removeStudentFromDDS(
-        date,
-        agencyId,
-        ddses,
-        studentId,
-    ) {
+    async removeStudentFromDDS(date, agencyId, ddses, studentId) {
         try {
             const monthLen = getMonth(date);
             for (var dds of ddses) {
                 for (var i in dds.service) {
                     var serv = dds.service[i];
-                 
+
                     for (var st of serv.students) {
                         if (st.id.toString() === studentId.toString()) {
                             dds.sc -= serv.serviceCost / monthLen;
@@ -363,14 +365,41 @@ module.exports = new (class extends controller {
             } = req.body;
             const cost = req.body.cost || 0;
             const dCost = req.body.dCost || 0;
-            
+            const lastName = req.body.lastName || "";
+            const driver = await this.Driver.findById(
+                newDriverId,
+                "driverCode userId"
+            );
+            if (!driver) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "driver not find",
+                });
+            }
+            let driverCode = driver.driverCode;
+            let driverName = name;
+            let driverLastName = lastName;
+            const user = await this.User.findById(
+                driver.userId,
+                "name lastName"
+            );
+            if (!user) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "user not find",
+                });
+            }
+            driverName = user.name;
+            driverLastName = user.lastName;
             let startDate = new Date(start);
             startDate.setHours(0, 0, 0, 0);
             let endDate = new Date(end);
             endDate.setHours(0, 0, 0, 0);
-            console.log("editStudentContract", startDate);
-            console.log("editStudentContract", endDate);
-            
+            // console.log("editStudentContract", startDate);
+            // console.log("editStudentContract", endDate);
+
             await new this.OperationLog({
                 userId: req.user._id,
                 name: req.user.name + " " + req.user.lastName,
@@ -408,7 +437,7 @@ module.exports = new (class extends controller {
 
             const student = await this.Student.findById(
                 studentId,
-                "serviceCost"
+                "serviceCost driverCost"
             );
             if (!student) {
                 return this.response({
@@ -427,8 +456,8 @@ module.exports = new (class extends controller {
             for (let d = 0; d <= daysDifference; d++) {
                 const day = getDateByOffset(startDate, d);
                 const jalaliDate = jMoment(day).format("jYYYY/jMM/jDD");
-                            const year = jalaliDate.split("/").map(Number)[0];
-                // console.log("day", day);
+                const year = jalaliDate.split("/").map(Number)[0];
+                // console.log("day", getDayOfYear(day));
                 const month = getMonth(day);
                 const startSearch = new Date(
                     day.getFullYear(),
@@ -448,16 +477,17 @@ module.exports = new (class extends controller {
                 );
 
                 let oldDDss = await this.DDS.find({
-                    "service.students.id": studentId,
-                    createdAt: { $lte: endSearch, $gte: startSearch },
+                    "service.students.id":
+                        ObjectId.createFromHexString(studentId),
+                    day: getDayOfYear(day),
                 });
-                console.log("oldDDss", oldDDss.length);
+                // console.log("oldDDss", oldDDss.length);
                 if (oldDDss.length > 0) {
                     await this.removeStudentFromDDS(
                         startDate,
                         agencyId,
                         oldDDss,
-                        studentId,
+                        studentId
                     );
 
                     // for (var n = 1; n < oldDDss.length; n++) {
@@ -466,9 +496,9 @@ module.exports = new (class extends controller {
                 }
                 oldDDss = await this.DDS.find({
                     driverId: newDriverId,
-                    createdAt: { $lte: endSearch, $gte: startSearch },
+                    day: getDayOfYear(day),
                 });
-                // console.log("oldzzzzDDss",oldDDss.length)
+                // console.log("oldzzzzDDss", oldDDss.length);
                 for (var j = 0; j < oldDDss.length; j++) {
                     if (oldDDss[j].service.length == 0) {
                         await this.DDS.findByIdAndDelete(oldDDss[j]._id);
@@ -477,7 +507,7 @@ module.exports = new (class extends controller {
                         j--;
                     } else {
                         for (var i = 0; i < oldDDss[j].service.length; i++) {
-                            if (oldDDss[j].service[i].students.length == 0) {
+                            if (oldDDss[j].service[i].students.length === 0) {
                                 oldDDss[j].service.splice(i, 1);
                                 i--;
                                 await this.DDS.findByIdAndUpdate(
@@ -495,7 +525,7 @@ module.exports = new (class extends controller {
                         }
                     }
                 }
-                // console.log("oldzzzz222DDss",oldDDss.length)
+                // console.log("oldzzzz222DDss", oldDDss.length);
 
                 let oldDDs = null;
                 if (oldDDss.length != 0) {
@@ -505,13 +535,14 @@ module.exports = new (class extends controller {
                     let newCost = 0;
                     let newDDS = 0;
                     let findService = false;
+                    // console.log("oldDDs", oldDDss);
                     for (var i in oldDDs.service) {
                         let ex = false;
-                        if (newServiceNum == oldDDs.service[i].num) {
+                        if (newServiceNum === oldDDs.service[i].num) {
                             ex = true;
                             findService = true;
                             oldDDs.service[i].students.push({
-                                id: studentId,
+                                id: ObjectId.createFromHexString(studentId),
                                 cost: studentCost,
                                 driverCost: driverCost,
                             });
@@ -531,15 +562,16 @@ module.exports = new (class extends controller {
                     if (!findService) {
                         let newService = {
                             num: parseInt(newServiceNum),
-                            students: [],
+                            students: [
+                                {
+                                    id: ObjectId.createFromHexString(studentId),
+                                    cost: studentCost,
+                                    driverCost: driverCost,
+                                },
+                            ],
                             serviceCost: studentCost,
                             driverShare: driverCost,
                         };
-                        newService.students.push({
-                            id: studentId,
-                            cost: studentCost,
-                            driverCost:driverCost
-                        });
 
                         oldDDs.service.push(newService);
                         newCost += studentCost;
@@ -566,14 +598,17 @@ module.exports = new (class extends controller {
                         service: oldDDs.service,
                     });
                 } else {
-                    
-                    const newDDS = Math.round(driverShare / month);
+                    const newDDS = Math.round(driverCost / month);
                     const newCost = Math.round(studentCost / month);
                     // const newDCost = Math.round(driverCost / month);
+
+                    // console.log("lastName", lastName);
                     const dd = new this.DDS({
                         agencyId,
                         driverId: newDriverId,
-                        name,
+                        name: driverName,
+                        lastName: driverLastName,
+                        driverCode,
                         phone,
                         service: [
                             {
@@ -582,17 +617,19 @@ module.exports = new (class extends controller {
                                 driverShare: driverCost,
                                 students: [
                                     {
-                                        id: studentId,
+                                        id: ObjectId.createFromHexString(
+                                            studentId
+                                        ),
                                         cost: studentCost,
-                                        driverCost:driverCost
+                                        driverCost: driverCost,
                                     },
                                 ],
                             },
                         ],
                         dds: newDDS,
                         sc: newCost,
-                        day:getDayOfYear(day),
-                        year:parseInt(year),
+                        day: getDayOfYear(day),
+                        year: parseInt(year),
                         status: "Edited",
                         desc: "بازنویسی شده dsc",
                         createdAt: day,
@@ -846,26 +883,15 @@ module.exports = new (class extends controller {
     async studentServiceList(req, res) {
         try {
             const { schools, agencyId } = req.body;
-
-            // let formula = "a-(a*(b/100))";
-            // let formulaForStudent = false;
-            // const percent = await this.percent(agencyId);
-            // const setting = await this.AgencySet.findOne({
-            //     agencyId: agencyId,
-            // });
-            // if (setting) {
-            //     formula = setting.formula;
-            //     formulaForStudent = setting.formulaForStudent;
-            // }
-
             const students = await this.Student.find(
                 { school: { $in: schools }, delete: false, state: 4 },
-                "name lastName service serviceNum serviceDistance serviceCost driverCost"
+                "name lastName service serviceNum serviceDistance serviceCost driverCost school"
             );
             let services = [];
-
             for (var st of students) {
-                const service = await this.Service.findById(st.service);
+                const school =await this.School.findById(st.school,'name').lean();
+                if (!school) continue;
+                const service = await this.Service.findById(st.service).lean();
                 if (!service) continue;
                 services.push({
                     studentName: st.name + " " + st.lastName,
@@ -874,6 +900,7 @@ module.exports = new (class extends controller {
                     driverShare: st.driverCost,
                     driverName: service.driverName,
                     driverCar: service.driverCar,
+                    schoolName: school.name,
                 });
             }
 
@@ -882,7 +909,7 @@ module.exports = new (class extends controller {
                 data: services,
             });
         } catch (error) {
-            console.error(`Error while studentCondition: ${error}`);
+            console.error(`Error while studentServiceList: ${error}`);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -1295,7 +1322,7 @@ module.exports = new (class extends controller {
 
             let ddses = await this.DDS.find({
                 agencyId: agencyId,
-                "service.students.id": studentId,
+                "service.students.id": ObjectId.createFromHexString(studentId),
                 createdAt: { $lte: endSearch, $gte: startSearch },
             });
             console.log("ddses.length", ddses.length);
@@ -1341,7 +1368,7 @@ module.exports = new (class extends controller {
                             allStudents.push({
                                 id: st.id,
                                 cost: st.cost,
-                                driverCost:st.driverCost
+                                driverCost: st.driverCost,
                             });
                             serv.serviceCost += st.cost;
                             serv.driverShare += st.driverCost;
@@ -1353,7 +1380,6 @@ module.exports = new (class extends controller {
                         dds.service[i].students = allStudents;
                         break;
                     } else {
-                       
                         dds.service[i].serviceCost = serv.serviceCost;
                         dds.service[i].driverShare = serv.driverShare;
                         dds.service[i].students = allStudents;
@@ -1465,62 +1491,16 @@ module.exports = new (class extends controller {
 
     async getAgencyDDSPage(req, res) {
         try {
-            const { agencyId, start, name } = req.body;
+            const { agencyId, from, to } = req.body;
+            if(!from || !to){
+                 return this.response({
+                    res,
+                    code: 604,
+                    message: "from to need!",
+                });
+            }
             let page = req.body.page;
             if (page < 0) page = 0;
-            //mehr
-            let startDate = new Date("2024-09-21T20:29:59.209Z");
-            let endDate = new Date("2024-10-21T20:29:59.209Z");
-            const st = new Date(start);
-            const month = st.getMonth() + 1;
-
-            switch (month) {
-                case 10: //aban
-                    startDate = new Date("2024-10-21T20:29:59.209Z");
-                    endDate = new Date("2024-11-20T20:29:59.209Z");
-                    break;
-                case 11: //azar
-                    startDate = new Date("2024-11-20T20:29:59.209Z");
-                    endDate = new Date("2024-12-20T20:29:59.209Z");
-                    break;
-                case 12: //dey
-                    startDate = new Date("2024-12-20T20:29:59.209Z");
-                    endDate = new Date("2025-01-19T20:29:02.209Z");
-                    break;
-                case 1: //bahman
-                    startDate = new Date("2025-01-19T20:29:59.209Z");
-                    endDate = new Date("2025-02-18T20:29:02.209Z");
-                    break;
-                case 2: //esfand
-                    startDate = new Date("2025-02-18T20:29:59.209Z");
-                    endDate = new Date("2025-03-20T20:29:02.209Z");
-                    break;
-                case 3: //farvardin
-                    startDate = new Date("2025-03-20T20:29:59.209Z");
-                    endDate = new Date("2025-04-20T20:29:02.209Z");
-                    break;
-                case 4: //ordibehest
-                    startDate = new Date("2025-04-20T20:29:59.209Z");
-                    endDate = new Date("2025-05-21T20:29:02.209Z");
-                    break;
-                case 5: //khordad
-                    startDate = new Date("2025-05-21T20:29:59.209Z");
-                    endDate = new Date("2025-06-21T20:29:02.209Z");
-                    break;
-            }
-            // let Difference_In_Time = endDate.getTime() - startDate.getTime();
-            console.log("startDatexx", startDate);
-            console.log("endDatexx", endDate);
-            let qr = [];
-            // if (name.trim().length>1) {
-            //     qr.push({
-            //         $or: [
-            //             { name: { $regex: ".*" + name + ".*" } },
-            //             { lastName: { $regex: ".*" + name + ".*" } },
-            //             { phone: { $regex: ".*" + name + ".*" } },
-            //         ],
-            //     });
-            // }
             const driverId = await this.Driver.find(
                 {
                     agencyId,
@@ -1543,26 +1523,11 @@ module.exports = new (class extends controller {
                     "name lastName"
                 );
                 if (!user) continue;
-                const dds = await this.DDS.find(
-                    {
-                        $and: [
-                            { createdAt: { $lte: endDate, $gte: startDate } },
-                            { service: { $ne: [] } },
-                            { driverId: dr._id },
-                        ],
-                    },
-                    "service dds sc createdAt"
-                ).sort({ createdAt: 1 });
                 const work = await this.DDS.aggregate([
                     {
                         $match: {
                             $and: [
-                                {
-                                    createdAt: {
-                                        $lte: endDate,
-                                        $gte: startDate,
-                                    },
-                                },
+                               { day:{$gte:from,$lte:to} },
                                 { service: { $ne: [] } },
                                 { driverId: dr._id },
                             ],
@@ -1575,6 +1540,7 @@ module.exports = new (class extends controller {
                             days: {
                                 $push: {
                                     date: "$createdAt",
+                                    day: "$day",
                                     dds: "$dds",
                                     sc: "$sc",
                                     service: "$service",
@@ -1587,7 +1553,6 @@ module.exports = new (class extends controller {
                 ]);
                 report.push({
                     user,
-                    // work: dds,
                     work,
                 });
             }

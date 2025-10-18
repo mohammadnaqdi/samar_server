@@ -115,8 +115,9 @@ module.exports = new (class extends controller {
             }
 
             const id = req.query.id;
+            const offIdForMax = req.query.offIdForMax || "";
 
-            const company = await this.Company.findById(
+            let company = await this.Company.findById(
                 id,
                 "name phones desc logo"
             ).lean();
@@ -124,6 +125,15 @@ module.exports = new (class extends controller {
                 companyId: company._id,
             });
             company.address = address;
+            if (offIdForMax.trim() != "") {
+                const useCount = await this.OffCode.countDocuments({
+                    offPackId: offIdForMax,
+                    isUsed: true,
+                });
+                company.useCount = useCount;
+            } else {
+                company.useCount = 0;
+            }
 
             return this.response({
                 res,
@@ -193,7 +203,7 @@ module.exports = new (class extends controller {
                 cityId,
                 details,
                 companyId,
-
+                price,
                 agencyIds,
             } = req.body;
             let location = req.body.location || [0.0, 0.0];
@@ -215,6 +225,7 @@ module.exports = new (class extends controller {
                     cityId,
                     details,
                     companyId,
+                    price,
                     location: { type: "Point", coordinates: location },
                     agencyIds,
                 });
@@ -237,6 +248,7 @@ module.exports = new (class extends controller {
                     cityId,
                     details,
                     companyId,
+                    price,
                     location: { type: "Point", coordinates: location },
                     agencyIds,
                 });
@@ -323,7 +335,6 @@ module.exports = new (class extends controller {
                     console.log("offpacks", offpacks.length);
                     for (var off of offpacks) {
                         const myOffer = await this.OffCode.findOne({
-                            userId: req.user._id,
                             forCode: st.studentCode,
                             offPackId: off._id,
                         });
@@ -342,6 +353,85 @@ module.exports = new (class extends controller {
                 }
             }
 
+            return this.response({
+                res,
+                data: myStudents,
+            });
+        } catch (e) {
+            console.error("Error while getMyOffer:", e);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async getMyOfferSummary(req, res) {
+        try {
+            let myStudents = await this.Student.find(
+                {
+                    parent: req.user._id,
+                    delete: false,
+                    active: true,
+                    state: { $gte: 1 },
+                },
+                "agencyId studentCode name"
+            ).lean();
+            const today = new Date();
+            let amountAll=0;
+            for (var st of myStudents) {
+                if (!st.agencyId) continue;
+                const agency = await this.Agency.findById(
+                    st.agencyId,
+                    "cityId"
+                );
+                console.log("agency", agency);
+                if (agency) {
+                     let amount=0;
+                    let offpacks = await this.OffPack.find(
+                        {
+                            $and: [
+                                { cityId: agency.cityId },
+                                { delete: false },
+                                { active: true },
+                                {
+                                    "agencyIds.id": {
+                                        $ne: agency._id.toString(),
+                                    },
+                                },
+                                {
+                                    $or: [
+                                        { maxDate: null },
+                                        { maxDate: "" },
+                                        { maxDate: { $gte: today } },
+                                    ],
+                                },
+                            ],
+                        },
+                        "max price"
+                    ).lean();
+                    console.log("offpacks", offpacks.length);
+                    for (var i=0;i<offpacks.length;i++) {
+                        var off = offpacks[i];
+                        const myOffer = await this.OffCode.findOne({
+                            forCode: st.studentCode,
+                            offPackId: off._id,
+                        });
+                        if(myOffer && myOffer.isUsed){
+                            continue;
+                        }
+                        if (off.max > 0) {
+                            const count = await this.OffCode.countDocuments({
+                                offPackId: off._id,
+                                isUsed: true,
+                            });
+                            if (count >= off.max) continue;
+                            // off.counter = count;
+                        }
+                        amount=amount+off.price;
+                        amountAll=amountAll+off.price;
+                    }
+
+                    st.amount = amount;
+                }
+            }
+          
             return this.response({
                 res,
                 data: myStudents,
@@ -487,7 +577,7 @@ module.exports = new (class extends controller {
             }
             console.log("code", code);
             console.log("coId", coId);
-            const co = await this.Company.findById(coId, "admin operator");
+            const co = await this.Company.findById(coId, "admin operator").lean();
             if (!co) {
                 return res.status(401).json({ msg: "co not find" });
             }
@@ -506,7 +596,7 @@ module.exports = new (class extends controller {
                     { companyId: co._id },
                     // { isUsed: false },
                 ],
-            });
+            }).lean();
             if (!offCode) {
                 return this.response({
                     res,
@@ -514,7 +604,7 @@ module.exports = new (class extends controller {
                     message: "offCode not find",
                 });
             }
-            const offPack = await this.OffPack.findById(offCode.offPackId);
+            const offPack = await this.OffPack.findById(offCode.offPackId,'title desc max maxDate smallPic address active ').lean();
             if (!offPack) {
                 return this.response({
                     res,
@@ -522,15 +612,18 @@ module.exports = new (class extends controller {
                     message: "offPack not find",
                 });
             }
-            const useCount = await this.OffCode.countDocuments({
+            let useCount = await this.OffCode.countDocuments({
                 offPackId: offPack._id,
                 isUsed: true,
             });
+            let allCount = await this.OffCode.countDocuments({
+                offPackId: offPack._id,
+            });
             if (offCode.isUsed) {
-                const user=await this.User.findById(offCode.operator);
+                const user = await this.User.findById(offCode.operator,'userName -_id').lean();
                 return this.response({
                     res,
-                    data: [offCode, offPack, useCount,user],
+                    data: {offCode, offPack, useCount, user,allCount},
                 });
             }
             if (offPack.max > 0 && useCount > offPack.max) {
@@ -541,14 +634,21 @@ module.exports = new (class extends controller {
                 return res.status(305).json({ msg: "offPack expired" });
             }
 
-            offCode.isUsed = true;
-            offCode.useDate = new Date();
-            offCode.operator = req.user._id;
-            await offCode.save();
+            // offCode.isUsed = true;
+            // offCode.useDate = new Date();
+            // offCode.operator = req.user._id;
+            // await offCode.save();
+            await this.OffCode.findByIdAndUpdate(offCode._id, {
+                isUsed: true,
+                useDate: new Date(),
+                operator: req.user._id,
+            });
+            useCount++;
+            allCount++;
 
             return this.response({
                 res,
-                data: [offCode, offPack, useCount],
+                data: {offCode, offPack, useCount,allCount},
             });
         } catch (error) {
             console.error("Error while setOfferP:", error);
