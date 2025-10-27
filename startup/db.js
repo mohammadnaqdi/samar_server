@@ -10,6 +10,9 @@ const Rule = require("../src/models/rules");
 const { LevelAcc, Bank } = require("../src/models/levels");
 const { BankGate, PayGate } = require("../src/models/banks");
 const { DDS } = require("../src/models/dds");
+// const { DocListSanad } = require("../src/models/hasiban");
+// const { DriverAct } = require("../src/models/location");
+// const { User } = require("../src/models/user");
 // const { Service } = require("../src/models/service");
 
 const textValues = [
@@ -39,6 +42,197 @@ module.exports = async function (mongoose) {
             return console.log("mongodb Connected!");
         })
         .catch(() => console.log("mongodb dont Connected!!"));
+
+    // if (true) {
+    //     let ddsZero = await DDS.find({
+    //         "service.students.cost": 0,
+    //     });
+    //     console.log("dds Zero", ddsZero.length);
+    //     let notfindStudent = 0;
+    //     let notfindDriverOrSchool = 0;
+    //     let notfindCar = 0;
+    //     let notfindPrice = 0;
+    //     for (var dds of ddsZero) {
+    //         let ddsAll = 0;
+    //         let scAll = 0;
+    //         for (var service of dds.service) {
+    //             service.serviceCost = 0;
+    //             service.driverShare = 0;
+    //             for (var st of service.students) {
+    //                 if (st.cost < 100000 || st.driverCost < 100000) {
+    //                     const student = await Student.findById(
+    //                         st.id,
+    //                         "serviceDistance school studentCode"
+    //                     );
+    //                     if (!student) {
+    //                         notfindStudent++;
+                           
+    //                         continue;
+    //                     }
+
+    //                     const [school, driver] = await Promise.all([
+    //                         School.findById(
+    //                             student.school,
+    //                             "districtId grade"
+    //                         ).lean(),
+    //                         Driver.findById(dds.driverId, "carId").lean(),
+    //                     ]);
+    //                     if (!school || !driver) {
+    //                         notfindDriverOrSchool++;
+    //                         continue;
+    //                     }
+    //                     const car = await Car.findById(
+    //                         driver.carId,
+    //                         "capacity"
+    //                     ).lean();
+    //                     if (!car) {
+    //                         notfindCar++;
+    //                         continue;
+    //                     }
+    //                     const carId = car.capacity;
+    //                     const { districtId, grade } = school;
+    //                     const query = [
+    //                         {
+    //                             agencyId: dds.agencyId,
+    //                         },
+    //                         { delete: false },
+    //                         {
+    //                             $or: [
+    //                                 { districtId },
+    //                                 {
+    //                                     districtId: 0,
+    //                                 },
+    //                             ],
+    //                         },
+    //                         {
+    //                             $or: [
+    //                                 {
+    //                                     gradeId: {
+    //                                         $in: grade,
+    //                                     },
+    //                                 },
+    //                                 { gradeId: 0 },
+    //                             ],
+    //                         },
+    //                     ];
+    //                     if (carId && carId != 0) {
+    //                         query.push({ carId });
+    //                     }
+
+    //                     const pricingTable = await PriceTable.find(
+    //                         { $and: query },
+    //                         "kilometer studentAmount driverAmount -_id"
+    //                     )
+    //                         .sort({
+    //                             kilometer: 1,
+    //                         })
+    //                         .lean();
+    //                     if (pricingTable.length > 0) {
+    //                         const matchedPricing = pricingTable.find(
+    //                             (priceItem) =>
+    //                                 priceItem.kilometer * 1000 >=
+    //                                 student.serviceDistance
+    //                         );
+    //                          console.log("find mathc", student.studentCode);
+    //                         if (matchedPricing) {
+    //                             st.cost = matchedPricing.studentAmount;
+    //                             st.driverCost = matchedPricing.driverAmount;
+    //                         }
+    //                     } else {
+    //                         notfindPrice++;
+    //                     }
+    //                 }
+    //                 service.driverShare = service.driverShare + st.driverCost;
+    //                 service.serviceCost = service.serviceCost + st.cost;
+    //             }
+    //             ddsAll=ddsAll+service.driverShare;
+    //             scAll=scAll+service.serviceCost;
+    //         }
+    //         dds.sc=scAll/30;
+    //         dds.dds=ddsAll/30;
+    //         dds.markModified("service");
+    //         await dds.save();
+
+    //     }
+    //      console.log("notfindStudent", notfindStudent);
+    //      console.log("notfindDriverOrSchool", notfindDriverOrSchool);
+    //      console.log("notfindCar", notfindCar);
+    //      console.log("notfindPrice", notfindPrice);
+    // }
+    // if (true) {
+    // const driverActs = await DriverAct.find({
+    //     driverCode: { $regex: /^1/ },
+    // });
+    // for (var st of driverActs) {
+    //     const service = await Service.findOne({serviceNum:st.serviceId}, "driverId");
+    //     if (!service) {
+    //         console.error("service not find ", st._id);
+    //         continue;
+    //     }
+    //     const driver = await Driver.findById(service.driverId,'driverCode');
+    //     if (!driver) {
+    //         console.error("driver not find ", st._id);
+    //         continue;
+    //     }
+    //     await DriverAct.findByIdAndUpdate(st._id,{
+    //         driverCode:driver.driverCode
+    //     })
+    //     console.log("driver update ",st.driverCode+' to '+ driver.driverCode);
+
+    // }
+    // const students = await Student.find({
+    //     driverCode: { $regex: /^1/ },
+    //     state: 4,
+    //     delete: false,
+    // });
+    // for (var st of students) {
+    //     const service = await Service.findById(st.service, "driverId");
+    //     if (!service) {
+    //         console.error("service not find ", st._id);
+    //         continue;
+    //     }
+    //     const driver = await Driver.findById(service.driverId,'driverCode');
+    //     if (!driver) {
+    //         console.error("driver not find ", st._id);
+    //         continue;
+    //     }
+    //     await Student.findByIdAndUpdate(st._id,{
+    //         driverCode:driver.driverCode
+    //     })
+    //     console.log("driver update ",st.driverCode+' to '+ driver.driverCode);
+
+    // }
+    // const drivers = await Driver.find({
+    //     driverCode: { $regex: /^1/ },
+    // }).lean();
+    // console.log("find drivers", drivers.length);
+    // for (var driver of drivers) {
+    //     const doc = await DocListSanad.find({
+    //         accCode: "004006" + driver.driverCode,
+    //     });
+    //     if (!doc.length) {
+    //         const user = await User.findById(driver.userId, "code").lean();
+    //         if (!user) {
+    //             console.error("user not find ", driver.driverCode);
+    //             continue;
+    //         }
+    //         const agency = await Agency.findById(driver.agencyId, "code");
+    //         if (!agency) {
+    //             console.error("agency not find ", driver.driverCode);
+    //             continue;
+    //         }
+    //         await Driver.findByIdAndUpdate(driver._id, {
+    //             driverCode: agency.code + user.code,
+    //         });
+    //         console.log(
+    //             "driver  update ",
+    //             driver.driverCode + " to " + agency.code + user.code
+    //         );
+    //     } else {
+    //         console.error("driver doc find ", driver.driverCode);
+    //     }
+    // }
+    // }
     // if (true) {
     //     const some = await DDS.find({
     //         "service.driverCost": { $exists: true },

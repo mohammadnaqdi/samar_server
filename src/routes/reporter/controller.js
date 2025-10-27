@@ -253,6 +253,7 @@ module.exports = new (class extends controller {
             if (mongoose.isValidObjectId(userId))
                 query.userId = ObjectId.createFromHexString(userId);
             if (startDate) query.createdAt = { $gte: new Date(startDate) };
+            console.log("page",page)
             if (endDate)
                 query.createdAt = {
                     ...query.createdAt,
@@ -273,15 +274,15 @@ module.exports = new (class extends controller {
 
             const logs = await this.OperationLog.find(query)
                 .skip(page * 25)
-                .limit(25);
+                .limit(25).sort({
+                    createdAt:-1
+                });
             const logsPage = await this.OperationLog.countDocuments(query);
             let final = [];
 
             for (const log of logs) {
                 const targets = log.targetIds;
                 const table = log.targetTable;
-                console.log("targets", targets);
-                console.log("table", table);
                 let search = "";
                 let info = log;
                 info.targetIds = [];
@@ -291,7 +292,6 @@ module.exports = new (class extends controller {
                 else if (table == "studentCode") search = this.Student;
                 else if (table == "user") search = this.User;
                 else if (table == "driver") search = this.Driver;
-                console.log("search", search);
                 if (search === "") continue;
                 for (const id of targets) {
                     // else {

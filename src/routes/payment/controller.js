@@ -1852,7 +1852,6 @@ module.exports = new (class extends controller {
                     message: "installments not set",
                 });
             }
-
             const school = await this.School.findOne({
                 _id: schoolId,
                 agencyId,
@@ -1872,6 +1871,140 @@ module.exports = new (class extends controller {
                 },
                 "studentCode"
             ).lean();
+            console.log("installments.length", installments.length)
+            
+            for (var student of students) {
+                const studentCode = student.studentCode;
+                let remaining = 0;
+            //   if(studentCode==='600001013')  console.log("studentCode", studentCode);
+            //   if(studentCode==='600009552')  console.log("studentCode", studentCode);
+                const result = await this.DocListSanad.aggregate([
+                    {
+                        $match: {
+                            accCode: "003005" + studentCode,
+                            agencyId,
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            // totalbed: { $sum: '$bed' },
+                            // totalbes: { $sum: '$bes' }
+                            total: {
+                                $sum: {
+                                    $subtract: ["$bed", "$bes"],
+                                },
+                            },
+                        },
+                    },
+                ]);
+            //   if(studentCode==='600001013')   console.log("result", result);
+            //   if(studentCode==='600012206')   console.log("result", result);
+                remaining = result[0] === undefined ? 0 : result[0].total;
+                if (remaining > 100000) {
+                    const oldPq = await this.PayQueue.find({
+                        studentId: student._id,
+                        type: "installment",
+                    });
+                    let counterPay = [];
+                    if (oldPq.length > 0) {
+                        if (!oldPq[0].isSetAuto) {
+                            continue;
+                        }
+                        for (var op of oldPq) {
+                            if (!op.isPaid) {
+                                await this.PayQueue.findByIdAndDelete(op._id);
+                            } else {
+                                counterPay.push(op.counter);
+                            }
+                        }
+                    }
+                    let invoices =[...installments];
+                    for (var i = 0; i < invoices.length; i++) {
+                        for (var cp of counterPay) {
+                            if (cp === invoices[i].counter) {
+                                invoices.splice(i, 1);
+                                i--;
+                                break;
+                            }
+                        }
+                    }
+                    if(invoices.length!=installments.length)   console.log("invoices.length", invoices.length);
+                    if(invoices.length!=installments.length)   console.log("student._id", student._id);
+                     if(studentCode==='600009552')   console.log("invoices.length", invoices.length);
+                     if(studentCode==='600009552')   console.log("installments.length", installments.length);
+                    if (invoices.length === 0) {
+                        invoices.push(installments[installments.length - 1]);
+                    }
+                    const everyPrice = Math.round(remaining / invoices.length);
+                    for (var invoice of invoices) {
+                        await new this.PayQueue({
+                            inVoiceId: invoice._id,
+                            code: invoice.code,
+                            agencyId: agencyId,
+                            studentId: student._id,
+                            setter: req.user._id,
+                            type: invoice.type,
+                            counter: invoice.counter,
+                            amount: everyPrice,
+                            title: invoice.title,
+                            maxDate: invoice.maxDate,
+                            isPaid: false,
+                        }).save();
+                    }
+                } else {
+                    await this.PayQueue.deleteMany({
+                        studentId: student._id,
+                        type: "installment",
+                        cardNumber: { $in: ["", null, " "] },
+                        isPaid: false,
+                    });
+                }
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error while setInstallments:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async setInstallmentsAutoForAService(req, res) {
+        try {
+            if (req.query.id === undefined) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "id need",
+                });
+            }
+            const id = req.query.id;
+            
+             const students = await this.Student.find({service:id,delete:false},
+                "studentCode agencyId"
+            ).lean();
+            if(!students.length){
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "students not find",
+                });
+            }
+            const agencyId=students[0].agencyId;
+            const installments = await this.Invoice.find({
+                agencyId,
+                type: "installment",
+                delete: false,
+            });
+            if (installments.length === 0) {
+                return this.response({
+                    res,
+                    code: 203,
+                    message: "installments not set",
+                });
+            }
             for (var student of students) {
                 const studentCode = student.studentCode;
                 let remaining = 0;
@@ -1916,7 +2049,7 @@ module.exports = new (class extends controller {
                             }
                         }
                     }
-                    let invoices = installments;
+                   let invoices =[...installments];
                     for (var i = 0; i < invoices.length; i++) {
                         for (var cp of counterPay) {
                             if (cp === invoices[i].counter) {
@@ -1945,13 +2078,13 @@ module.exports = new (class extends controller {
                             isPaid: false,
                         }).save();
                     }
-                }else{
-                     await this.PayQueue.deleteMany({
+                } else {
+                    await this.PayQueue.deleteMany({
                         studentId: student._id,
                         type: "installment",
                         cardNumber: { $in: ["", null, " "] },
-                        isPaid:false,
-                    });  
+                        isPaid: false,
+                    });
                 }
             }
 
@@ -1960,7 +2093,7 @@ module.exports = new (class extends controller {
                 message: "ok",
             });
         } catch (error) {
-            console.error("Error while setInstallments:", error);
+            console.error("Error while setInstallmentsAutoForAService:", error);
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
@@ -2050,7 +2183,7 @@ module.exports = new (class extends controller {
                         }
                     }
                 }
-                let invoices = installments;
+                let invoices =[...installments];
                 for (var i = 0; i < invoices.length; i++) {
                     for (var cp of counterPay) {
                         if (cp === invoices[i].counter) {
@@ -2346,6 +2479,16 @@ module.exports = new (class extends controller {
                     { sanadId: doclistSanad.doclistId },
                     "status payQueueDate"
                 ).lean();
+                if (
+                    payQueue.isPaid == false ||
+                    payQueue.cardNumber != "" ||
+                    payQueue.refId != ""
+                ) {
+                    payQueue.isPaid = true;
+                    payQueue.cardNumber = "";
+                    payQueue.refId = "";
+                    await payQueue.save();
+                }
                 pays.push({ payQueue, doclistSanad: doclistSanad, cheque });
                 if (!payQueue.isPaid) {
                     payQueue.isPaid = true;
@@ -2464,7 +2607,7 @@ module.exports = new (class extends controller {
                 payDate,
             } = req.body;
             const isSheba = req.body.isSheba || false;
-            // console.log("payGateId", payGateId);
+            const payQueueId = req.body.payQueueId || "";
 
             let student = await this.Student.findById(studentId).session(
                 session
@@ -2489,7 +2632,22 @@ module.exports = new (class extends controller {
                     });
                 }
             }
-
+            if (payQueueId && payQueueId.trim() != "") {
+                const p = await this.PayQueue.findByIdAndUpdate(payQueueId, {
+                    isPaid: true,
+                    payDate,
+                    cardNumber,
+                    isSheba,
+                    refId,
+                    bank: payGateId,
+                }).session(session);
+                await session.commitTransaction();
+                session.endSession();
+                return this.response({
+                    res,
+                    message: "ok",
+                });
+            }
             const distance = student.serviceDistance;
             let paySeparation = false;
             const agency = await this.Agency.findById(
@@ -2553,7 +2711,8 @@ module.exports = new (class extends controller {
                 type: "prePayment",
                 active: true,
                 delete: false,
-            }).session(session)
+            })
+                .session(session)
                 .lean();
 
             let amount2 = 0;

@@ -35,14 +35,19 @@ module.exports = new (class extends controller {
             const supervisor = req.body.supervisor ?? [];
             const birthDate = req.body.birthDate ?? null;
 
-            const studentCount = await this.Student.countDocuments({
-                parent,
-                name,
-                lastName,
-                delete: false,
-            }).session(session);
+            const studentCount = await this.Student.findOne(
+                {
+                    parent,
+                    name,
+                    lastName,
+                    delete: false,
+                    school,
+                },
+                ""
+            ).session(session);
+            console.log("studentCount", studentCount);
 
-            if (studentCount > 0) {
+            if (studentCount) {
                 await session.abortTransaction();
                 return this.response({
                     res,
@@ -496,18 +501,38 @@ module.exports = new (class extends controller {
             // console.log("id ", id);
             // console.log("setStudent parentId", parentId);
             if (id === 0) {
-                const studentCount = await this.Student.countDocuments({
-                    parent: ObjectId.createFromHexString(parentId),
-                    name,
-                    lastName,
-                });
-                if (studentCount > 0) {
+                const studentCount = await this.Student.findOne(
+                    {
+                        parent: ObjectId.createFromHexString(parentId),
+                        name,
+                        lastName,
+                        delete: false,
+                        school,
+                    },
+                    ""
+                );
+                console.log("studentCount", studentCount);
+
+                if (studentCount) {
                     return this.response({
                         res,
                         code: 403,
                         message: "student is duplicated",
                     });
                 }
+
+                // const studentCount = await this.Student.countDocuments({
+                //     parent: ObjectId.createFromHexString(parentId),
+                //     name,
+                //     lastName,
+                // });
+                // if (studentCount > 0) {
+                //     return this.response({
+                //         res,
+                //         code: 403,
+                //         message: "student is duplicated",
+                //     });
+                // }
             }
 
             let stateTitle = "ثبت شده";
@@ -990,10 +1015,21 @@ module.exports = new (class extends controller {
             }
 
             const school = await this.School.findById(student.school);
-            const agency = await this.Agency.findById(
+            let agency = await this.Agency.findById(
                 school.agencyId,
                 "name tel address pic active"
-            );
+            ).lean();
+            if (agency) {
+                let contract = await this.AgencySet.findOne(
+                    { agencyId: school.agencyId },
+                    "showFirstCostToStudent"
+                ).lean();
+                let showFirstCostToStudent = false;
+                if (contract) {
+                    showFirstCostToStudent = contract.showFirstCostToStudent;
+                }
+                agency.showFirstCostToStudent = showFirstCostToStudent;
+            }
 
             let shiftName = "",
                 shiftType = "";
@@ -1060,18 +1096,31 @@ module.exports = new (class extends controller {
             const userId = req.user._id;
             const students = await this.Student.find(
                 { parent: userId, delete: false },
-                "_id studentCode school gradeId gradeTitle name lastName state stateTitle serviceNum service time avanak avanakNumber"
+                "_id studentCode school gradeId gradeTitle name lastName state stateTitle serviceNum service time avanak avanakNumber serviceCost"
             );
             let myStudent = [];
             for (var i = 0; i < students.length; i++) {
                 const school = await this.School.findById(
                     students[i].school,
                     "name schoolTime genderTitle code districtId agencyId"
-                );
-                const agency = await this.Agency.findById(
+                ).lean();
+                let agency = await this.Agency.findById(
                     school.agencyId,
                     "name tel address pic active"
-                );
+                ).lean();
+                if (agency) {
+                    let contract = await this.AgencySet.findOne(
+                        { agencyId: school.agencyId },
+                        "showFirstCostToStudent"
+                    ).lean();
+                    let showFirstCostToStudent = false;
+                    if (contract) {
+                        showFirstCostToStudent =
+                            contract.showFirstCostToStudent;
+                    }
+                    agency.showFirstCostToStudent = showFirstCostToStudent;
+                }
+
                 // const shift = await this.Shifts.findById(students[i].shift);
 
                 if (!school) continue;

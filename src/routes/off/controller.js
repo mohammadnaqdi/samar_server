@@ -22,8 +22,8 @@ module.exports = new (class extends controller {
                 active,
                 cityId,
             } = req.body;
-            console.log("logo", logo);
-            console.log("id", id);
+            // console.log("logo", logo);
+            // console.log("id", id);
             if (id && ObjectId.isValid(id)) {
                 await this.Company.findByIdAndUpdate(id, {
                     name,
@@ -205,12 +205,13 @@ module.exports = new (class extends controller {
                 companyId,
                 price,
                 agencyIds,
+                active,
             } = req.body;
             let location = req.body.location || [0.0, 0.0];
             if (location.length < 2) {
                 location = [0.0, 0.0];
             }
-            console.log("location", location);
+            console.log("active", active);
             if (id && ObjectId.isValid(id)) {
                 await this.OffPack.findByIdAndUpdate(id, {
                     title,
@@ -228,6 +229,7 @@ module.exports = new (class extends controller {
                     price,
                     location: { type: "Point", coordinates: location },
                     agencyIds,
+                    active,
                 });
                 return this.response({
                     res,
@@ -251,12 +253,47 @@ module.exports = new (class extends controller {
                     price,
                     location: { type: "Point", coordinates: location },
                     agencyIds,
+                    active,
                 });
                 await co.save();
                 return this.response({
                     res,
                     data: co._id,
                     message: "insert ok",
+                });
+            }
+        } catch (e) {
+            console.error("Error while setOffPack:", e);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    async deleteOffPack(req, res) {
+        try {
+            const { id } = req.query;
+
+            if (id && ObjectId.isValid(id)) {
+                const count=await this.OffCode.countDocuments({
+                    offPackId:id,
+                    isUsed:true
+                });
+                if(count && count>0){
+                     return this.response({
+                    res,code:203,
+                    data: count,
+                    message: "cant delete",
+                });
+                }
+                await this.OffCode.deleteMany({offPackId:id});
+                await this.OffPack.findByIdAndDelete(id);
+                return this.response({
+                    res,
+                    message: "delete",
+                });
+            } else {
+                return this.response({
+                    res,
+                    code: 304,
+                    message: "id need",
                 });
             }
         } catch (e) {
@@ -308,7 +345,7 @@ module.exports = new (class extends controller {
                     st.agencyId,
                     "cityId"
                 );
-                console.log("agency", agency);
+                // console.log("agency", agency);
                 if (agency) {
                     let offpacks = await this.OffPack.find(
                         {
@@ -332,7 +369,7 @@ module.exports = new (class extends controller {
                         },
                         "-agencyIds -updatedAt -__v -createdAt -active"
                     ).lean();
-                    console.log("offpacks", offpacks.length);
+                    // console.log("offpacks", offpacks.length);
                     for (var off of offpacks) {
                         const myOffer = await this.OffCode.findOne({
                             forCode: st.studentCode,
@@ -374,16 +411,16 @@ module.exports = new (class extends controller {
                 "agencyId studentCode name"
             ).lean();
             const today = new Date();
-            let amountAll=0;
+            let amountAll = 0;
             for (var st of myStudents) {
                 if (!st.agencyId) continue;
                 const agency = await this.Agency.findById(
                     st.agencyId,
                     "cityId"
                 );
-                console.log("agency", agency);
+                // console.log("agency", agency);
                 if (agency) {
-                     let amount=0;
+                    let amount = 0;
                     let offpacks = await this.OffPack.find(
                         {
                             $and: [
@@ -406,14 +443,14 @@ module.exports = new (class extends controller {
                         },
                         "max price"
                     ).lean();
-                    console.log("offpacks", offpacks.length);
-                    for (var i=0;i<offpacks.length;i++) {
+                    // console.log("offpacks", offpacks.length);
+                    for (var i = 0; i < offpacks.length; i++) {
                         var off = offpacks[i];
                         const myOffer = await this.OffCode.findOne({
                             forCode: st.studentCode,
                             offPackId: off._id,
                         });
-                        if(myOffer && myOffer.isUsed){
+                        if (myOffer && myOffer.isUsed) {
                             continue;
                         }
                         if (off.max > 0) {
@@ -424,14 +461,14 @@ module.exports = new (class extends controller {
                             if (count >= off.max) continue;
                             // off.counter = count;
                         }
-                        amount=amount+off.price;
-                        amountAll=amountAll+off.price;
+                        amount = amount + off.price;
+                        amountAll = amountAll + off.price;
                     }
 
                     st.amount = amount;
                 }
             }
-          
+
             return this.response({
                 res,
                 data: myStudents,
@@ -575,9 +612,12 @@ module.exports = new (class extends controller {
             if (!code) {
                 return res.status(204).json({ error: "code coId need" });
             }
-            console.log("code", code);
-            console.log("coId", coId);
-            const co = await this.Company.findById(coId, "admin operator").lean();
+            // console.log("code", code);
+            // console.log("coId", coId);
+            const co = await this.Company.findById(
+                coId,
+                "admin operator"
+            ).lean();
             if (!co) {
                 return res.status(401).json({ msg: "co not find" });
             }
@@ -587,7 +627,7 @@ module.exports = new (class extends controller {
             ) {
                 return res.status(401).json({ msg: "you cant access" });
             }
-            console.log("co", co._id);
+            // console.log("co", co._id);
             let offCode = await this.OffCode.findOne({
                 $and: [
                     {
@@ -604,7 +644,10 @@ module.exports = new (class extends controller {
                     message: "offCode not find",
                 });
             }
-            const offPack = await this.OffPack.findById(offCode.offPackId,'title desc max maxDate smallPic address active ').lean();
+            const offPack = await this.OffPack.findById(
+                offCode.offPackId,
+                "title desc max maxDate smallPic address active "
+            ).lean();
             if (!offPack) {
                 return this.response({
                     res,
@@ -620,10 +663,13 @@ module.exports = new (class extends controller {
                 offPackId: offPack._id,
             });
             if (offCode.isUsed) {
-                const user = await this.User.findById(offCode.operator,'userName -_id').lean();
+                const user = await this.User.findById(
+                    offCode.operator,
+                    "userName -_id"
+                ).lean();
                 return this.response({
                     res,
-                    data: {offCode, offPack, useCount, user,allCount},
+                    data: { offCode, offPack, useCount, user, allCount },
                 });
             }
             if (offPack.max > 0 && useCount > offPack.max) {
@@ -648,7 +694,7 @@ module.exports = new (class extends controller {
 
             return this.response({
                 res,
-                data: {offCode, offPack, useCount,allCount},
+                data: { offCode, offPack, useCount, allCount },
             });
         } catch (error) {
             console.error("Error while setOfferP:", error);

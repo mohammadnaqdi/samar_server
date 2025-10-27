@@ -889,7 +889,10 @@ module.exports = new (class extends controller {
             );
             let services = [];
             for (var st of students) {
-                const school =await this.School.findById(st.school,'name').lean();
+                const school = await this.School.findById(
+                    st.school,
+                    "name"
+                ).lean();
                 if (!school) continue;
                 const service = await this.Service.findById(st.service).lean();
                 if (!service) continue;
@@ -1418,7 +1421,132 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async excelCheck(req, res) {
+        const { list } = req.body;
 
+        try {
+            let resp = [];
+
+            for (const item of list) {
+                let info = {};
+                const user = await this.Parent.findOne({
+                    phone: item.parentPhoneNumber,
+                });
+
+                if (user) {
+                    const name = item.studentFirstName.trim();
+                    const lastName = item.studentLastName.trim();
+                    console.log("name", name);
+                    console.log("lastName", lastName);
+                    const student = await this.Student.findOne(
+                        {
+                            parent: user._id,
+                            name,
+                            lastName,
+                            school: item.schoolId,
+                        },
+                        "location"
+                    ).lean();
+                    console.log("student", student);
+                    if (student) {
+                        info.location = [
+                            student.location.coordinates[0],
+                            student.location.coordinates[1],
+                        ];
+                        info.studentId = student._id;
+                        info.userId = user._id;
+                        resp.push(info);
+                        continue;
+                    } else {
+                        const simplifiedAddress = simplifyAddress(
+                            item.studentAddress
+                        );
+
+                        // URL-encode the address to handle Persian characters
+                        const encodedAddress =
+                            encodeURIComponent(simplifiedAddress);
+
+                        const response = await axios.get(
+                            `https://nominatim.mysamar.ir/search?q=${encodedAddress}&format=json`,
+                            { timeout: 9500 }
+                        );
+                        console.log("response.data if", response.data.length);
+                        if (response.data.length == 0) {
+                            info.location = [null, null];
+                        } else {
+                            info.location = [
+                                response.data[0].lat,
+                                response.data[0].lon,
+                            ];
+                        }
+                        info.studentId = null;
+                        info.userId = user._id;
+                        resp.push(info);
+                        continue;
+                    }
+                } else {
+                    const user_id = await this.register(
+                        item.parentPhoneNumber,
+                        item.parentFirstName,
+                        item.parentLastName
+                    );
+
+                    const simplifiedAddress = simplifyAddress(
+                        item.studentAddress
+                    );
+
+                    // URL-encode the address to handle Persian characters
+                    const encodedAddress =
+                        encodeURIComponent(simplifiedAddress);
+
+                    const response = await axios.get(
+                        `https://nominatim.mysamar.ir/search?q=${encodedAddress}&format=json`,
+                        { timeout: 9500 }
+                    );
+                    console.log("response.data", response.data.length);
+                    if (response.data.length == 0) {
+                        info.location = [null, null];
+                    } else {
+                        info.location = [
+                            response.data[0].lat,
+                            response.data[0].lon,
+                        ];
+                    }
+                    info.studentId = null;
+                    info.userId = user_id._id;
+                    resp.push(info);
+                }
+            }
+
+            return this.response({
+                res,
+                data: resp,
+            });
+        } catch (error) {
+            console.error("Error while checking excel:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+
+    async register(phone, name, lastName) {
+        try {
+            const newUser = new this.Parent({
+                phone,
+                userName: phone,
+                password: phone,
+                name,
+                lastName,
+            });
+            await newUser.save();
+            // await this.updateRedisDocument(
+            //     `parent:${newUser._id}`,
+            //     newUser.toObject()
+            // );
+            return newUser;
+        } catch (error) {
+            console.error("Error while registering user:", error);
+        }
+    }
     async checkDocumentsSame(req, res) {
         try {
             const { agencyId, schoolId } = req.query;
@@ -1492,8 +1620,8 @@ module.exports = new (class extends controller {
     async getAgencyDDSPage(req, res) {
         try {
             const { agencyId, from, to } = req.body;
-            if(!from || !to){
-                 return this.response({
+            if (!from || !to) {
+                return this.response({
                     res,
                     code: 604,
                     message: "from to need!",
@@ -1527,7 +1655,7 @@ module.exports = new (class extends controller {
                     {
                         $match: {
                             $and: [
-                               { day:{$gte:from,$lte:to} },
+                                { day: { $gte: from, $lte: to } },
                                 { service: { $ne: [] } },
                                 { driverId: dr._id },
                             ],
@@ -1594,7 +1722,220 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async getInstallmentToThisMonth(req, res) {
+        try {
+            if (!req.query.agencyId) {
+                return this.response({
+                    res,
+                    code: 604,
+                    message: "agencyId needed!",
+                });
+            }
+            const { agencyId } = req.query;
+            const pagest=req.query.page || 0;
+            const page=parseInt(pagest);
+
+            const currentDate = new Date();
+            const m = jMoment(currentDate).jMonth();
+            let counterMax = 0;
+            switch (m) {
+                case 6:
+                    counterMax = 1;
+                    break;
+                case 7:
+                    counterMax = 2;
+                    break;
+                case 8:
+                    counterMax = 3;
+                    break;
+                case 9:
+                    counterMax = 4;
+                    break;
+                case 10:
+                    counterMax = 5;
+                    break;
+                case 11:
+                    counterMax = 6;
+                    break;
+                case 0:
+                    counterMax = 7;
+                    break;
+                case 1:
+                    counterMax = 8;
+                    break;
+                case 2:
+                    counterMax = 9;
+                    break;
+            }
+            let insNotPaid=[];
+            if (counterMax > 0) {
+                const pays = await this.PayQueue.find({
+                    counter: { $lte: counterMax },
+                    isPaid: false,
+                    delete: false,
+                    agencyId,
+                    type: "installment",
+                },'amount counter studentId').sort({counter:1}).skip(20*page).limit(20).lean();
+                for(var p of  pays){
+                    const student=await this.Student.findById(p.studentId,'name lastName parent').lean();
+                    if(student){
+                        const parent=await this.Parent.findById(student.parent,'name lastName phone');
+                        if(parent){
+                            insNotPaid.push({
+                                pay:p,
+                                student,
+                                parent
+                            })
+                        }
+                    }
+                }
+            }
+
+            return this.response({
+                res,
+                data: insNotPaid,
+            });
+        } catch (error) {
+            console.error(`Error while getInstallmentToThisMonth: ${error}`);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
+    //  async studentInstallmentNotMatch(req, res) {
+    //     try {
+    //         if (req.query.agencyId === undefined) {
+    //             return this.response({
+    //                 res,
+    //                 code: 214,
+    //                 message: "agencyId schoolId need",
+    //             });
+    //         }
+    //         const schoolId = req.query.schoolId;
+    //         const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+    //         const installments = await this.Invoice.find({
+    //             agencyId,
+    //             type: "installment",
+    //             delete: false,
+    //         });
+    //         if (installments.length === 0) {
+    //             return this.response({
+    //                 res,
+    //                 code: 203,
+    //                 message: "installments not set",
+    //             });
+    //         }
+
+    //         const students = await this.Student.find(
+    //             {
+    //                 agencyId: agencyId,
+    //                 state: 4,
+    //                 delete: false,
+    //             },
+    //             "studentCode"
+    //         ).lean();
+    //         for (var student of students) {
+    //             const studentCode = student.studentCode;
+    //             let remaining = 0;
+    //             console.log("studentCode", studentCode);
+    //             const result = await this.DocListSanad.aggregate([
+    //                 {
+    //                     $match: {
+    //                         accCode: "003005" + studentCode,
+    //                         agencyId,
+    //                     },
+    //                 },
+    //                 {
+    //                     $group: {
+    //                         _id: null,
+    //                         // totalbed: { $sum: '$bed' },
+    //                         // totalbes: { $sum: '$bes' }
+    //                         total: {
+    //                             $sum: {
+    //                                 $subtract: ["$bed", "$bes"],
+    //                             },
+    //                         },
+    //                     },
+    //                 },
+    //             ]);
+    //             console.log("result", result);
+    //             remaining = result[0] === undefined ? 0 : result[0].total;
+    //             if (remaining > 100000) {
+    //                 const oldPq = await this.PayQueue.find({
+    //                     studentId: student._id,
+    //                     type: "installment",
+    //                 });
+    //                 let counterPay = [];
+    //                 if (oldPq.length > 0) {
+    //                     if (!oldPq[0].isSetAuto) {
+    //                         continue;
+    //                     }
+    //                     for (var op of oldPq) {
+    //                         if (!op.isPaid) {
+    //                             await this.PayQueue.findByIdAndDelete(op._id);
+    //                         } else {
+    //                             counterPay.push(op.counter);
+    //                         }
+    //                     }
+    //                 }
+    //                 let invoices = installments;
+    //                 for (var i = 0; i < invoices.length; i++) {
+    //                     for (var cp of counterPay) {
+    //                         if (cp === invoices[i].counter) {
+    //                             invoices.splice(i, 1);
+    //                             i--;
+    //                             break;
+    //                         }
+    //                     }
+    //                 }
+    //                 if (invoices.length === 0) {
+    //                     invoices.push(installments[installments.length - 1]);
+    //                 }
+    //                 const everyPrice = Math.round(remaining / invoices.length);
+    //                 for (var invoice of invoices) {
+    //                     await new this.PayQueue({
+    //                         inVoiceId: invoice._id,
+    //                         code: invoice.code,
+    //                         agencyId: agencyId,
+    //                         studentId: student._id,
+    //                         setter: req.user._id,
+    //                         type: invoice.type,
+    //                         counter: invoice.counter,
+    //                         amount: everyPrice,
+    //                         title: invoice.title,
+    //                         maxDate: invoice.maxDate,
+    //                         isPaid: false,
+    //                     }).save();
+    //                 }
+    //             } else {
+    //                 await this.PayQueue.deleteMany({
+    //                     studentId: student._id,
+    //                     type: "installment",
+    //                     cardNumber: { $in: ["", null, " "] },
+    //                     isPaid: false,
+    //                 });
+    //             }
+    //         }
+
+    //         return this.response({
+    //             res,
+    //             message: "ok",
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while setInstallments:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 })();
+function simplifyAddress(address) {
+    // Split address into components (assuming space-separated)
+    const parts = address.split(" ");
+
+    // Example logic: Take the first two components (e.g., city and main street/neighborhood)
+    // Adjust this based on your address format
+    if (parts.length > 1) {
+        return parts.slice(0, 2).join(" "); // e.g., "تهران نیاوران"
+    }
+    return address; // Fallback to original if too short
+}
 function getDayOfYear(currentDate) {
     const jalaliDate = jMoment(currentDate).format("jYYYY/jMM/jDD");
 

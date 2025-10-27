@@ -76,11 +76,11 @@ router.get(
     isAdmin,
     controller.companyWithDrivers.bind(controller)
 );
-router.get(
-    "/DashboardCompany",
-    isAgencyAdmin,
-    controller.dashboardCompany.bind(controller)
-);
+// router.get(
+//     "/DashboardCompany",
+//     isAgencyAdmin,
+//     controller.dashboardCompany.bind(controller)
+// );
 router.get(
     "/DashboardAgency",
     isAgencyAdmin,

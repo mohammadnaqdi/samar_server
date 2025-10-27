@@ -40,19 +40,21 @@ router.get("/GetAgencyInvoices", controller.getAgencyInvoices.bind(controller));
 router.get("/GetInvoceId", controller.getInvoceId.bind(controller));
 router.get(
     "/SetInstallments",
-
     isEnyAdmin,
     controller.setInstallments.bind(controller)
 );
+router.get(
+    "/SetInstallmentsAutoForAService",
+    isEnyAdmin,
+    controller.setInstallmentsAutoForAService.bind(controller)
+);
 router.post(
     "/SetInstallmentForStudent",
-
     isEnyAdmin,
     controller.setInstallmentForStudent.bind(controller)
 );
 router.post(
     "/SetInstallmentByParent",
-
     validator.setInstallmentByParentValidator(),
     controller.validate.bind(controller),
     controller.setInstallmentByParent.bind(controller)

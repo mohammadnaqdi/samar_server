@@ -72,6 +72,7 @@ router.get("/GetBranch", controller.getBranch.bind(controller));
 
 router.get("/SetFirstListAcc",isEnyAdmin, controller.setFirstListAcc.bind(controller));
 router.get("/GetSharingSarafal", controller.getSharingSarafal.bind(controller));
+router.get("/GetAllListAcc",isEnyAdmin, controller.getAllListAcc.bind(controller));
 
 router.post(
     "/SearchHesab",

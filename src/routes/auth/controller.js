@@ -768,6 +768,7 @@ module.exports = new (class extends controller {
                     {
                         $and: [
                             { delete: false },
+                            { active: true },
                             {
                                 $or: [
                                     { admin: user._id },
@@ -944,7 +945,7 @@ module.exports = new (class extends controller {
                 });
             }
             const userSalt = "OfferCompany";
-            
+
             const dynamicKey = JWT_KEY + userSalt;
             let token = jwt.sign(
                 { _id: user.id, date: Date.now() },
@@ -960,29 +961,27 @@ module.exports = new (class extends controller {
             });
 
             let companiesO = await this.Company.find(
-                    {
-                        $and: [
-                            { delete: false },
-                            {
-                                $or: [
-                                    { operator: user._id  },
-                                ],
-                            },
-                        ],
-                    },
-                'name cityId active logo').lean();
+                {
+                    $and: [
+                        { delete: false },
+                        {
+                            $or: [{ operator: user._id }],
+                        },
+                    ],
+                },
+                "name cityId active logo"
+            ).lean();
             let companiesA = await this.Company.find(
-                    {
-                        $and: [
-                            { delete: false },
-                            {
-                                $or: [
-                                    { admin: user._id },
-                                ],
-                            },
-                        ],
-                    },
-                'name cityId active logo').lean();
+                {
+                    $and: [
+                        { delete: false },
+                        {
+                            $or: [{ admin: user._id }],
+                        },
+                    ],
+                },
+                "name cityId active logo"
+            ).lean();
             return this.response({
                 res,
                 message: "welcome",

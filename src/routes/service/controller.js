@@ -392,6 +392,8 @@ module.exports = new (class extends controller {
             // ✅ 4. Update Students + PayQueue + OperationLogs
             for (let stu of stChange) {
                 // 🟡 Update student service info
+                console.log("stu.service",stu.service)
+                console.log("stu.service",stu)
                 if (stu.serviceFee == null || stu.driverFee < 0) {
                     await session.abortTransaction();
                     session.endSession();
@@ -588,34 +590,34 @@ module.exports = new (class extends controller {
         }
     }
 
-    async setPricingTable(req, res) {
-        try {
-            const city = req.body.city;
-            const districtId = req.body.districtId;
-            const carId = req.body.carId;
-            const gradeId = req.body.gradeId;
-            const kilometer = req.body.kilometer;
-            const price = req.body.price;
+    // async setPricingTable(req, res) {
+    //     try {
+    //         const city = req.body.city;
+    //         const districtId = req.body.districtId;
+    //         const carId = req.body.carId;
+    //         const gradeId = req.body.gradeId;
+    //         const kilometer = req.body.kilometer;
+    //         const price = req.body.price;
 
-            let pricingTable = new this.PricingTable({
-                city,
-                districtId,
-                carId,
-                gradeId,
-                kilometer,
-                price,
-            });
-            await pricingTable.save();
+    //         let pricingTable = new this.PricingTable({
+    //             city,
+    //             districtId,
+    //             carId,
+    //             gradeId,
+    //             kilometer,
+    //             price,
+    //         });
+    //         await pricingTable.save();
 
-            return this.response({
-                res,
-                data: pricingTable.id,
-            });
-        } catch (error) {
-            console.error("Error in setPricingTable:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             data: pricingTable.id,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error in setPricingTable:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
 
     async setPriceTable(req, res) {
         try {
@@ -1543,59 +1545,59 @@ module.exports = new (class extends controller {
         }
     }
 
-    async searchPricingTable(req, res) {
-        try {
-            const districtId = req.body.districtId;
-            const carId = req.body.carId;
-            const gradeId = req.body.gradeId;
+    // async searchPricingTable(req, res) {
+    //     try {
+    //         const districtId = req.body.districtId;
+    //         const carId = req.body.carId;
+    //         const gradeId = req.body.gradeId;
 
-            var qr = [];
-            var searchDistrictId = {
-                $or: [{ districtId }, { districtId: 0 }],
-            };
-            var searchGradeId = {
-                $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
-            };
+    //         var qr = [];
+    //         var searchDistrictId = {
+    //             $or: [{ districtId }, { districtId: 0 }],
+    //         };
+    //         var searchGradeId = {
+    //             $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
+    //         };
 
-            qr.push({ delete: false });
-            qr.push(searchDistrictId);
-            qr.push(searchGradeId);
-            if (carId != 0) qr.push({ carId });
+    //         qr.push({ delete: false });
+    //         qr.push(searchDistrictId);
+    //         qr.push(searchGradeId);
+    //         if (carId != 0) qr.push({ carId });
 
-            //console.log(JSON.stringify(qr));
-            let pricingTable = await this.PricingTable.find(
-                { $and: qr },
-                "kilometer studentAmount driverAmount gradeId"
-            ).sort({ kilometer: 1 });
-            if (pricingTable.length === 0) {
-                qr = [];
-                var searchDistrictId = {
-                    $or: [{ districtId }, { districtId: 0 }],
-                };
-                var searchGradeId = {
-                    $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
-                };
+    //         //console.log(JSON.stringify(qr));
+    //         let pricingTable = await this.PricingTable.find(
+    //             { $and: qr },
+    //             "kilometer studentAmount driverAmount gradeId"
+    //         ).sort({ kilometer: 1 });
+    //         if (pricingTable.length === 0) {
+    //             qr = [];
+    //             var searchDistrictId = {
+    //                 $or: [{ districtId }, { districtId: 0 }],
+    //             };
+    //             var searchGradeId = {
+    //                 $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
+    //             };
 
-                qr.push({ delete: false });
-                qr.push(searchDistrictId);
-                qr.push(searchGradeId);
-                qr.push({ carId: 0 });
-                pricingTable = await this.PricingTable.find(
-                    { $and: qr },
-                    "kilometer studentAmount driverAmount gradeId"
-                );
-            }
+    //             qr.push({ delete: false });
+    //             qr.push(searchDistrictId);
+    //             qr.push(searchGradeId);
+    //             qr.push({ carId: 0 });
+    //             pricingTable = await this.PricingTable.find(
+    //                 { $and: qr },
+    //                 "kilometer studentAmount driverAmount gradeId"
+    //             );
+    //         }
 
-            return this.response({
-                res,
-                message: "ok",
-                data: pricingTable,
-            });
-        } catch (error) {
-            console.error("Error while searchPricingTable:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             message: "ok",
+    //             data: pricingTable,
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while searchPricingTable:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
     async searchPriceTable(req, res) {
         try {
             const agencyId = req.body.agencyId;
@@ -1603,47 +1605,87 @@ module.exports = new (class extends controller {
             const carId = req.body.carId;
             const gradeId = req.body.gradeId;
 
-            var qr = [{ agencyId }];
-            var searchDistrictId = {
-                $or: [{ districtId }, { districtId: 0 }],
-            };
-            var searchGradeId = {
-                $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
-            };
-
-            qr.push({ delete: false });
-            qr.push(searchDistrictId);
-            qr.push(searchGradeId);
-            if (carId != 0) qr.push({ carId });
-
-            //console.log(JSON.stringify(qr));
+            var qr1 = [
+                { agencyId },
+                { districtId },
+                { delete: false },
+                { gradeId: { $in: gradeId } },
+            ];
+            if (carId != 0) qr1.push({ carId });
+            // console.log("qr1", JSON.stringify(qr1));
             let pricingTable = await this.PriceTable.find(
-                { $and: qr },
+                { $and: qr1 },
                 "kilometer studentAmount driverAmount gradeId"
             ).sort({ kilometer: 1 });
-            if (pricingTable.length === 0) {
-                qr = [{ agencyId }];
-                var searchDistrictId = {
-                    $or: [{ districtId }, { districtId: 0 }],
-                };
-                var searchGradeId = {
-                    $or: [{ gradeId: { $in: gradeId } }, { gradeId: 0 }],
-                };
-
-                qr.push({ delete: false });
-                qr.push(searchDistrictId);
-                qr.push(searchGradeId);
-                qr.push({ carId: 0 });
-                pricingTable = await this.PriceTable.find(
-                    { $and: qr },
-                    "kilometer studentAmount driverAmount gradeId"
-                );
+            if (pricingTable.length > 0) {
+                return this.response({
+                    res,
+                    message: "first search ok",
+                    data: pricingTable,
+                });
+            }
+            var qr2 = [
+                { agencyId },
+                { delete: false },
+                { gradeId: 0 },
+                { districtId },
+            ];
+            if (carId != 0) qr2.push({ carId });
+            // console.log("qr2", JSON.stringify(qr2));
+            pricingTable = await this.PriceTable.find(
+                { $and: qr2 },
+                "kilometer studentAmount driverAmount gradeId"
+            ).sort({ kilometer: 1 });
+            if (pricingTable.length > 0) {
+                return this.response({
+                    res,
+                    message: "seccond search ok",
+                    data: pricingTable,
+                });
+            }
+            var qr3 = [
+                { agencyId },
+                { delete: false },
+                { districtId: 0 },
+                { gradeId: { $in: gradeId } }
+            ];
+            if (carId != 0) qr3.push({ carId });
+            // console.log("qr3", JSON.stringify(qr3));
+            pricingTable = await this.PriceTable.find(
+                { $and: qr3 },
+                "kilometer studentAmount driverAmount gradeId"
+            ).sort({ kilometer: 1 });
+            if (pricingTable.length > 0) {
+                return this.response({
+                    res,
+                    message: "third search ok",
+                    data: pricingTable,
+                });
+            }
+            var qr4 = [
+                { agencyId },
+                { delete: false },
+                { districtId: 0 },
+                { gradeId: 0 }
+            ];
+            if (carId != 0) qr4.push({ carId });
+            // console.log("qr4", JSON.stringify(qr4));
+            pricingTable = await this.PriceTable.find(
+                { $and: qr4 },
+                "kilometer studentAmount driverAmount gradeId"
+            ).sort({ kilometer: 1 });
+            if (pricingTable.length > 0) {
+                return this.response({
+                    res,
+                    message: "forth search ok",
+                    data: pricingTable,
+                });
             }
 
             return this.response({
                 res,
-                message: "ok",
-                data: pricingTable,
+                message: "not find any",
+                data: [],
             });
         } catch (error) {
             console.error("Error while searchPriceTable:", error);
@@ -1941,7 +1983,7 @@ module.exports = new (class extends controller {
                     moreInfo.shiftName = "";
                     moreInfo.shiftType = "";
                 }
-                console.log("moreInfo", moreInfo);
+                // console.log("moreInfo", moreInfo);
                 myServices.push({
                     service: service[i],
                     moreInfo: moreInfo,
@@ -2231,7 +2273,7 @@ module.exports = new (class extends controller {
         }
     }
 
-     async getCorruptedServices(req, res) {
+    async getCorruptedServices(req, res) {
         try {
             const { agencyId } = req.query;
 

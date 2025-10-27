@@ -34,7 +34,14 @@ module.exports = new (class {
                 .withMessage("agencyId cant be empty"),
         ];
     }
-  
+  excelCheckValidator() {
+        return [
+            check("list")
+                .not()
+                .isEmpty()
+                .withMessage("list cant be empty"),
+        ];
+    }
     getAgencyDDSPageValidator() {
         return [
             check("page")

@@ -1391,7 +1391,7 @@ module.exports = new (class extends controller {
             if (onlyActive) {
                 qr.active = true;
             }
-            const drivers = await this.Driver.find(qr, "driverCode");
+            const drivers = await this.Driver.find(qr, "driverCode shaba hesab card").lean();
             let kol = "004";
             let moeen = "006";
             let remain = [];
@@ -1423,6 +1423,9 @@ module.exports = new (class extends controller {
                 remain.push({
                     driverId: d._id,
                     driverCode: d.driverCode,
+                    sheba: d.shaba,
+                    hesab: d.hesab,
+                    card: d.card,
                     remaining,
                 });
 
@@ -1646,28 +1649,76 @@ module.exports = new (class extends controller {
     //     .sort({ kilometer: 1 })
     //     .lean();
     // }
-    async getPricingTableNew(carId, districtId, grade,agencyId) {
-        const query = [
-            { agencyId: agencyId },
+    async getPricingTableNew(carId, districtId, gradeId, agencyId) {
+        var qr1 = [
+            { agencyId },
+            { districtId },
             { delete: false },
-            {
-                $or: [{ districtId }, { districtId: 0 }],
-            },
-            {
-                $or: [{ gradeId: { $in: grade } }, { gradeId: 0 }],
-            },
+            { gradeId: { $in: gradeId } },
         ];
-        if (carId && carId != 0) {
-            query.push({ carId });
-        }
-        
-
-        return this.PriceTable.find(
-            { $and: query },
-            "kilometer studentAmount driverAmount -_id"
+        if (carId != 0) qr1.push({ carId });
+        // console.log("qr1", JSON.stringify(qr1));
+        let pricingTable = await this.PriceTable.find(
+            { $and: qr1 },
+            "kilometer studentAmount driverAmount gradeId"
         )
             .sort({ kilometer: 1 })
             .lean();
+        if (pricingTable.length > 0) {
+            return pricingTable;
+        }
+        var qr2 = [
+            { agencyId },
+            { delete: false },
+            { gradeId: 0 },
+            { districtId },
+        ];
+        if (carId != 0) qr2.push({ carId });
+        // console.log("qr2", JSON.stringify(qr2));
+        pricingTable = await this.PriceTable.find(
+            { $and: qr2 },
+            "kilometer studentAmount driverAmount gradeId"
+        )
+            .sort({ kilometer: 1 })
+            .lean();
+        if (pricingTable.length > 0) {
+            return pricingTable;
+        }
+        var qr3 = [
+            { agencyId },
+            { delete: false },
+            { districtId: 0 },
+            { gradeId: { $in: gradeId } },
+        ];
+        if (carId != 0) qr3.push({ carId });
+        // console.log("qr3", JSON.stringify(qr3));
+        pricingTable = await this.PriceTable.find(
+            { $and: qr3 },
+            "kilometer studentAmount driverAmount gradeId"
+        )
+            .sort({ kilometer: 1 })
+            .lean();
+        if (pricingTable.length > 0) {
+            return pricingTable;
+        }
+        var qr4 = [
+            { agencyId },
+            { delete: false },
+            { districtId: 0 },
+            { gradeId: 0 },
+        ];
+        if (carId != 0) qr4.push({ carId });
+        // console.log("qr4", JSON.stringify(qr4));
+        pricingTable = await this.PriceTable.find(
+            { $and: qr4 },
+            "kilometer studentAmount driverAmount gradeId"
+        )
+            .sort({ kilometer: 1 })
+            .lean();
+        if (pricingTable.length > 0) {
+            return pricingTable;
+        }
+        return [];
     }
     async percent(agencyId) {
         try {
@@ -2631,7 +2682,7 @@ module.exports = new (class extends controller {
                     studentId: studentDoc._id,
                     studentDistance: studentDoc.serviceDistance,
                 }));
-                console.log("students", students);   
+                console.log("students", students);
                 const [school, driver] = await Promise.all([
                     this.School.findById(
                         service.schoolIds[0],
@@ -2654,21 +2705,22 @@ module.exports = new (class extends controller {
                 let pricingTable = await this.getPricingTableNew(
                     carId,
                     districtId,
-                    grade,agencyId
+                    grade,
+                    agencyId
                 );
-                console.log("carId", carId);   
-                
+                console.log("carId", carId);
 
                 if (!pricingTable.length) {
                     pricingTable = await this.getPricingTableNew(
                         0,
                         districtId,
-                        grade,agencyId
+                        grade,
+                        agencyId
                     );
                 }
                 if (!pricingTable.length) continue;
                 const studentPrices = calculateNew(pricingTable, students);
-                console.log("studentPrices", studentPrices);    
+                console.log("studentPrices", studentPrices);
                 let driverShare = 0;
                 let overall = 0;
                 for (var pr of studentPrices) {
@@ -2717,7 +2769,7 @@ module.exports = new (class extends controller {
                 servs.push(service.id);
 
                 count++;
-                if(count>2)break;
+                if (count > 2) break;
             }
             await new this.OperationLog({
                 userId: req.user._id,

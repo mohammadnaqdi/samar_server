@@ -15,6 +15,8 @@ router.post("/SetAddressCo", isSuperAdmin,
     controller.setAddressCo.bind(controller));
 router.get("/GetCompanies", isSuperAdmin,
     controller.getCompanies.bind(controller));
+router.delete("/DeleteOffPack", isSuperAdmin,
+    controller.deleteOffPack.bind(controller));
 router.get("/GetCompanyById",
     controller.getCompanyById.bind(controller));
 router.get("/GetOffPackByCompanyId",

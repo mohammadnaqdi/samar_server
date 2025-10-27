@@ -938,6 +938,47 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async getAllListAcc(req, res) {
+        try {
+            if (
+                req.query.agencyId === undefined 
+            ) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "agencyId need",
+                });
+            }
+            const agencyId = req.query.agencyId;
+            let listAcc = await this.ListAcc.find({
+                    agencyId,
+                    enable: true,
+                    $nor:[{code:'008011000000008'},{code:'008011000000010'}],
+                },' -_id code codeLev3 codeLev2 codeLev1').lean();
+                for(var acc of listAcc){
+                    const tafsily=await this.LevelAccDetail.findOne({
+                        accCode: acc.codeLev3, agencyId,levelNo:3
+                    },"accName -_id");
+                    const moeen=await this.LevelAccDetail.findOne({
+                        accCode: acc.codeLev2, agencyId,levelNo:2
+                    },"accName -_id");
+                    const kol=await this.LevelAccDetail.findOne({
+                        accCode: acc.codeLev1, agencyId,levelNo:1
+                    },"accName -_id");
+                    acc.tafsily=tafsily.accName || '';
+                    acc.moeen=moeen.accName || '';
+                    acc.kol=kol.accName || '';
+                }
+            return this.response({
+                res,
+                message: "ok",
+                data: listAcc,
+            });
+        } catch (error) {
+            console.error("getAllListAcc: ", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 
     async getListSarfasl(req, res) {
         try {

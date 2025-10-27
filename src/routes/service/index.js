@@ -80,24 +80,24 @@ router.get(
 router.get("/IsChangedDriver", controller.isChangedDriver.bind(controller));
 router.get("/ServiceListForPay", controller.serviceListForPay.bind(controller));
 //pricing table
-router.post(
-    "/SetPricingTable",
-    validator.setPricingTableValidator(),
-    controller.validate.bind(controller),
-    controller.setPricingTable.bind(controller),
-);
+// router.post(
+//     "/SetPricingTable",
+//     validator.setPricingTableValidator(),
+//     controller.validate.bind(controller),
+//     controller.setPricingTable.bind(controller),
+// );
 router.post(
     "/SetPriceTable",
     validator.setPriceTableValidator(),
     controller.validate.bind(controller),
     controller.setPriceTable.bind(controller),
 );
-router.post(
-    "/SearchPricingTable",
-    validator.searchPricingTableValidator(),
-    controller.validate.bind(controller),
-    controller.searchPricingTable.bind(controller),
-);
+// router.post(
+//     "/SearchPricingTable",
+//     validator.searchPricingTableValidator(),
+//     controller.validate.bind(controller),
+//     controller.searchPricingTable.bind(controller),
+// );
 router.post(
     "/SearchPriceTable",
     validator.searchPriceTableValidator(),

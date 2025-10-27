@@ -1,6 +1,7 @@
 const controller = require("../controller");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const jMoment = require("moment-jalaali");
 
 const textValues = [
     "سرویس مدرسه یک سرویس جمعی می باشد که در صورت تکمیل ظرفیت خودرو سرویس دهی انجام می پذیرد",
@@ -1067,143 +1068,143 @@ module.exports = new (class extends controller {
         }
     }
 
-    async dashboardCompany(req, res) {
-        try {
-            if (
-                req.query.agencyId === undefined ||
-                req.query.agencyId.trim() === ""
-            ) {
-                return this.response({
-                    res,
-                    code: 214,
-                    message: "agencyId need",
-                });
-            }
-            const agencyId = ObjectId.createFromHexString(req.query.agencyId);
+    // async dashboardCompany(req, res) {
+    //     try {
+    //         if (
+    //             req.query.agencyId === undefined ||
+    //             req.query.agencyId.trim() === ""
+    //         ) {
+    //             return this.response({
+    //                 res,
+    //                 code: 214,
+    //                 message: "agencyId need",
+    //             });
+    //         }
+    //         const agencyId = ObjectId.createFromHexString(req.query.agencyId);
 
-            const agency = await this.Agency.findOne(
-                {
-                    $and: [
-                        { delete: false },
-                        { _id: agencyId },
-                        {
-                            $or: [
-                                { admin: req.user._id },
-                                { users: { $in: req.user._id } },
-                            ],
-                        },
-                    ],
-                },
-                "rating address settings"
-            );
-            if (!agency) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "your agency is delete maybe",
-                    data: { fa_m: "احتمالا شرکت شما حذف شده است" },
-                });
-            }
-            const wallet = agency.settings.find(
-                (obj) => obj.wallet != undefined
-            ).wallet;
-            let mandeh = 0;
-            // const result = await this.DocListSanad.aggregate([
-            //     {
-            //         $match: {
-            //             accCode: wallet,
-            //             agencyId: agencyId,
-            //         },
-            //     },
-            //     {
-            //         $group: {
-            //             _id: null,
-            //             total: {
-            //                 $sum: {
-            //                     $subtract: ["$bed", "$bes"],
-            //                 },
-            //             },
-            //         },
-            //     },
-            // ]);
-            // // console.log("result",result);
-            // mandeh = result[0]?.total || 0;
+    //         const agency = await this.Agency.findOne(
+    //             {
+    //                 $and: [
+    //                     { delete: false },
+    //                     { _id: agencyId },
+    //                     {
+    //                         $or: [
+    //                             { admin: req.user._id },
+    //                             { users: { $in: req.user._id } },
+    //                         ],
+    //                     },
+    //                 ],
+    //             },
+    //             "rating address settings"
+    //         );
+    //         if (!agency) {
+    //             return this.response({
+    //                 res,
+    //                 code: 404,
+    //                 message: "your agency is delete maybe",
+    //                 data: { fa_m: "احتمالا شرکت شما حذف شده است" },
+    //             });
+    //         }
+    //         const wallet = agency.settings.find(
+    //             (obj) => obj.wallet != undefined
+    //         ).wallet;
+    //         let mandeh = 0;
+    //         // const result = await this.DocListSanad.aggregate([
+    //         //     {
+    //         //         $match: {
+    //         //             accCode: wallet,
+    //         //             agencyId: agencyId,
+    //         //         },
+    //         //     },
+    //         //     {
+    //         //         $group: {
+    //         //             _id: null,
+    //         //             total: {
+    //         //                 $sum: {
+    //         //                     $subtract: ["$bed", "$bes"],
+    //         //                 },
+    //         //             },
+    //         //         },
+    //         //     },
+    //         // ]);
+    //         // // console.log("result",result);
+    //         // mandeh = result[0]?.total || 0;
 
-            let schools = await this.School.find(
-                { agencyId, delete: false },
-                "code name typeTitle genderTitle districtTitle districtId"
-            ).lean();
-            for (var school of schools) {
-                const stAll = await this.Student.countDocuments({
-                    school: school._id,
-                    delete: false,
-                    active: true,
-                });
-                const stHas = await this.Student.countDocuments({
-                    school: school._id,
-                    delete: false,
-                    active: true,
-                    state: 4,
-                });
+    //         let schools = await this.School.find(
+    //             { agencyId, delete: false },
+    //             "code name typeTitle genderTitle districtTitle districtId"
+    //         ).lean();
+    //         for (var school of schools) {
+    //             const stAll = await this.Student.countDocuments({
+    //                 school: school._id,
+    //                 delete: false,
+    //                 active: true,
+    //             });
+    //             const stHas = await this.Student.countDocuments({
+    //                 school: school._id,
+    //                 delete: false,
+    //                 active: true,
+    //                 state: 4,
+    //             });
 
-                let sc = {
-                    school,
-                    stAll,
-                    stHas,
-                };
-                schools.push(sc);
-            }
+    //             let sc = {
+    //                 school,
+    //                 stAll,
+    //                 stHas,
+    //             };
+    //             schools.push(sc);
+    //         }
 
-            console.log("schools", JSON.stringify(schools));
-            const services = await this.Service.find(
-                { agencyId, delete: false },
-                "cost distance serviceNum student driverId"
-            );
-            const reports = await this.StReport.find(
-                { agencyId, state: 0, delete: false },
-                "createdAt desc grade"
-            )
-                .limit(8)
-                .sort({ _id: -1 });
+    //         console.log("schools", JSON.stringify(schools));
+    //         const services = await this.Service.find(
+    //             { agencyId, delete: false },
+    //             "cost distance serviceNum student driverId"
+    //         );
+    //         const reports = await this.StReport.find(
+    //             { agencyId, state: 0, delete: false },
+    //             "createdAt desc grade"
+    //         )
+    //             .limit(8)
+    //             .sort({ _id: -1 });
 
-            let drivers = [];
+    //         let drivers = [];
 
-            const driversList = await this.Driver.find(
-                { agencyId, delete: false },
-                "userId driverCode pic active"
-            );
-            for (var s in driversList) {
-                let user = await this.User.findById(
-                    driversList[s].userId,
-                    "name lastName"
-                );
-                if (!user) continue;
-                drivers.push({
-                    id: driversList[s].id,
-                    active: driversList[s].active,
-                    name: user.name,
-                    lastName: user.lastName,
-                    driverCode: driversList[s].driverCode,
-                    pic: driversList[s].pic,
-                });
-            }
-            const payCards = await this.PayQueue.find({
-                isPaid: true,
-                cardNumber: { $ne: "" },
-                agencyId,
-                active: true,
-            });
-            // const sanadCount=await this.DocSanad.countDocuments({agencyId})
+    //         const driversList = await this.Driver.find(
+    //             { agencyId, delete: false },
+    //             "userId driverCode pic active"
+    //         );
+    //         for (var s in driversList) {
+    //             let user = await this.User.findById(
+    //                 driversList[s].userId,
+    //                 "name lastName"
+    //             );
+    //             if (!user) continue;
+    //             drivers.push({
+    //                 id: driversList[s].id,
+    //                 active: driversList[s].active,
+    //                 name: user.name,
+    //                 lastName: user.lastName,
+    //                 driverCode: driversList[s].driverCode,
+    //                 pic: driversList[s].pic,
+    //             });
+    //         }
+    //         const payCards = await this.PayQueue.find({
+    //             isPaid: true,
+    //             cardNumber: { $ne: "" },
+    //             agencyId,
+    //             active: true,
+    //         });
+    //         // const sanadCount=await this.DocSanad.countDocuments({agencyId})
 
-            return this.response({
-                res,
-                data: { schools, services, drivers, reports, mandeh, payCards },
-            });
-        } catch (error) {
-            console.error("Error while in dashboard company:", error);
-            return res.status(500).json({ error: "Internal Server Error." });
-        }
-    }
+    //         return this.response({
+    //             res,
+    //             data: { schools, services, drivers, reports, mandeh, payCards },
+    //         });
+    //     } catch (error) {
+    //         console.error("Error while in dashboard company:", error);
+    //         return res.status(500).json({ error: "Internal Server Error." });
+    //     }
+    // }
     async dashboardAgency(req, res) {
         try {
             if (
@@ -1216,6 +1217,7 @@ module.exports = new (class extends controller {
                     message: "agencyId need",
                 });
             }
+
             const agencyId = ObjectId.createFromHexString(req.query.agencyId);
             const agency = await this.Agency.findOne(
                 {
@@ -1240,6 +1242,9 @@ module.exports = new (class extends controller {
                     data: { fa_m: "احتمالا شرکت شما حذف شده است" },
                 });
             }
+            const charge = agency.settings.find(
+                (obj) => obj.charge !== undefined
+            ).charge;
             let mandeh = -1;
 
             let schoolsList = await this.School.find(
@@ -1418,38 +1423,100 @@ module.exports = new (class extends controller {
                     $count: "uniqueCount",
                 },
             ]);
-            const payCards2 = await this.PayQueue.aggregate([
+            // const payCards2 = await this.PayQueue.aggregate([
+            //     {
+            //         $match: {
+            //             isPaid: true,
+            //             cardNumber: { $nin: ["", null, " "] },
+            //             agencyId: agencyId,
+            //             delete: false,
+            //         },
+            //     },
+            //     {
+            //         $group: {
+            //             _id: {
+            //                 cardNumber: "$cardNumber",
+            //                 refId: "$refId",
+            //             },
+            //             docs: { $push: "$$ROOT" }, // keep full documents
+            //         },
+            //     },
+            //     {
+            //         $project: {
+            //             "docs.isPaid": 0,
+            //             "docs.delete": 0,
+            //             "docs.authority": 0,
+            //             "docs.createdAt": 0,
+            //             "docs.updatedAt": 0,
+            //             "docs.__v": 0,
+            //         },
+            //     },
+            // ]);
+            // console.log("payCards2", JSON.stringify(payCards2));
+            const result2 = await this.DocListSanad.aggregate([
                 {
                     $match: {
-                        isPaid: true,
-                        cardNumber: { $nin: ["", null, " "] },
-                        agencyId: agencyId,
-                        delete: false,
+                        accCode: charge,
+                        agencyId,
                     },
                 },
                 {
                     $group: {
-                        _id: {
-                            cardNumber: "$cardNumber",
-                            refId: "$refId",
+                        _id: null,
+                        total: {
+                            $sum: {
+                                $subtract: ["$bes", "$bed"],
+                            },
                         },
-                        docs: { $push: "$$ROOT" }, // keep full documents
-                    },
-                },
-                {
-                    $project: {
-                        "docs.isPaid": 0,
-                        "docs.delete": 0,
-                        "docs.authority": 0,
-                        "docs.createdAt": 0,
-                        "docs.updatedAt": 0,
-                        "docs.__v": 0,
                     },
                 },
             ]);
-            // console.log("payCards2", JSON.stringify(payCards2));
-
+            const adminCharge = result2[0]?.total || 0;
             const count = payCards.length > 0 ? payCards[0].uniqueCount : 0;
+
+            const currentDate = new Date();
+            const m = jMoment(currentDate).jMonth();
+            let counterMax = 0;
+            switch (m) {
+                case 6:
+                    counterMax = 1;
+                    break;
+                case 7:
+                    counterMax = 2;
+                    break;
+                case 8:
+                    counterMax = 3;
+                    break;
+                case 9:
+                    counterMax = 4;
+                    break;
+                case 10:
+                    counterMax = 5;
+                    break;
+                case 11:
+                    counterMax = 6;
+                    break;
+                case 0:
+                    counterMax = 7;
+                    break;
+                case 1:
+                    counterMax = 8;
+                    break;
+                case 2:
+                    counterMax = 9;
+                    break;
+            }
+            let studentsInstallment;
+            if (counterMax > 0) {
+                studentsInstallment = await this.PayQueue.countDocuments({
+                    counter: { $lte: counterMax }, //dodo
+                    isPaid: false,
+                    delete: false,
+                    agencyId,
+                    type: "installment",
+                });
+            }
+
             return this.response({
                 res,
                 data: {
@@ -1469,6 +1536,8 @@ module.exports = new (class extends controller {
                     sanadCount3,
                     sanadCount4,
                     payCards: count,
+                    adminCharge,
+                    studentsInstallment,
                 },
             });
         } catch (error) {
@@ -1895,10 +1964,21 @@ module.exports = new (class extends controller {
                     message: "school not found",
                 });
             }
-            const agency = await this.Agency.findById(
+            let agency = await this.Agency.findById(
                 school.agencyId,
                 "code name tel pic active address location.coordinates"
-            );
+            ).lean();
+            if (agency) {
+                let contract = await this.AgencySet.findOne(
+                    { agencyId: school.agencyId },
+                    "showFirstCostToStudent"
+                ).lean();
+                let showFirstCostToStudent = false;
+                if (contract) {
+                    showFirstCostToStudent = contract.showFirstCostToStudent;
+                }
+                agency.showFirstCostToStudent = showFirstCostToStudent;
+            }
 
             return this.response({
                 res,
@@ -2186,15 +2266,12 @@ module.exports = new (class extends controller {
 
     async allAgencies(req, res) {
         try {
-            const city=req.query.city || '';
-            let match={delete: false, active: true};
-            if(city.trim()!=''){
-                match.cityId=parseInt(city);
+            const city = req.query.city || "";
+            let match = { delete: false, active: true };
+            if (city.trim() != "") {
+                match.cityId = parseInt(city);
             }
-            const agencies = await this.Agency.find(
-                match,
-                "code name"
-            );
+            const agencies = await this.Agency.find(match, "code name");
             return this.response({
                 res,
                 data: agencies,
