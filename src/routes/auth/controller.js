@@ -1178,8 +1178,14 @@ module.exports = new (class extends controller {
 
     async getDriverLocation(req, res) {
         try {
-            const { agencyCode, driverCode } = req.query;
+            let { agencyCode, driverCode } = req.query;
             const myDrivers = [];
+            if(req.user.isSchoolAdmin){
+                const school=await this.School.findById(agencyCode,'agencyId');
+                if(school){
+                    agencyCode=school.agencyId.toString();
+                }
+            }
 
             // for (let i = 0; i < driversLocation.length; i++) {
             //     if (driversLocation[i].driverId === driverCode) {

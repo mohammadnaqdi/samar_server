@@ -42,7 +42,9 @@ const serviceSchema = new mongoose.Schema(
         percentInfo: { type: [], default: [] },
         delete: { type: Boolean, default: false, required: false },
         active: { type: Boolean, default: true, required: false },
+        checked: { type: Boolean, default: false, required: false },
         time: { type: Number, required: false, default: 0 },
+        start_service: { type: Date, require: false },
     },
     {
         timestamps: true,

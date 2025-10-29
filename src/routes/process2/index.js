@@ -93,7 +93,15 @@ router.post(
 );
 
 router.post("/GetStudentsByIds", controller.getStudentsByIds.bind(controller));
-router.get("/GetInstallmentToThisMonth", controller.getInstallmentToThisMonth.bind(controller));
+router.get(
+    "/GetInstallmentToThisMonth",
+    controller.getInstallmentToThisMonth.bind(controller)
+);
+router.get(
+    "/SetServiceMoreInfo",
+    isEnyAdmin,
+    controller.setServiceMoreInfo.bind(controller)
+);
 router.post(
     "/excelCheck",
     validator.excelCheckValidator(),

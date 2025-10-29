@@ -1009,12 +1009,9 @@ module.exports = new (class extends controller {
                 qr.push(searchQ);
             }
             qr.push({ agencyId });
-            const findItem =
-                "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone driverId schoolIds active time";
-
+  
             const service = await this.Service.find(
                 { $and: qr },
-                findItem
             ).limit(40);
 
             let myServices = [];
@@ -1131,7 +1128,20 @@ module.exports = new (class extends controller {
                 }
             }
 
-            let qr = [{ delete: false }, { active: true }, { agencyId }];
+            let qr = [{ delete: false }, { active: true }, ];
+            if(req.user.isSchoolAdmin){
+                const serviceIds =await this.Student.find({
+                    school:agencyId,
+                    state:4,
+                    service:{$ne:null} 
+                }).distinct('service');
+                qr.push({
+                    _id:{$in:serviceIds}
+                })
+            }else{
+                qr.push({ agencyId });
+            }
+
             const service = await this.Service.find(
                 { $and: qr },
                 "serviceNum driverPic driverId driverName driverCar driverCarPelak driverPhone student schoolIds shiftId routeSave time"
@@ -1883,10 +1893,8 @@ module.exports = new (class extends controller {
             console.log("serviceId", serviceId);
             qr.push({ _id: serviceId });
 
-            const findItem =
-                "serviceNum distance cost driverSharing driverPic shiftId driverName driverCar driverCarPelak driverPhone driverId schoolIds active time";
-
-            const service = await this.Service.find({ $and: qr }, findItem)
+         
+            const service = await this.Service.find({ $and: qr })
                 .skip(page * size)
                 .limit(size);
 

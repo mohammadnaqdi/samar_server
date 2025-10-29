@@ -1391,7 +1391,10 @@ module.exports = new (class extends controller {
             if (onlyActive) {
                 qr.active = true;
             }
-            const drivers = await this.Driver.find(qr, "driverCode shaba hesab card").lean();
+            const drivers = await this.Driver.find(
+                qr,
+                "driverCode shaba hesab card"
+            ).lean();
             let kol = "004";
             let moeen = "006";
             let remain = [];
@@ -2644,155 +2647,162 @@ module.exports = new (class extends controller {
     async resetPricesNew(req, res) {
         try {
             const { agencyId } = req.query;
-            const services = await this.Service.find({
+            const countAll = await this.Service.countDocuments({
                 agencyId,
                 delete: false,
             });
-            console.log("services", services.length);
-            if (!services.length) {
-                return this.response({
-                    res,
-                    code: 404,
-                    message: "No services found!",
-                });
-            }
-
-            let servs = [];
             let count = 0;
-            const bulkStudentUpdates = [];
-            const bulkServiceUpdates = [];
-            for (const service of services) {
-                const studentDocs = await this.Student.find(
-                    { service: service._id },
-                    "serviceDistance _id"
-                ).lean();
-                if (!studentDocs.length) {
-                    await this.Service.findByIdAndUpdate(service._id, {
-                        delete: true,
+            let servs = [];
+            console.log("countAll", countAll);
+            for (var i = 0; i < 2 && i < countAll; i++) {
+                let ct = countAll / 2;
+                if (ct < 1) ct = 1;
+                console.log("ct", ct);
+                const services =
+                    i == 0
+                        ? await this.Service.find({
+                              agencyId,
+                              delete: false,
+                          })
+                              .limit(ct)
+                              .skip(i * ct)
+                        : await this.Service.find({
+                              agencyId,
+                              delete: false,
+                          }).skip(i * ct);
+                console.log("services", services.length);
+                if (!services.length) {
+                    return this.response({
+                        res,
+                        code: 404,
+                        message: "No services found!",
                     });
-                    continue;
                 }
-                // const studentIds = service.student;
-                // const studentDocs = await this.Student.find(
-                //     { _id: { $in: studentIds } },
-                //     "serviceDistance"
-                // ).lean();
 
-                const students = studentDocs.map((studentDoc) => ({
-                    studentId: studentDoc._id,
-                    studentDistance: studentDoc.serviceDistance,
-                }));
-                console.log("students", students);
-                const [school, driver] = await Promise.all([
-                    this.School.findById(
-                        service.schoolIds[0],
-                        "districtId grade"
-                    ).lean(),
-                    this.Driver.findById(service.driverId, "carId").lean(),
-                ]);
+                const bulkStudentUpdates = [];
+                const bulkServiceUpdates = [];
+                for (const service of services) {
+                    const studentDocs = await this.Student.find(
+                        { service: service._id },
+                        "serviceDistance _id"
+                    ).lean();
+                    if (!studentDocs.length) {
+                        await this.Service.findByIdAndUpdate(service._id, {
+                            delete: true,
+                        });
+                        continue;
+                    }
+                    const students = studentDocs.map((studentDoc) => ({
+                        studentId: studentDoc._id,
+                        studentDistance: studentDoc.serviceDistance,
+                    }));
+                    const [school, driver] = await Promise.all([
+                        this.School.findById(
+                            service.schoolIds[0],
+                            "districtId grade"
+                        ).lean(),
+                        this.Driver.findById(service.driverId, "carId").lean(),
+                    ]);
 
-                if (!school || !driver) continue;
+                    if (!school || !driver) continue;
 
-                const car = await this.Car.findById(
-                    driver.carId,
-                    "capacity"
-                ).lean();
-                if (!car) continue;
+                    const car = await this.Car.findById(
+                        driver.carId,
+                        "capacity"
+                    ).lean();
+                    if (!car) continue;
 
-                const carId = car.capacity;
-                const { districtId, grade } = school;
+                    const carId = car.capacity;
+                    const { districtId, grade } = school;
 
-                let pricingTable = await this.getPricingTableNew(
-                    carId,
-                    districtId,
-                    grade,
-                    agencyId
-                );
-                console.log("carId", carId);
-
-                if (!pricingTable.length) {
-                    pricingTable = await this.getPricingTableNew(
-                        0,
+                    let pricingTable = await this.getPricingTableNew(
+                        carId,
                         districtId,
                         grade,
                         agencyId
                     );
-                }
-                if (!pricingTable.length) continue;
-                const studentPrices = calculateNew(pricingTable, students);
-                console.log("studentPrices", studentPrices);
-                let driverShare = 0;
-                let overall = 0;
-                for (var pr of studentPrices) {
-                    driverShare = driverShare + pr.driverAmount;
-                    overall = overall + pr.studentAmount;
-                }
-                for (const {
-                    studentId,
-                    studentAmount,
-                    driverAmount,
-                } of studentPrices) {
-                    // Validate that studentAmount and driverAmount are valid numbers
-                    if (isNaN(studentAmount) || isNaN(driverAmount)) {
-                        console.warn(
-                            `Skipping update for studentId ${studentId}: Invalid amount (studentAmount: ${studentAmount}, driverAmount: ${driverAmount})`
+
+                    if (!pricingTable.length) {
+                        pricingTable = await this.getPricingTableNew(
+                            0,
+                            districtId,
+                            grade,
+                            agencyId
                         );
-                        continue; // Skip invalid entries
+                    }
+                    if (!pricingTable.length) continue;
+                    const studentPrices = calculateNew(pricingTable, students);
+                    let driverShare = 0;
+                    let overall = 0;
+                    for (var pr of studentPrices) {
+                        driverShare = driverShare + pr.driverAmount;
+                        overall = overall + pr.studentAmount;
+                    }
+                    for (const {
+                        studentId,
+                        studentAmount,
+                        driverAmount,
+                    } of studentPrices) {
+                        // Validate that studentAmount and driverAmount are valid numbers
+                        if (isNaN(studentAmount) || isNaN(driverAmount)) {
+                            console.warn(
+                                `Skipping update for studentId ${studentId}: Invalid amount (studentAmount: ${studentAmount}, driverAmount: ${driverAmount})`
+                            );
+                            continue; // Skip invalid entries
+                        }
+
+                        bulkStudentUpdates.push({
+                            updateOne: {
+                                filter: { _id: studentId },
+                                update: {
+                                    $set: {
+                                        serviceCost: Number(studentAmount), // Ensure it's a number
+                                        driverCost: Number(driverAmount), // Ensure it's a number
+                                    },
+                                },
+                            },
+                        });
                     }
 
-                    bulkStudentUpdates.push({
+                    bulkServiceUpdates.push({
                         updateOne: {
-                            filter: { _id: studentId },
+                            filter: { _id: service._id },
                             update: {
                                 $set: {
-                                    serviceCost: Number(studentAmount), // Ensure it's a number
-                                    driverCost: Number(driverAmount), // Ensure it's a number
+                                    driverSharing: driverShare,
+                                    cost: overall,
+                                    // studentCost: service.studentCost,
                                 },
                             },
                         },
                     });
+                    servs.push(service.id);
+                    count++;
+                    // if (count > 2) break;
                 }
-
-                bulkServiceUpdates.push({
-                    updateOne: {
-                        filter: { _id: service._id },
-                        update: {
-                            $set: {
-                                driverSharing: driverShare,
-                                cost: overall,
-                                // studentCost: service.studentCost,
-                            },
-                        },
-                    },
-                });
-
-                servs.push(service.id);
-
-                count++;
-                if (count > 2) break;
-            }
-            await new this.OperationLog({
-                userId: req.user._id,
-                name: req.user.name + " " + req.user.lastName,
-                agencyId: agencyId,
-                targetIds: [],
-                targetTable: "",
-                sanadId: 0,
-                actionName: "resetPrice",
-                actionNameFa: `بازنویسی هزینه سرویس`,
-                desc: `بازنویسی هزینه تعداد ${count} سرویس`,
-            }).save();
-            if (bulkStudentUpdates.length) {
-                try {
-                    await this.Student.bulkWrite(bulkStudentUpdates);
-                    console.log("Bulk update successful");
-                } catch (error) {
-                    console.error("Error during bulkWrite:", error);
-                    throw error; // Rethrow or handle as needed
+                await new this.OperationLog({
+                    userId: req.user._id,
+                    name: req.user.name + " " + req.user.lastName,
+                    agencyId: agencyId,
+                    targetIds: [],
+                    targetTable: "",
+                    sanadId: 0,
+                    actionName: "resetPrice",
+                    actionNameFa: `بازنویسی هزینه سرویس`,
+                    desc: `بازنویسی هزینه تعداد ${count} سرویس`,
+                }).save();
+                if (bulkStudentUpdates.length) {
+                    try {
+                        await this.Student.bulkWrite(bulkStudentUpdates);
+                        console.log("Bulk update successful");
+                    } catch (error) {
+                        console.error("Error during bulkWrite:", error);
+                        throw error; // Rethrow or handle as needed
+                    }
                 }
-            }
-            if (bulkServiceUpdates.length) {
-                await this.Service.bulkWrite(bulkServiceUpdates);
+                if (bulkServiceUpdates.length) {
+                    await this.Service.bulkWrite(bulkServiceUpdates);
+                }
             }
 
             return this.response({ res, message: `${count} services updated` });

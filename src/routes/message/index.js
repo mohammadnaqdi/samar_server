@@ -29,6 +29,13 @@ router.post(
     controller.sendMessage.bind(controller),
 );
 router.post(
+    "/SendAvanak",
+    isEnyAdmin,
+    validator.sendAvanakValidator(),
+    controller.validate.bind(controller),
+    controller.sendAvanak.bind(controller),
+);
+router.post(
     "/SendAvanakToService",
     controller.sendAvanakToService.bind(controller),
 );

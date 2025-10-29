@@ -1904,7 +1904,19 @@ module.exports = new (class extends controller {
             var qr = [];
             qr.push({ delete: false });
             qr.push({ active: true });
-            qr.push({ agencyId });
+            if (req.user.isSchoolAdmin) {
+                const serviceIds = await this.Student.find({
+                    school: agencyId,
+                    state: 4,
+                    service: { $ne: null },
+                }).distinct("service");
+                const driverIds = await this.Service.find({
+                    _id: { $in: serviceIds },
+                }).distinct("driverId");
+                qr.push({ _id: { $in: driverIds } });
+            } else {
+                qr.push({ agencyId });
+            }
 
             let drivers = await this.Driver.find(
                 { $and: qr },
@@ -2911,11 +2923,14 @@ module.exports = new (class extends controller {
     async getMyInfo3(req, res) {
         try {
             // console.log("req.user._id", req.user._id);
-            const drivers = await this.Driver.find({
-                userId: req.user._id,
-                delete: false,
-                active: true,
-            },'userId agencyId carId driverCode drivingLicence pic dLicencePic isAgent').lean();
+            const drivers = await this.Driver.find(
+                {
+                    userId: req.user._id,
+                    delete: false,
+                    active: true,
+                },
+                "userId agencyId carId driverCode drivingLicence pic dLicencePic isAgent"
+            ).lean();
 
             // console.log("drivers", drivers);
             if (drivers.length === 0) {
@@ -2986,14 +3001,17 @@ module.exports = new (class extends controller {
                     await car.save();
                 }
                 let agencySet;
-                agencySet = await this.AgencySet.findOne({
-                    agencyId: agency._id,
-                },'showCostToDriver');
-                let showCostToDriver=true;
+                agencySet = await this.AgencySet.findOne(
+                    {
+                        agencyId: agency._id,
+                    },
+                    "showCostToDriver"
+                );
+                let showCostToDriver = true;
                 if (agencySet) {
-                   showCostToDriver=agencySet.showCostToDriver;
+                    showCostToDriver = agencySet.showCostToDriver;
                 }
-               
+
                 driversList.push({
                     driver,
                     car,
@@ -3019,10 +3037,7 @@ module.exports = new (class extends controller {
     }
     async getDriverInfoById(req, res) {
         try {
-             if (
-                req.query.id === undefined ||
-                req.query.id.trim() === ""
-            ) {
+            if (req.query.id === undefined || req.query.id.trim() === "") {
                 return this.response({
                     res,
                     code: 604,
@@ -3042,43 +3057,44 @@ module.exports = new (class extends controller {
                     },
                 });
             }
-                driver.car = await this.Car.findById(driver.carId);
-                let driverInfo = await this.DriverInfo.findOne({
+            driver.car = await this.Car.findById(driver.carId);
+            let driverInfo = await this.DriverInfo.findOne({
+                driverId: driver._id,
+            });
+            if (!driverInfo) {
+                driverInfo = new this.DriverInfo({
                     driverId: driver._id,
                 });
-                if (!driverInfo) {
-                    driverInfo = new this.DriverInfo({
-                        driverId: driver._id,
-                    });
-                    await driverInfo.save();
-                } else {
-                    driver.location = driverInfo.location;
-                    driver.address = driverInfo.address;
-                    driver.birthday = driverInfo.birthday;
-                    driver.expireSh = driverInfo.expireSh;
-                    driver.healthPic = driverInfo.healthPic;
-                    driver.confirmHealthPic = driverInfo.confirmHealthPic;
-                    driver.technicalDiagPic = driverInfo.technicalDiagPic;
-                    driver.confirmTechincalPic = driverInfo.confirmTechincalPic;
-                    driver.clearancesPic = driverInfo.clearancesPic;
-                    driver.confirmClearPic = driverInfo.confirmClearPic;
-                    driver.dLicencePic = driverInfo.dLicencePic;
-                    driver.confirmDriverLcPic = driverInfo.confirmDriverLcPic;
-                    driver.dLicenceBackPic = driverInfo.dLicenceBackPic;
-                    driver.confirmDriverLcBackPic =
-                        driverInfo.confirmDriverLcBackPic;
-                    driver.carDocPic = driverInfo.carDocPic;
-                    driver.confirmcarDocPic = driverInfo.confirmcarDocPic;
-                    driver.backCarDocPic = driverInfo.backCarDocPic;
-                    console.log("driverInfo.backCarDocPic",driverInfo.backCarDocPic)
-                    driver.confirmBackCarDocPic =
-                        driverInfo.confirmBackCarDocPic;
-                    driver.taxiDriverLicense = driverInfo.taxiDriverLicense;
-                    driver.insPic = driverInfo.insPic;
-                    driver.confirmInsPic = driverInfo.confirmInsPic;
-                    driver.isDriverCarOwner = driverInfo.isDriverCarOwner;
-                }
-            
+                await driverInfo.save();
+            } else {
+                driver.location = driverInfo.location;
+                driver.address = driverInfo.address;
+                driver.birthday = driverInfo.birthday;
+                driver.expireSh = driverInfo.expireSh;
+                driver.healthPic = driverInfo.healthPic;
+                driver.confirmHealthPic = driverInfo.confirmHealthPic;
+                driver.technicalDiagPic = driverInfo.technicalDiagPic;
+                driver.confirmTechincalPic = driverInfo.confirmTechincalPic;
+                driver.clearancesPic = driverInfo.clearancesPic;
+                driver.confirmClearPic = driverInfo.confirmClearPic;
+                driver.dLicencePic = driverInfo.dLicencePic;
+                driver.confirmDriverLcPic = driverInfo.confirmDriverLcPic;
+                driver.dLicenceBackPic = driverInfo.dLicenceBackPic;
+                driver.confirmDriverLcBackPic =
+                    driverInfo.confirmDriverLcBackPic;
+                driver.carDocPic = driverInfo.carDocPic;
+                driver.confirmcarDocPic = driverInfo.confirmcarDocPic;
+                driver.backCarDocPic = driverInfo.backCarDocPic;
+                // console.log(
+                //     "driverInfo.backCarDocPic",
+                //     driverInfo.backCarDocPic
+                // );
+                driver.confirmBackCarDocPic = driverInfo.confirmBackCarDocPic;
+                driver.taxiDriverLicense = driverInfo.taxiDriverLicense;
+                driver.insPic = driverInfo.insPic;
+                driver.confirmInsPic = driverInfo.confirmInsPic;
+                driver.isDriverCarOwner = driverInfo.isDriverCarOwner;
+            }
 
             // console.log("services=",JSON.stringify(services));
             return this.response({
@@ -3338,15 +3354,23 @@ module.exports = new (class extends controller {
                 //     "student -_id"
                 // ).lean();
                 // drivers[i].moreData.serviceChart = serviceChart;
-                const studentCount = await this.Student.countDocuments({
-                    driverCode: drivers[i].driverCode,
-                });
-                const serviceCount = await this.Service.countDocuments({
+                // const studentCount = await this.Student.countDocuments({
+                //     driverCode: drivers[i].driverCode,
+                // });
+
+                const servicesIds = await this.Service.find({
                     delete: false,
                     driverId: drivers[i]._id,
+                }).distinct("_id");
+                const studentCount = await this.Student.countDocuments({
+                    service: { $in: servicesIds },
                 });
+                // const serviceCount = await this.Service.countDocuments({
+                //     delete: false,
+                //     driverId: drivers[i]._id,
+                // });
                 drivers[i].moreData.studentCount = studentCount;
-                drivers[i].moreData.serviceCount = serviceCount;
+                drivers[i].moreData.serviceCount = servicesIds.length;
                 delete drivers[i].carId;
                 delete drivers[i].userId;
                 delete drivers[i].agencyId;
@@ -3890,11 +3914,16 @@ module.exports = new (class extends controller {
                 for (const service of services) {
                     const add_serv = { serviceNum: service.serviceNum };
 
-                    const school = await this.School.findById(service.schoolIds[0]);
+                    const school = await this.School.findById(
+                        service.schoolIds[0]
+                    );
 
                     add_serv.school = school.name;
-                 
-                    add_serv.studentCount = await this.Student.countDocuments({service:service._id,state:4})
+
+                    add_serv.studentCount = await this.Student.countDocuments({
+                        service: service._id,
+                        state: 4,
+                    });
                     serv.push(add_serv);
                 }
                 add.service = serv;
@@ -4059,15 +4088,15 @@ module.exports = new (class extends controller {
     async findDriversByNameOrPhone(req, res) {
         try {
             const { agencyId, s } = req.query;
-            
+
             if (!agencyId) {
                 return res
                     .status(204)
                     .json({ message: "Invalid agencyId or s" });
             }
-            console.log("agencyId",agencyId);
+            // console.log("agencyId", agencyId);
             const agency = await this.Agency.findById(agencyId).lean();
-            console.log("agency",agency);
+            // console.log("agency", agency);
             if (!agency) {
                 return res.status(204).json({ message: "Agency not found" });
             }

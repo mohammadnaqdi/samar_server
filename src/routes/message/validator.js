@@ -30,6 +30,21 @@ module.exports = new (class {
                 .withMessage("agencyId cant be empty"),
         ];
     }
+    sendAvanakValidator() {
+        return [
+            check("code").not().isEmpty().withMessage("code cant be empty"),
+            check("mobiles")
+                .not()
+                .isEmpty()
+                .withMessage("mobiles cant be empty"),
+            check("sender").not().isEmpty().withMessage("sender cant be empty"),
+            check("desc").not().isEmpty().withMessage("desc cant be empty"),
+            check("agencyId")
+                .not()
+                .isEmpty()
+                .withMessage("agencyId cant be empty"),
+        ];
+    }
 
     batchSendValidator() {
         return [

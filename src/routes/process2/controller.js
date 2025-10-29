@@ -883,6 +883,7 @@ module.exports = new (class extends controller {
     async studentServiceList(req, res) {
         try {
             const { schools, agencyId } = req.body;
+            const checked=req.body.checked || false;
             const students = await this.Student.find(
                 { school: { $in: schools }, delete: false, state: 4 },
                 "name lastName service serviceNum serviceDistance serviceCost driverCost school"
@@ -896,6 +897,9 @@ module.exports = new (class extends controller {
                 if (!school) continue;
                 const service = await this.Service.findById(st.service).lean();
                 if (!service) continue;
+                if(checked){
+                    if(service.checked)continue;
+                }
                 services.push({
                     studentName: st.name + " " + st.lastName,
                     serviceDistance: st.serviceDistance,
@@ -1732,8 +1736,8 @@ module.exports = new (class extends controller {
                 });
             }
             const { agencyId } = req.query;
-            const pagest=req.query.page || 0;
-            const page=parseInt(pagest);
+            const pagest = req.query.page || 0;
+            const page = parseInt(pagest);
 
             const currentDate = new Date();
             const m = jMoment(currentDate).jMonth();
@@ -1767,25 +1771,38 @@ module.exports = new (class extends controller {
                     counterMax = 9;
                     break;
             }
-            let insNotPaid=[];
+            let insNotPaid = [];
             if (counterMax > 0) {
-                const pays = await this.PayQueue.find({
-                    counter: { $lte: counterMax },
-                    isPaid: false,
-                    delete: false,
-                    agencyId,
-                    type: "installment",
-                },'amount counter studentId').sort({counter:1}).skip(20*page).limit(20).lean();
-                for(var p of  pays){
-                    const student=await this.Student.findById(p.studentId,'name lastName parent').lean();
-                    if(student){
-                        const parent=await this.Parent.findById(student.parent,'name lastName phone');
-                        if(parent){
+                const pays = await this.PayQueue.find(
+                    {
+                        counter: { $lte: counterMax },
+                        isPaid: false,
+                        delete: false,
+                        agencyId,
+                        type: "installment",
+                    },
+                    "amount counter studentId"
+                )
+                    .sort({ counter: 1 })
+                    .skip(20 * page)
+                    .limit(20)
+                    .lean();
+                for (var p of pays) {
+                    const student = await this.Student.findById(
+                        p.studentId,
+                        "name lastName parent"
+                    ).lean();
+                    if (student) {
+                        const parent = await this.Parent.findById(
+                            student.parent,
+                            "name lastName phone"
+                        );
+                        if (parent) {
                             insNotPaid.push({
-                                pay:p,
+                                pay: p,
                                 student,
-                                parent
-                            })
+                                parent,
+                            });
                         }
                     }
                 }
@@ -1924,6 +1941,42 @@ module.exports = new (class extends controller {
     //         return res.status(500).json({ error: "Internal Server Error." });
     //     }
     // }
+    async setServiceMoreInfo(req, res) {
+        try {
+            if (req.query.id === undefined) {
+                return this.response({
+                    res,
+                    code: 214,
+                    message: "id need",
+                });
+            }
+            const id = req.query.id;
+            const check = req.query.checked || "false";
+            const start_service=req.query.date || '';
+            let checked = false;
+            if (check === "true") {
+                checked = true;
+            }
+            console.log("id",id)
+            console.log("checked",checked)
+            await this.Service.findByIdAndUpdate(id,{
+                checked
+            })
+            if(start_service.trim()!=''){
+                 await this.Service.findByIdAndUpdate(id,{
+                start_service
+            })
+            }
+
+            return this.response({
+                res,
+                message: "ok",
+            });
+        } catch (error) {
+            console.error("Error while setServiceMoreInfo:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
 })();
 function simplifyAddress(address) {
     // Split address into components (assuming space-separated)

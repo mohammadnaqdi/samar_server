@@ -4,3 +4,4 @@ public/
 nodejs.rar
 *.zip
 *.rar
+.env

@@ -220,6 +220,7 @@ module.exports = new (class extends controller {
             const search = req.body.search.trim();
             const location = req.body.location;
             let gradeId = req.body.gradeId;
+            const id = req.body.id || "";
 
             const gradePreSchool = await this.Keys.findOne(
                 { titleEn: "Preschool" },
@@ -277,40 +278,52 @@ module.exports = new (class extends controller {
                 qr.push({ agencyId: { $ne: null } });
             }
             if (districtId !== 0) qr.push({ districtId });
-            if (search !== "")
+            if (search !== "") {
                 qr.push({
                     $or: [
                         { code: { $regex: ".*" + search + ".*" } },
                         { name: { $regex: ".*" + search + ".*" } },
                     ],
                 });
-
-            const skipCount = page * limit;
-            let schools = await this.School.aggregate([
-                {
-                    $geoNear: {
-                        near: {
-                            type: "Point",
-                            coordinates: location,
+            }
+            let schools = [];
+            if (id && id.trim() != "") {
+                const sc = await this.School.findById(id);
+                if (!sc) {
+                    return this.response({
+                        res,
+                        code: 404,
+                        message: "school not find",
+                    });
+                }
+                schools = [sc];
+            } else {
+                const skipCount = page * limit;
+                schools = await this.School.aggregate([
+                    {
+                        $geoNear: {
+                            near: {
+                                type: "Point",
+                                coordinates: location,
+                            },
+                            key: "location",
+                            distanceField: "dist.calculated",
+                            maxDistance: maxDistance,
+                            spherical: true,
                         },
-                        key: "location",
-                        distanceField: "dist.calculated",
-                        maxDistance: maxDistance,
-                        spherical: true,
                     },
-                },
-                {
-                    $match: { $and: qr },
-                },
-                { $sort: { "dist.calculated": 1 } },
-                { $skip: skipCount },
-                { $limit: limit },
-            ]).exec();
+                    {
+                        $match: { $and: qr },
+                    },
+                    { $sort: { "dist.calculated": 1 } },
+                    { $skip: skipCount },
+                    { $limit: limit },
+                ]).exec();
+                // Convert aggregation result to plain JS objects (lean)
+                schools = schools.map((s) => ({ ...s }));
+            }
 
-            // Convert aggregation result to plain JS objects (lean)
-            schools = schools.map((s) => ({ ...s }));
             for (let i in schools) {
-                //dodo
                 const schoolLoc = `${schools[i].location.coordinates[1]},${schools[i].location.coordinates[0]}`;
                 const studentLoc = `${location[1]},${location[0]}`;
                 const url = `${process.env.ROUTE_URL}/route/v1/driving/${studentLoc};${schoolLoc}?overview=full`;

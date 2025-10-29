@@ -1269,7 +1269,6 @@ module.exports = new (class extends controller {
                     }
                     const mySchool = await this.School.findById(school);
 
-                    // console.log("myAgency",myAgency);
                     if (!mySchool) {
                         return this.response({
                             res,
@@ -1325,7 +1324,7 @@ module.exports = new (class extends controller {
             if (
                 schools.length == 0 &&
                 school.length > 10 &&
-                search.length === 0
+                (search.length === 0 || req.user.isSchoolAdmin)
             ) {
                 qr.push({ school: school });
             }
@@ -1594,6 +1593,8 @@ module.exports = new (class extends controller {
                         data: [],
                     });
                 }
+            } else if (req.user.isSchoolAdmin) {
+                onlySchool = [agencyId];
             }
 
             let students;
@@ -1851,7 +1852,9 @@ module.exports = new (class extends controller {
             var qr = [];
             qr.push({ delete: false });
             if (
-                (req.user.isAgencyAdmin || req.user.isSupport) &&
+                (req.user.isAgencyAdmin ||
+                    req.user.isSupport ||
+                    req.user.isSchoolAdmin) &&
                 !req.user.isadmin
             ) {
                 qr.push({ school: { $in: onlySchool } });

@@ -503,6 +503,185 @@ module.exports = new (class extends controller {
             return res.status(500).json({ error: "Internal Server Error." });
         }
     }
+    async sendAvanak(req, res) {
+        try {
+            const { code, sender, mobiles, desc } = req.body;
+            const agencyId = ObjectId.createFromHexString(req.body.agencyId);
+            // console.log("params", params);
+            console.log("mobiles", mobiles);
+
+            const messageCode = await this.MessageCode.findOne({
+                code,
+                active: true,
+            });
+            if (!messageCode) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "messageCode not find or active",
+                });
+            }
+            if (code === "0") {
+                return this.response({
+                    res,
+                    code: 216,
+                    message: "send zero code with batchSend api",
+                });
+            }
+
+            const price = parseInt(
+                (messageCode.price * mobiles.length).toString()
+            );
+            const agency = await this.Agency.findById(agencyId, "settings");
+            const wallet = agency.settings.find(
+                (obj) => obj.wallet != undefined
+            ).wallet;
+
+            const costCode = agency.settings.find(
+                (obj) => obj.cost != undefined
+            ).cost;
+            if (!costCode || !wallet) {
+                return this.response({
+                    res,
+                    code: 404,
+                    message: "costCode || wallet not find",
+                });
+            }
+
+            let mandeh = 0;
+            const result = await this.DocListSanad.aggregate([
+                {
+                    $match: {
+                        accCode: wallet,
+                        agencyId: agencyId,
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: {
+                            $sum: {
+                                $subtract: ["$bed", "$bes"],
+                            },
+                        },
+                    },
+                },
+            ]);
+            mandeh = result[0]?.total || 0;
+            if (price > mandeh) {
+                return this.response({
+                    res,
+                    code: 205,
+                    message: "The account balance is insufficient",
+                });
+            }
+
+            const Token = process.env.AMOOT_AVANAK;
+            const MessageID = messageCode.code;
+            const StartDateTime = new Date();
+            const EndDateTime = new Date(Date.now() + 6 * 60 * 60 * 1000); // +10 hours
+            const MaxTryCount = 1;
+            const MinuteBetweenTries = 10;
+            const Title = "کمپین آوانک " + sender;
+            const Numbers = mobiles.join(",");
+
+            const data = qs.stringify({
+                MessageID: MessageID.toString(),
+                StartDateTime: StartDateTime.toISOString(),
+                EndDateTime: EndDateTime.toISOString(),
+                MaxTryCount: MaxTryCount.toString(),
+                MinuteBetweenTries: MinuteBetweenTries.toString(),
+                Title,
+                Numbers,
+                // If needed:
+                // AutoStart: AutoStart.toString(),
+                // Vote: Vote.toString(),
+                // ServerID: ServerID.toString(),
+            });
+
+            const response = await axios.post(
+                "https://portal.avanak.ir/rest/CreateCampaign",
+                data,
+                {
+                    headers: {
+                        Authorization: Token,
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                }
+            );
+
+            console.log("Response status:", response.status);
+            console.log("Response data:", response.data);
+            console.log("Response CampaignID:", response.data.CampaignID);
+            if (response) {
+                if (response.data.CampaignID > 0) {
+                    const desc2 = `هزینه ارسال ${mobiles.length} عدد آوانک ${desc}`;
+                    let doc = new this.DocSanad({
+                        agencyId,
+                        note: desc2,
+                        sanadDate: new Date(),
+                        system: 3,
+                        definite: false,
+                        lock: true,
+                        editor: req.user._id,
+                    });
+                    await doc.save();
+                    await new this.DocListSanad({
+                        agencyId,
+                        titleId: doc.id,
+                        doclistId: doc.sanadId,
+                        row: 1,
+                        bed: price,
+                        bes: 0,
+                        note: desc2,
+                        accCode: costCode,
+                        mId: doc.sanadId,
+                        peigiri: "شماره کمپینگ " + response.data.CampaignID,
+                        sanadDate: new Date(),
+                    }).save();
+                    await new this.DocListSanad({
+                        agencyId,
+                        titleId: doc.id,
+                        doclistId: doc.sanadId,
+                        row: 2,
+                        bed: 0,
+                        bes: price,
+                        note: desc2,
+                        accCode: wallet,
+                        mId: doc.sanadId,
+                        peigiri: "شماره کمپینگ " + response.data.CampaignID,
+                        sanadDate: new Date(),
+                    }).save();
+                    await new this.Messaging({
+                        agencyId,
+                        senderId: req.user._id,
+                        sender,
+                        code,
+                        to: mobiles,
+                        params: [],
+                        type: 2,
+                        text: messageCode.text,
+                        responseMessage: response.data.CampaignID,
+                        price: messageCode.price * mobiles.length,
+                        desc,
+                    }).save();
+
+                    return this.response({
+                        res,
+                        message: "send",
+                    });
+                }
+            }
+
+            return this.response({
+                res,code:403,
+                message: "error to send avanak",
+            });
+        } catch (error) {
+            console.error("Error in sendAvanak:", error);
+            return res.status(500).json({ error: "Internal Server Error." });
+        }
+    }
     async sendAvanakToService(req, res) {
         try {
             const studentList = req.body.studentList;
@@ -533,17 +712,17 @@ module.exports = new (class extends controller {
                 //         vote: false,
                 //     });
 
-                    // let config = {
-                    //     method: "post",
-                    //     url: "https://portal.avanak.ir/webservice3.asmx/QuickSend",
-                    //     headers: {
-                    //         Authorization: amoot_t,
-                    //         "Content-Type": "application/x-www-form-urlencoded",
-                    //     },
-                    //     data: data,
-                    // };
+                // let config = {
+                //     method: "post",
+                //     url: "https://portal.avanak.ir/webservice3.asmx/QuickSend",
+                //     headers: {
+                //         Authorization: amoot_t,
+                //         "Content-Type": "application/x-www-form-urlencoded",
+                //     },
+                //     data: data,
+                // };
 
-                    // await axios.request(config);
+                // await axios.request(config);
                 // }
             });
 

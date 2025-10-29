@@ -1610,7 +1610,7 @@ module.exports = new (class extends controller {
             const agency = await this.Agency.findById(
                 school.agencyId,
                 "code name tel rating admin districtTitle address location.coordinates active"
-            );
+            ).lean();
             // const paymetns = await this.Payment.find({ payId: schoolId });
             const students = await this.Student.find({
                 school: schoolId,
